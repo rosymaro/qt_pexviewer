@@ -52,12 +52,15 @@ private:
     void mousePressEvent(QMouseEvent *) override;
     void mouseReleaseEvent(QMouseEvent *) override;
     void mouseMoveEvent(QMouseEvent *) override;
+    void keyPressEvent(QKeyEvent *) override;
+    void keyReleaseEvent(QKeyEvent *) override;
 
-    bool m_leftPressed = false;
-    bool m_rightPressed = false;
-    bool m_wheelPressed = false;
+    bool keyCtrl = false;
+    bool keyShift = false;
+    bool keyAlt = false;
 
     int m_mouseButton = 0;
+
 
     QPoint m_lastPos;
 

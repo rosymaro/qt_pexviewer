@@ -3,6 +3,7 @@
 #include <QMouseEvent>
 #include <QKeyEvent>
 
+
 MainWindow::MainWindow(VulkanWindow *w)
     : m_window(w)
     , ui(new Ui::MainWindow)
@@ -45,11 +46,26 @@ VulkanRenderer::VulkanRenderer(VulkanWindow *w)
 
 void VulkanWindow::wheelEvent(QWheelEvent *e)
 {
+    //문제가 하나 있는데...
+    //프로그램이 선택되어 있지 않아도 moveZoom 명령이 나감
+    //근데 Ctrl 은 Vulkan Window 가 선택되었을 때만 됨
+    //moveZoom 을 이 Level 까지 끌고 내려와야 함
     const float amount = e->angleDelta().y() / 8;
-//    m_renderer->moveZoom(amount);
-    QString funcValue = "moveZoom : " + QString::number(amount);
-    emit outputStatus(funcValue);
-    qDebug()<<funcValue;
+
+    if (keyCtrl == true)
+    {
+//      m_rendere->windowZoom(amount);
+        QString funcValue = "windowZoom : " + QString::number(amount);
+        emit outputStatus(funcValue);
+        qDebug()<<funcValue;
+    }
+    else
+    {
+//      m_renderer->moveZoom(amount);
+        QString funcValue = "moveZoom : " + QString::number(amount);
+        emit outputStatus(funcValue);
+        qDebug()<<funcValue;
+    }
 }
 
 void VulkanWindow::mousePressEvent(QMouseEvent *e)
@@ -78,15 +94,15 @@ void VulkanWindow::mouseMoveEvent(QMouseEvent *e)
     {
         if (m_mouseButton == 2)
         {
-//            m_renderer->renderRotateX(dx / 10.0f);
-            QString funcValue = "renderRotateX : " + QString::number(dx / 10.0f);
+//            m_renderer->rotateRenderY(dx / 10.0f);
+            QString funcValue = "rotateRenderX : " + QString::number(dx / 10.0f);
             emit outputStatus(funcValue);
             qDebug()<<funcValue;
         }
         else if (m_mouseButton == 4)
         {
-//            m_renderer->renderMoveX(dx / 10.0f);
-            QString funcValue = "renderMoveX : " + QString::number(dx / 10.0f);
+//            m_renderer->moveRenderX(dx / 10.0f);
+            QString funcValue = "moveRenderX : " + QString::number(dx / 10.0f);
             emit outputStatus(funcValue);
             qDebug()<<funcValue;
         }
@@ -96,19 +112,94 @@ void VulkanWindow::mouseMoveEvent(QMouseEvent *e)
     {
         if (m_mouseButton == 2)
         {
-//            m_renderer->renderRotateY(dy / 10.0f);
-            QString funcValue = "renderRotateY : " + QString::number(dy / 10.0f);
+//            m_renderer->rotateRenderY(dy / 10.0f);
+            QString funcValue = "rotateRenderY : " + QString::number(dy / 10.0f);
             emit outputStatus(funcValue);
             qDebug()<<funcValue;
         }
         else if (m_mouseButton == 4)
         {
-//            m_renderer->renderMoveY(dy / 10.0f);
-            QString funcValue = "renderMoveY : " + QString::number(dy / 10.0f);
+//            m_renderer->moveRenderY(dy / 10.0f);
+            QString funcValue = "moveRenderY : " + QString::number(dy / 10.0f);
             emit outputStatus(funcValue);
             qDebug()<<funcValue;
         }
     }
-
 }
 
+void VulkanWindow::keyPressEvent(QKeyEvent *e)
+{
+    const float amount = e->modifiers().testFlag(Qt::ShiftModifier) ? 1.0f : 0.1f;
+    QString funcValue;
+    switch (e->key()) {
+    case Qt::Key_Up:
+//        m_renderer->moveGdsY(amount);
+        funcValue = "moveGdsY : " + QString::number(amount);
+        emit outputStatus(funcValue);
+        qDebug()<<funcValue;
+        break;
+    case Qt::Key_Down:
+//        m_renderer->moveGdsY(-amount);
+        funcValue = "moveGdsY : " + QString::number(-amount);
+        emit outputStatus(funcValue);
+        qDebug()<<funcValue;
+        break;
+    case Qt::Key_Right:
+//        m_renderer->moveGdsX(-amount);
+        funcValue = "moveGdsX : " + QString::number(amount);
+        emit outputStatus(funcValue);
+        qDebug()<<funcValue;
+        break;
+    case Qt::Key_Left:
+//        m_renderer->moveGdsX(amount);
+        funcValue = "moveGdsX : " + QString::number(-amount);
+        emit outputStatus(funcValue);
+        qDebug()<<funcValue;
+        break;
+    case Qt::Key_PageUp:
+//        m_renderer->moveGdsZ(amount);
+        funcValue = "moveGdsZ : " + QString::number(amount);
+        emit outputStatus(funcValue);
+        qDebug()<<funcValue;
+        break;
+    case Qt::Key_PageDown:
+//        m_renderer->moveGdsZ(amount);
+        funcValue = "moveGdsZ : " + QString::number(-amount);
+        emit outputStatus(funcValue);
+        qDebug()<<funcValue;
+        break;
+    case Qt::Key_Control:
+        keyCtrl = true;
+        qDebug() << "Control";
+        break;
+    case Qt::Key_Alt:
+        keyAlt = true;
+        qDebug() << "Alt";
+        break;
+    case Qt::Key_Shift:
+        keyShift = true;
+        qDebug() << "Shift";
+        break;
+    default:
+        break;
+    }
+}
+void VulkanWindow::keyReleaseEvent(QKeyEvent *e)
+{
+    switch (e->key()) {
+    case Qt::Key_Control:
+        keyCtrl = false;
+        qDebug() << "Control off";
+        break;
+    case Qt::Key_Alt:
+        keyAlt = false;
+        qDebug() << "Alt off";
+        break;
+    case Qt::Key_Shift:
+        keyShift = false;
+        qDebug() << "Shift off";
+        break;
+    default:
+        break;
+    }
+}
