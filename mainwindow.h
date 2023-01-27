@@ -27,6 +27,8 @@ public slots:
 private:
     QVulkanWindow *m_window;
     Ui::MainWindow *ui;
+    QString statusText;
+
 };
 
 // Graphics output
@@ -47,6 +49,17 @@ public:
 private:
     VulkanRenderer *m_renderer;
     void wheelEvent(QWheelEvent *) override;
+    void mousePressEvent(QMouseEvent *) override;
+    void mouseReleaseEvent(QMouseEvent *) override;
+    void mouseMoveEvent(QMouseEvent *) override;
+
+    bool m_leftPressed = false;
+    bool m_rightPressed = false;
+    bool m_wheelPressed = false;
+
+    int m_mouseButton = 0;
+
+    QPoint m_lastPos;
 
 signals:
     void outputStatus(QString funcValue);
