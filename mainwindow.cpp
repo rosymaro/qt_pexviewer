@@ -1,8 +1,11 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+
 #include <QMouseEvent>
 #include <QKeyEvent>
+#include <QDockWidget>
 
+class DockWidget;
 
 MainWindow::MainWindow(VulkanWindow *w)
     : m_window(w)
@@ -12,15 +15,53 @@ MainWindow::MainWindow(VulkanWindow *w)
     QWidget *wrapper = QWidget::createWindowContainer(w);
     ui->verticalLayout_2->addWidget(wrapper);
 
+    QDockWidget *dockHier = new QDockWidget(tr("Hierarchy"), this);
+    QDockWidget *dockLayer = new QDockWidget(tr("Layer Information"), this);
+    QDockWidget *dockTop = new QDockWidget(tr("GDS View"), this);
+    QDockWidget *dockInfo = new QDockWidget(tr("Camera Information"), this);
+    QDockWidget *dockMap = new QDockWidget(tr("Map"), this);
+
+    dockHier->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    dockLayer->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    dockTop->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    dockInfo->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    dockMap->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+
+    addDockWidget(Qt::LeftDockWidgetArea, dockHier);
+    addDockWidget(Qt::LeftDockWidgetArea, dockLayer);
+    addDockWidget(Qt::RightDockWidgetArea, dockTop);
+    addDockWidget(Qt::RightDockWidgetArea, dockInfo);
+    addDockWidget(Qt::RightDockWidgetArea, dockMap);
+
+    formHier = new FormHier;
+    formLayer = new FormLayer;
+    formTop = new FormTop;
+    formInfo = new FormInfo;
+    formMap = new FormMap;
+
+    dockHier->setWidget(formHier);
+    dockLayer->setWidget(formLayer);
+    dockTop->setWidget(formTop);
+    dockInfo->setWidget(formInfo);
+    dockMap->setWidget(formMap);
+
+    QObject::connect(this, signalInfoText, formInfo, FormInfo::slotInfoText);
 }
+
+
+
 
 MainWindow::~MainWindow()
 {
     delete ui;
 }
 
-void MainWindow::inputStatus(QString text)
+void MainWindow::slotInfoText(QString funcName, float value)
 {
+    emit signalInfoText(funcName, value);
+    qDebug() << "slotInfoText" << value;
+///// temp //////
+    QString text = funcName + " : " + QString::number(value);
     for (int i = text.size() ; i < 30 ; i++)
     {
         text.append(" ");
@@ -31,6 +72,7 @@ void MainWindow::inputStatus(QString text)
     if (statusText.size() > 120)
         statusText.remove(120,statusText.size()-120);
     ui->statusbar->showMessage(statusText);
+
 }
 
 QVulkanWindowRenderer *VulkanWindow::createRenderer()
@@ -55,16 +97,18 @@ void VulkanWindow::wheelEvent(QWheelEvent *e)
     if (keyCtrl == true)
     {
 //      m_rendere->windowZoom(amount);
-        QString funcValue = "windowZoom : " + QString::number(amount);
-        emit outputStatus(funcValue);
-        qDebug()<<funcValue;
+        QString funcName = "windowZoom";
+        float value = amount;
+        emit signalInfoText(funcName, value);
+//        qDebug()<<funcName << " : " << value;
     }
     else
     {
 //      m_renderer->moveZoom(amount);
-        QString funcValue = "moveZoom : " + QString::number(amount);
-        emit outputStatus(funcValue);
-        qDebug()<<funcValue;
+        QString funcName = "moveZoom";
+        float value = amount;
+        emit signalInfoText(funcName, value);
+//        qDebug()<<funcName << " : " << value;
     }
 }
 
@@ -72,14 +116,14 @@ void VulkanWindow::mousePressEvent(QMouseEvent *e)
 {
     m_mouseButton = e->buttons();
     m_lastPos = e->pos();
-    qDebug() << m_mouseButton;
-    qDebug() << m_lastPos;
 }
 
 void VulkanWindow::mouseReleaseEvent(QMouseEvent *)
 {
     m_mouseButton = 0;
-    qDebug() << m_mouseButton;
+    QString funcName = "mouseRelease";
+    float value = 0;
+    emit signalInfoText(funcName, value);
 }
 
 void VulkanWindow::mouseMoveEvent(QMouseEvent *e)
@@ -95,16 +139,18 @@ void VulkanWindow::mouseMoveEvent(QMouseEvent *e)
         if (m_mouseButton == 2)
         {
 //            m_renderer->rotateRenderY(dx / 10.0f);
-            QString funcValue = "rotateRenderX : " + QString::number(dx / 10.0f);
-            emit outputStatus(funcValue);
-            qDebug()<<funcValue;
+            QString funcName = "rotateRenderX";
+            float value = -dx / 10.0f;
+            emit signalInfoText(funcName, value);
+            qDebug()<< "mouseEvent "<<funcName << " : " << value;
         }
         else if (m_mouseButton == 4)
         {
 //            m_renderer->moveRenderX(dx / 10.0f);
-            QString funcValue = "moveRenderX : " + QString::number(dx / 10.0f);
-            emit outputStatus(funcValue);
-            qDebug()<<funcValue;
+            QString funcName = "moveRenderX";
+            float value = -dx / 10.0f;
+            emit signalInfoText(funcName, value);
+//            qDebug()<<funcName << " : " << value;
         }
     }
 
@@ -113,16 +159,18 @@ void VulkanWindow::mouseMoveEvent(QMouseEvent *e)
         if (m_mouseButton == 2)
         {
 //            m_renderer->rotateRenderY(dy / 10.0f);
-            QString funcValue = "rotateRenderY : " + QString::number(dy / 10.0f);
-            emit outputStatus(funcValue);
-            qDebug()<<funcValue;
+            QString funcName = "rotateRenderY";
+            float value = dy / 10.0f;
+            emit signalInfoText(funcName, value);
+//            qDebug()<<funcName << " : " << value;
         }
         else if (m_mouseButton == 4)
         {
 //            m_renderer->moveRenderY(dy / 10.0f);
-            QString funcValue = "moveRenderY : " + QString::number(dy / 10.0f);
-            emit outputStatus(funcValue);
-            qDebug()<<funcValue;
+            QString funcName = "moveRenderY";
+            float value = dy / 10.0f;
+            emit signalInfoText(funcName, value);
+//            qDebug()<<funcName << " : " << value;
         }
     }
 }
@@ -130,43 +178,38 @@ void VulkanWindow::mouseMoveEvent(QMouseEvent *e)
 void VulkanWindow::keyPressEvent(QKeyEvent *e)
 {
     const float amount = e->modifiers().testFlag(Qt::ShiftModifier) ? 1.0f : 0.1f;
-    QString funcValue;
+    QString funcName;
+    float value;
     switch (e->key()) {
     case Qt::Key_Up:
-//        m_renderer->moveGdsY(amount);
-        funcValue = "moveGdsY : " + QString::number(amount);
-        emit outputStatus(funcValue);
-        qDebug()<<funcValue;
+        funcName = "moveGdsY";
+        value = amount;
+//        m_renderer->moveGdsY(value);
         break;
     case Qt::Key_Down:
-//        m_renderer->moveGdsY(-amount);
-        funcValue = "moveGdsY : " + QString::number(-amount);
-        emit outputStatus(funcValue);
-        qDebug()<<funcValue;
+        funcName = "moveGdsY";
+        value = -amount;
+//        m_renderer->moveGdsY(value);
         break;
     case Qt::Key_Right:
-//        m_renderer->moveGdsX(-amount);
-        funcValue = "moveGdsX : " + QString::number(amount);
-        emit outputStatus(funcValue);
-        qDebug()<<funcValue;
+        funcName = "moveGdsX";
+        value = amount;
+//        m_renderer->moveGdsX(value);
         break;
     case Qt::Key_Left:
-//        m_renderer->moveGdsX(amount);
-        funcValue = "moveGdsX : " + QString::number(-amount);
-        emit outputStatus(funcValue);
-        qDebug()<<funcValue;
+        funcName = "moveGdsX";
+        value = -amount;
+//        m_renderer->moveGdsX(value);
         break;
     case Qt::Key_PageUp:
-//        m_renderer->moveGdsZ(amount);
-        funcValue = "moveGdsZ : " + QString::number(amount);
-        emit outputStatus(funcValue);
-        qDebug()<<funcValue;
+        funcName = "moveGdsZ";
+        value = amount;
+//        m_renderer->moveGdsZ(value);
         break;
     case Qt::Key_PageDown:
-//        m_renderer->moveGdsZ(amount);
-        funcValue = "moveGdsZ : " + QString::number(-amount);
-        emit outputStatus(funcValue);
-        qDebug()<<funcValue;
+        funcName = "moveGdsZ";
+        value = -amount;
+//        m_renderer->moveGdsZ(value);
         break;
     case Qt::Key_Control:
         keyCtrl = true;
@@ -183,6 +226,8 @@ void VulkanWindow::keyPressEvent(QKeyEvent *e)
     default:
         break;
     }
+    emit signalInfoText(funcName, value);
+    qDebug()<<funcName << " : " << value;
 }
 void VulkanWindow::keyReleaseEvent(QKeyEvent *e)
 {
@@ -202,4 +247,25 @@ void VulkanWindow::keyReleaseEvent(QKeyEvent *e)
     default:
         break;
     }
+}
+
+void MainWindow::on_pushButton_clicked()
+{
+    if (formHier->isVisible())
+    {
+        formHier->close();
+        formLayer->close();
+        formTop->close();
+        formInfo->close();
+        formMap->close();
+    }
+    else
+    {
+        formHier->show();
+        formLayer->show();
+        formTop->show();
+        formInfo->show();
+        formMap->show();
+    }
+
 }
