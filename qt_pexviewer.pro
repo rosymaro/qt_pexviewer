@@ -9,15 +9,30 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    formhier.cpp \
+    forminfo.cpp \
+    formlayer.cpp \
+    formmap.cpp \
+    formtop.cpp \
     main.cpp \
     mainwindow.cpp \
     trianglerenderer.cpp
 
 HEADERS += \
+    formhier.h \
+    forminfo.h \
+    formlayer.h \
+    formmap.h \
+    formtop.h \
     mainwindow.h \
     trianglerenderer.h
 
 FORMS += \
+    formhier.ui \
+    forminfo.ui \
+    formlayer.ui \
+    formmap.ui \
+    formtop.ui \
     mainwindow.ui
 
 # Default rules for deployment.
