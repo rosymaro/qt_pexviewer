@@ -5,11 +5,17 @@
 
 #include <QMainWindow>
 #include <QVulkanWindow>
+#include <QDockWidget>
+#include "formhier.h"
+#include "formlayer.h"
+#include "formtop.h"
+#include "forminfo.h"
+#include "formmap.h"
 
 class VulkanWindow;
 
 QT_BEGIN_NAMESPACE
-namespace Ui { class MainWindow; }
+namespace Ui { class MainWindow; class LayerForm; }
 QT_END_NAMESPACE
 
 class MainWindow : public QMainWindow
@@ -20,16 +26,31 @@ public:
     MainWindow(VulkanWindow *w);
     ~MainWindow();
 
+
 public slots:
 
-    void inputStatus(QString text);
+    void slotInfoText(QString funcName, float value);
+
+private slots:
+    void on_pushButton_clicked();
+
+signals:
+    void signalInfoText(QString funcName, float value);
+
 
 private:
     QVulkanWindow *m_window;
     Ui::MainWindow *ui;
     QString statusText;
+    FormHier *formHier;
+    FormLayer *formLayer;
+    FormTop *formTop;
+    FormInfo *formInfo;
+    FormMap *formMap;
 
 };
+
+
 
 // Graphics output
 class VulkanRenderer : public TriangleRenderer
@@ -45,6 +66,7 @@ class VulkanWindow : public QVulkanWindow
 
 public:
     QVulkanWindowRenderer *createRenderer() override;
+
 
 private:
     VulkanRenderer *m_renderer;
@@ -65,7 +87,9 @@ private:
     QPoint m_lastPos;
 
 signals:
-    void outputStatus(QString funcValue);
+    void signalInfoText(QString funcName, float value);
 };
+
+
 
 #endif // MAINWINDOW_H
