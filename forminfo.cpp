@@ -8,6 +8,12 @@ FormInfo::FormInfo(QWidget *parent) :
     ui(new Ui::FormInfo)
 {
     ui->setupUi(this);
+    ui->pointX->setText(QString::number(round(pointX*10000)/10000));
+    ui->pointY->setText(QString::number(round(pointY*10000)/10000));
+    ui->pointZ->setText(QString::number(round(pointZ*10000)/10000));
+    ui->infoRot->setText(QString::number(round(infoRot*10000)/10000));
+    ui->infoTilt->setText(QString::number(round(infoTilt*10000)/10000));
+    ui->infoZoom->setText(QString::number(round(1/infoZoom*1000)/10)+"%");
 }
 
 void FormInfo::slotInfoText(QString funcName, float value)
@@ -66,24 +72,12 @@ void FormInfo::slotInfoText(QString funcName, float value)
         qDebug()<< "moveRenderX";
         x = value;
         moveRender(x,y);
-//        pointX = initPointX+value*cos(infoRot*pi/180)*infoZoom;
-//        pointY = initPointY+value*sin(infoRot*pi/180)*infoZoom;
-//        qDebug() << pointX << " : " << pointY;
-//        ui->pointX->setText(QString::number(round(pointX*10000)/10000));
-//        ui->pointY->setText(QString::number(round(pointY*10000)/10000));
     }
     if (funcName == "moveRenderY")
     {
         qDebug()<< "moveRenderY";
         y = value;
         moveRender(x,y);
-//        pointX = initPointX+value*sin(infoRot*pi/180)*sin(infoTilt*pi/180)*infoZoom;
-//        pointY = initPointY+value*cos(infoRot*pi/180)*sin(infoTilt*pi/180)*infoZoom;
-//        pointZ = initPointZ+value*cos(infoTilt*pi/180)*infoZoom;
-//        qDebug() << pointX << " : " << pointY;
-//        ui->pointX->setText(QString::number(round(pointX*10000)/10000));
-//        ui->pointY->setText(QString::number(round(pointY*10000)/10000));
-//        ui->pointZ->setText(QString::number(round(pointZ*10000)/10000));
     }
     if (funcName == "mouseRelease")
     {
@@ -93,7 +87,6 @@ void FormInfo::slotInfoText(QString funcName, float value)
         initPointX = pointX;
         initPointY = pointY;
         initPointZ = pointZ;
-
     }
 
 }

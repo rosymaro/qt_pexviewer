@@ -26,6 +26,7 @@ public:
     MainWindow(VulkanWindow *w);
     ~MainWindow();
 
+    void moveEvent(QMoveEvent *e) override;
 
 public slots:
 
@@ -47,6 +48,16 @@ private:
     FormTop *formTop;
     FormInfo *formInfo;
     FormMap *formMap;
+    QDockWidget *dockHier;
+    QDockWidget *dockLayer;
+    QDockWidget *dockTop;
+    QDockWidget *dockInfo;
+    QDockWidget *dockMap;
+    int start = 0;
+    int leftMain;
+    int topMain;
+    int heightMain;
+    int widthMain;
 
 };
 

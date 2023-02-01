@@ -1,11 +1,13 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+//#include "forminfo.h"
 
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QDockWidget>
+#include <QRect>
 
-class DockWidget;
+//QSetting 은 환경 저장 관련
 
 MainWindow::MainWindow(VulkanWindow *w)
     : m_window(w)
@@ -45,20 +47,39 @@ MainWindow::MainWindow(VulkanWindow *w)
     dockInfo->setWidget(formInfo);
     dockMap->setWidget(formMap);
 
-    QObject::connect(this, signalInfoText, formInfo, FormInfo::slotInfoText);
+    dockHier->setFloating(true);
+    dockLayer->setFloating(true);
+    dockInfo->setFloating(true);
+    dockTop->setFloating(true);
+    dockMap->setFloating(true);
+
+//    int leftMain = this->geometry().x();
+//    int topMain = this->geometry().y();
+//    int heightMain = this->geometry().height();
+//    int widthMain = this->geometry().width();
+
+    dockTop->setGeometry(leftMain,topMain,200,100);
+    dockHier->setGeometry(leftMain+200,topMain+100,200,100);
+    dockInfo->setGeometry(leftMain+400,topMain+200,200,100);
+    dockLayer->setGeometry(leftMain+600,topMain+300,200,100);
+    dockMap->setGeometry(leftMain+800,topMain+400,200,100);
+
+
+    // :::: study ::::
+    // formInfo 에 signal/slot 으로 넘기려고 하였으나
+    // 여기에서 선언을 할 경우 직접 함수 호출 가능함
+    // connect 에서 this 이면 가능한 것으로 보임
 }
-
-
-
 
 MainWindow::~MainWindow()
 {
     delete ui;
 }
 
+// Vulkan window 에서 보내는 Signal 을 받기 위한 함수
 void MainWindow::slotInfoText(QString funcName, float value)
 {
-    emit signalInfoText(funcName, value);
+    formInfo->slotInfoText(funcName,value);
     qDebug() << "slotInfoText" << value;
 ///// temp //////
     QString text = funcName + " : " + QString::number(value);
@@ -72,6 +93,19 @@ void MainWindow::slotInfoText(QString funcName, float value)
     if (statusText.size() > 120)
         statusText.remove(120,statusText.size()-120);
     ui->statusbar->showMessage(statusText);
+
+}
+
+void MainWindow::moveEvent(QMoveEvent *)
+{
+    qDebug()<< "moveEvent" << this->geometry() << start;
+    leftMain = this->geometry().x();
+    topMain = this->geometry().y();
+    heightMain = this->geometry().height();
+    widthMain = this->geometry().width();
+
+
+
 
 }
 
@@ -179,7 +213,7 @@ void VulkanWindow::keyPressEvent(QKeyEvent *e)
 {
     const float amount = e->modifiers().testFlag(Qt::ShiftModifier) ? 1.0f : 0.1f;
     QString funcName;
-    float value;
+    float value = 0;
     switch (e->key()) {
     case Qt::Key_Up:
         funcName = "moveGdsY";
@@ -251,6 +285,7 @@ void VulkanWindow::keyReleaseEvent(QKeyEvent *e)
 
 void MainWindow::on_pushButton_clicked()
 {
+
     if (formHier->isVisible())
     {
         formHier->close();
