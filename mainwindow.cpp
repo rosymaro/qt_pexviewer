@@ -1,11 +1,14 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 //#include "forminfo.h"
+#include "formhier.h"
 
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QDockWidget>
 #include <QRect>
+#include <QTimer>
+#include <QGraphicsView>
 
 //QSetting 은 환경 저장 관련
 
@@ -14,55 +17,40 @@ MainWindow::MainWindow(VulkanWindow *w)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
     QWidget *wrapper = QWidget::createWindowContainer(w);
-    ui->verticalLayout_2->addWidget(wrapper);
+    ui->graphicsView->setViewport(wrapper);
+
+    qDebug()<<"mapToParent : "<<this->mapToParent(this->pos());
+
 
     QDockWidget *dockHier = new QDockWidget(tr("Hierarchy"), this);
-    QDockWidget *dockLayer = new QDockWidget(tr("Layer Information"), this);
-    QDockWidget *dockTop = new QDockWidget(tr("GDS View"), this);
-    QDockWidget *dockInfo = new QDockWidget(tr("Camera Information"), this);
-    QDockWidget *dockMap = new QDockWidget(tr("Map"), this);
-
     dockHier->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-    dockLayer->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-    dockTop->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-    dockInfo->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-    dockMap->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-
-    addDockWidget(Qt::LeftDockWidgetArea, dockHier);
-    addDockWidget(Qt::LeftDockWidgetArea, dockLayer);
-    addDockWidget(Qt::RightDockWidgetArea, dockTop);
-    addDockWidget(Qt::RightDockWidgetArea, dockInfo);
-    addDockWidget(Qt::RightDockWidgetArea, dockMap);
-
+    dockHier->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    addDockWidget(Qt::RightDockWidgetArea, dockHier);
     formHier = new FormHier;
-    formLayer = new FormLayer;
-    formTop = new FormTop;
-    formInfo = new FormInfo;
-    formMap = new FormMap;
-
     dockHier->setWidget(formHier);
+
+    QDockWidget *dockLayer = new QDockWidget(tr("Layer Information"), this);
+    dockLayer->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    dockLayer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    addDockWidget(Qt::RightDockWidgetArea, dockLayer);
+    formLayer = new FormLayer;
     dockLayer->setWidget(formLayer);
-    dockTop->setWidget(formTop);
+
+    QDockWidget *dockInfo = new QDockWidget(tr("Info"), this);
+    dockInfo->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    dockInfo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    addDockWidget(Qt::RightDockWidgetArea, dockInfo);
+    formInfo = new FormInfo;
     dockInfo->setWidget(formInfo);
-    dockMap->setWidget(formMap);
 
-    dockHier->setFloating(true);
-    dockLayer->setFloating(true);
-    dockInfo->setFloating(true);
-    dockTop->setFloating(true);
-    dockMap->setFloating(true);
 
-//    int leftMain = this->geometry().x();
-//    int topMain = this->geometry().y();
-//    int heightMain = this->geometry().height();
-//    int widthMain = this->geometry().width();
 
-    dockTop->setGeometry(leftMain,topMain,200,100);
-    dockHier->setGeometry(leftMain+200,topMain+100,200,100);
-    dockInfo->setGeometry(leftMain+400,topMain+200,200,100);
-    dockLayer->setGeometry(leftMain+600,topMain+300,200,100);
-    dockMap->setGeometry(leftMain+800,topMain+400,200,100);
+// 230205 하고 싶은 말..
+// dockWidget 을 쓰면 floating 상태에서 움직일 수 없음. 근데 이걸 원한다고 함
+// dialog 에서는 parent 를 두면 움직일 수 있음. 이 부분을 사용할 수 있을 것 같은데,
+// 이러면 더 좋은게 있을 것도 같음
 
 
     // :::: study ::::
@@ -71,8 +59,19 @@ MainWindow::MainWindow(VulkanWindow *w)
     // connect 에서 this 이면 가능한 것으로 보임
 }
 
+void MainWindow::moveEvent(QMoveEvent *)
+{
+    //실제 Window 의 Size 를 효율적으로 쓴다면 resize 하지 않음
+    //move 가 되어야지만 main 에서 mainWindow 호출이 끝나고 값을 가질 수 있음
+    qDebug() << "move winS : " << winSize;
+    qDebug() << "move winS : " << *winSize;
+    qDebug() << "move this : " << this->geometry();
+
+}
+
 MainWindow::~MainWindow()
 {
+    delete formHier;
     delete ui;
 }
 
@@ -96,18 +95,6 @@ void MainWindow::slotInfoText(QString funcName, float value)
 
 }
 
-void MainWindow::moveEvent(QMoveEvent *)
-{
-    qDebug()<< "moveEvent" << this->geometry() << start;
-    leftMain = this->geometry().x();
-    topMain = this->geometry().y();
-    heightMain = this->geometry().height();
-    widthMain = this->geometry().width();
-
-
-
-
-}
 
 QVulkanWindowRenderer *VulkanWindow::createRenderer()
 {
@@ -286,21 +273,13 @@ void VulkanWindow::keyReleaseEvent(QKeyEvent *e)
 void MainWindow::on_pushButton_clicked()
 {
 
-    if (formHier->isVisible())
-    {
-        formHier->close();
-        formLayer->close();
-        formTop->close();
-        formInfo->close();
-        formMap->close();
-    }
-    else
-    {
-        formHier->show();
-        formLayer->show();
-        formTop->show();
-        formInfo->show();
-        formMap->show();
-    }
+
+//    dockInfo->setFloating(true);
+
+//dynamic_cast 를 배워야 할 듯
+
+//    dockInfo->move(100,100);
+//    dockInfo->setFloating(true);
+
 
 }

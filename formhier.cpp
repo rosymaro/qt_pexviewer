@@ -8,6 +8,15 @@ FormHier::FormHier(QWidget *parent) :
     ui->setupUi(this);
 }
 
+void FormHier::slotMove(const QPoint &newPos, const QPoint &oldPos)
+{
+    auto x = newPos.x() - oldPos.x();
+    auto y = newPos.y() - oldPos.y();
+
+    QPoint pos( this ->pos().x() + x, this -> pos().y() + y);
+    move(pos);
+}
+
 FormHier::~FormHier()
 {
     delete ui;

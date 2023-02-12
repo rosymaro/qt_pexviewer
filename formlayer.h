@@ -15,6 +15,9 @@ public:
     explicit FormLayer(QWidget *parent = nullptr);
     ~FormLayer();
 
+public slots:
+    void slotMove(const QPoint &, const QPoint &);
+
 private:
     Ui::FormLayer *ui;
 };

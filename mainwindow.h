@@ -25,19 +25,20 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(VulkanWindow *w);
     ~MainWindow();
-
-    void moveEvent(QMoveEvent *e) override;
+    void moveEvent(QMoveEvent *);
+    QSize *winSize;
 
 public slots:
 
     void slotInfoText(QString funcName, float value);
+
 
 private slots:
     void on_pushButton_clicked();
 
 signals:
     void signalInfoText(QString funcName, float value);
-
+    void signalMove(const QPoint &, const QPoint &);
 
 private:
     QVulkanWindow *m_window;
@@ -58,6 +59,7 @@ private:
     int topMain;
     int heightMain;
     int widthMain;
+    QRect *mainGeometry;
 
 };
 

@@ -18,6 +18,7 @@ public:
 public slots:
     void slotInfoText(QString funcName, float value);
     void moveRender(float x, float y);
+    void slotMove(const QPoint &, const QPoint &);
 
 private:
     Ui::FormInfo *ui;

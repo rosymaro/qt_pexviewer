@@ -15,6 +15,9 @@ public:
     explicit FormHier(QWidget *parent = nullptr);
     ~FormHier();
 
+public slots:
+    void slotMove(const QPoint &, const QPoint &);
+
 private:
     Ui::FormHier *ui;
 };

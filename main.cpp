@@ -3,7 +3,6 @@
 #include <QApplication>
 #include <QVulkanInstance>
 
-
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
@@ -29,10 +28,21 @@ int main(int argc, char *argv[])
     VulkanWindow *vulkanWindow = new VulkanWindow;
     vulkanWindow->setVulkanInstance(&inst);
 
-    MainWindow mainWindow(vulkanWindow);    
+    QSize mainWindowSize = {1024,768};
+
+    MainWindow mainWindow(vulkanWindow);
     QObject::connect(vulkanWindow, &VulkanWindow::signalInfoText, &mainWindow, &MainWindow::slotInfoText);
-    mainWindow.resize(1024,768);
+
+    mainWindow.winSize = &mainWindowSize;
+    qDebug() << "main :: winSize " << mainWindow.winSize;
+    qDebug() << "main :: winSize " << *mainWindow.winSize;
+
+
     mainWindow.show();
+    mainWindow.resize(mainWindowSize);
+    qDebug() << "main :: geometry : " << mainWindow.geometry();
+    qDebug() << "main :: mainWindow : " << &mainWindowSize;
+    qDebug() << "main :: mainWindow : " << mainWindowSize;
 
 
     return app.exec();
