@@ -72,12 +72,24 @@ void FormInfo::slotInfoText(QString funcName, float value)
         qDebug()<< "moveRenderX";
         x = value;
         moveRender(x,y);
+//        pointX = initPointX+value*cos(infoRot*pi/180)*infoZoom;
+//        pointY = initPointY+value*sin(infoRot*pi/180)*infoZoom;
+//        qDebug() << pointX << " : " << pointY;
+//        ui->pointX->setText(QString::number(round(pointX*10000)/10000));
+//        ui->pointY->setText(QString::number(round(pointY*10000)/10000));
     }
     if (funcName == "moveRenderY")
     {
         qDebug()<< "moveRenderY";
         y = value;
         moveRender(x,y);
+//        pointX = initPointX+value*sin(infoRot*pi/180)*sin(infoTilt*pi/180)*infoZoom;
+//        pointY = initPointY+value*cos(infoRot*pi/180)*sin(infoTilt*pi/180)*infoZoom;
+//        pointZ = initPointZ+value*cos(infoTilt*pi/180)*infoZoom;
+//        qDebug() << pointX << " : " << pointY;
+//        ui->pointX->setText(QString::number(round(pointX*10000)/10000));
+//        ui->pointY->setText(QString::number(round(pointY*10000)/10000));
+//        ui->pointZ->setText(QString::number(round(pointZ*10000)/10000));
     }
     if (funcName == "mouseRelease")
     {
@@ -87,6 +99,7 @@ void FormInfo::slotInfoText(QString funcName, float value)
         initPointX = pointX;
         initPointY = pointY;
         initPointZ = pointZ;
+
     }
 
 }
@@ -109,13 +122,4 @@ void FormInfo::moveRender(float x, float y)
 FormInfo::~FormInfo()
 {
     delete ui;
-}
-
-void FormInfo::slotMove(const QPoint &newPos, const QPoint &oldPos)
-{
-    auto x = newPos.x() - oldPos.x();
-    auto y = newPos.y() - oldPos.y();
-
-    QPoint pos( this ->pos().x() + x, this -> pos().y() + y);
-    move(pos);
 }
