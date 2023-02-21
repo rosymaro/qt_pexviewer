@@ -2,6 +2,10 @@
 
 #include <QApplication>
 #include <QVulkanInstance>
+#include <fstream>
+#include <string>
+#include <iostream>
+#include "formtop.h"
 
 int main(int argc, char *argv[])
 {
@@ -28,21 +32,47 @@ int main(int argc, char *argv[])
     VulkanWindow *vulkanWindow = new VulkanWindow;
     vulkanWindow->setVulkanInstance(&inst);
 
-    QSize mainWindowSize = {1024,768};
+    ////////////////////////////////////
+    std::ifstream readFile("C:/netlistLayout.txt");
+    QVector<QStringList> strVector;
+    QString qstr;
+    if (readFile.is_open())
+    {
+        int i = 0;
+        while(!readFile.eof())
+        {
+            std::string str;
+            getline(readFile, str);
+            qstr = QString::fromStdString(str);
+            QStringList listStr = qstr.split(",");
+            strVector.insert(i, listStr);
+            i++;
+            qDebug() << "qDebug : "<<qstr << "[ " << i << " ]";
+        }
+        readFile.close();
+    }
+    FormTop formTop;
+    formTop.receiveFile(strVector);
 
-    MainWindow mainWindow(vulkanWindow);
+//    for (int j = 0; j < 32; j++)
+//    {
+//        qDebug() << "count : "<< j << " | len : " << strVector[j].size();
+//        qDebug() << strVector[j];
+//    }
+    //////////////////////////////////////
+
+
+    MainWindow mainWindow(vulkanWindow, strVector);
     QObject::connect(vulkanWindow, &VulkanWindow::signalInfoText, &mainWindow, &MainWindow::slotInfoText);
 
-    mainWindow.winSize = &mainWindowSize;
-    qDebug() << "main :: winSize " << mainWindow.winSize;
-    qDebug() << "main :: winSize " << *mainWindow.winSize;
-
+    QRect size = mainWindow.geometry();
+    mainWindow.shareGeo(size);
+    qDebug() << "Main geo : " << mainWindow.geometry();
 
     mainWindow.show();
-    mainWindow.resize(mainWindowSize);
-    qDebug() << "main :: geometry : " << mainWindow.geometry();
-    qDebug() << "main :: mainWindow : " << &mainWindowSize;
-    qDebug() << "main :: mainWindow : " << mainWindowSize;
+    mainWindow.resize(1024,768);
+
+
 
 
     return app.exec();
