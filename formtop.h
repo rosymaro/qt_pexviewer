@@ -14,6 +14,7 @@ class FormTop : public QDialog
 public:
     explicit FormTop(QWidget *parent = nullptr);
     ~FormTop();
+    void receiveFile(QVector<QStringList> strVector);
 
 private:
     Ui::FormTop *ui;
