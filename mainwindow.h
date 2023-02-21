@@ -11,6 +11,7 @@
 #include "formtop.h"
 #include "forminfo.h"
 #include "formmap.h"
+#include <QVector>
 
 class VulkanWindow;
 
@@ -23,22 +24,18 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow(VulkanWindow *w);
+    MainWindow(VulkanWindow *w, QVector<QStringList> strVector);
     ~MainWindow();
-    void moveEvent(QMoveEvent *);
-    QSize *winSize;
+
+    void shareGeo(QRect size);
 
 public slots:
 
     void slotInfoText(QString funcName, float value);
 
-
-private slots:
-    void on_pushButton_clicked();
-
 signals:
     void signalInfoText(QString funcName, float value);
-    void signalMove(const QPoint &, const QPoint &);
+
 
 private:
     QVulkanWindow *m_window;
@@ -49,21 +46,9 @@ private:
     FormTop *formTop;
     FormInfo *formInfo;
     FormMap *formMap;
-    QDockWidget *dockHier;
-    QDockWidget *dockLayer;
-    QDockWidget *dockTop;
-    QDockWidget *dockInfo;
-    QDockWidget *dockMap;
-    int start = 0;
-    int leftMain;
-    int topMain;
-    int heightMain;
-    int widthMain;
-    QRect *mainGeometry;
-
+    SuperItem *superItem;
+    QRect *windowSize;
 };
-
-
 
 // Graphics output
 class VulkanRenderer : public TriangleRenderer
