@@ -1,28 +1,19 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-//#include "forminfo.h"
-#include "formhier.h"
 
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QDockWidget>
-#include <QRect>
-#include <QTimer>
-#include <QGraphicsView>
+#include <QGraphicsRectItem>
+#include <QGraphicsOpacityEffect>
 
-//QSetting 은 환경 저장 관련
-
-MainWindow::MainWindow(VulkanWindow *w)
+MainWindow::MainWindow(VulkanWindow *w, QVector<QStringList> strVector)
     : m_window(w)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-
     QWidget *wrapper = QWidget::createWindowContainer(w);
     ui->graphicsView->setViewport(wrapper);
-
-    qDebug()<<"mapToParent : "<<this->mapToParent(this->pos());
-
 
     QDockWidget *dockHier = new QDockWidget(tr("Hierarchy"), this);
     dockHier->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
@@ -38,47 +29,49 @@ MainWindow::MainWindow(VulkanWindow *w)
     formLayer = new FormLayer;
     dockLayer->setWidget(formLayer);
 
+    QDockWidget *dockMap = new QDockWidget(tr("Map"), this);
+    dockMap->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    dockMap->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    addDockWidget(Qt::LeftDockWidgetArea, dockMap);
+    formMap = new FormMap;
+    formMap->receiveFile(strVector);
+    dockMap->setWidget(formMap);
+
+    QDockWidget *dockTop = new QDockWidget(tr("Topview"), this);
+    dockTop->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    dockTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    addDockWidget(Qt::LeftDockWidgetArea, dockTop);
+    formTop = new FormTop;
+    formTop->receiveFile(strVector);
+    dockTop->setWidget(formTop);
+
     QDockWidget *dockInfo = new QDockWidget(tr("Info"), this);
     dockInfo->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockInfo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    addDockWidget(Qt::RightDockWidgetArea, dockInfo);
+    addDockWidget(Qt::LeftDockWidgetArea, dockInfo);
     formInfo = new FormInfo;
     dockInfo->setWidget(formInfo);
 
 
 
-// 230205 하고 싶은 말..
-// dockWidget 을 쓰면 floating 상태에서 움직일 수 없음. 근데 이걸 원한다고 함
-// dialog 에서는 parent 를 두면 움직일 수 있음. 이 부분을 사용할 수 있을 것 같은데,
-// 이러면 더 좋은게 있을 것도 같음
-
-
-    // :::: study ::::
-    // formInfo 에 signal/slot 으로 넘기려고 하였으나
-    // 여기에서 선언을 할 경우 직접 함수 호출 가능함
-    // connect 에서 this 이면 가능한 것으로 보임
 }
 
-void MainWindow::moveEvent(QMoveEvent *)
+void MainWindow::shareGeo(QRect size)
 {
-    //실제 Window 의 Size 를 효율적으로 쓴다면 resize 하지 않음
-    //move 가 되어야지만 main 에서 mainWindow 호출이 끝나고 값을 가질 수 있음
-    qDebug() << "move winS : " << winSize;
-    qDebug() << "move winS : " << *winSize;
-    qDebug() << "move this : " << this->geometry();
-
+    QRect windowSize = size;
+    qDebug() << "shareGeo : " << windowSize;
 }
+
 
 MainWindow::~MainWindow()
 {
-    delete formHier;
     delete ui;
 }
 
-// Vulkan window 에서 보내는 Signal 을 받기 위한 함수
 void MainWindow::slotInfoText(QString funcName, float value)
 {
     formInfo->slotInfoText(funcName,value);
+    formMap->slotInfoText(funcName,value);
     qDebug() << "slotInfoText" << value;
 ///// temp //////
     QString text = funcName + " : " + QString::number(value);
@@ -268,18 +261,4 @@ void VulkanWindow::keyReleaseEvent(QKeyEvent *e)
     default:
         break;
     }
-}
-
-void MainWindow::on_pushButton_clicked()
-{
-
-
-//    dockInfo->setFloating(true);
-
-//dynamic_cast 를 배워야 할 듯
-
-//    dockInfo->move(100,100);
-//    dockInfo->setFloating(true);
-
-
 }
