@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
             QStringList listStr = qstr.split(",");
             strVector.insert(i, listStr);
             i++;
-            qDebug() << "qDebug : "<<qstr << "[ " << i << " ]";
+ //           qDebug() << "qDebug : "<<qstr << "[ " << i << " ]";
         }
         readFile.close();
     }
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
     qDebug() << "Main geo : " << mainWindow.geometry();
 
     mainWindow.show();
-    mainWindow.resize(1024,768);
+
 
 
 

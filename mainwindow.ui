@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>1024</width>
+    <height>768</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -25,8 +25,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
-     <height>20</height>
+     <width>1024</width>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -34,6 +34,8 @@
      <string>File</string>
     </property>
     <addaction name="actionOpen_file"/>
+    <addaction name="separator"/>
+    <addaction name="actionOpen_Map_File"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -64,6 +66,11 @@
   <action name="actionLayer_information">
    <property name="text">
     <string>Layer information</string>
+   </property>
+  </action>
+  <action name="actionOpen_Map_File">
+   <property name="text">
+    <string>Open Map File</string>
    </property>
   </action>
  </widget>

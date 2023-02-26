@@ -11,6 +11,7 @@
 #include "formtop.h"
 #include "forminfo.h"
 #include "formmap.h"
+#include "filedb.h"
 #include <QVector>
 
 class VulkanWindow;
@@ -37,6 +38,9 @@ signals:
     void signalInfoText(QString funcName, float value);
 
 
+private slots:
+    void on_actionOpen_Map_File_triggered();
+
 private:
     QVulkanWindow *m_window;
     Ui::MainWindow *ui;
@@ -48,6 +52,7 @@ private:
     FormMap *formMap;
     SuperItem *superItem;
     QRect *windowSize;
+    FileDb *fileDb;
 };
 
 // Graphics output

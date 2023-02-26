@@ -16,10 +16,10 @@ FormTop::FormTop(QWidget *parent) :
 
 void FormTop::receiveFile(QVector<QStringList> strVector)
 {
-    QString temp;
-    temp = strVector[1][3];
-    float fTemp = temp.toFloat()*1000000;
-    int iTemp = int(fTemp);
+//    QString temp;
+//    temp = strVector[1][3];
+//    float fTemp = temp.toFloat()*1000000;
+//    int iTemp = int(fTemp);
     float minX=0, maxX=0, minY=0, maxY=0;
 
     QMap<int, QColor> mapColor;

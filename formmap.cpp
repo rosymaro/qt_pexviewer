@@ -38,7 +38,7 @@ void FormMap::receiveFile(QVector<QStringList> strVector)
     width = maxX-minX;
     height = maxY-minY;
     qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
-    scale = 190/std::max(width,height);
+    scale = 178/std::max(width,height);
     width = scale * width;
     height = scale * height;
 
@@ -131,13 +131,13 @@ SuperItem::SuperItem(QGraphicsItem* parent) : QGraphicsItem(parent)
 
 
 QRectF SuperItem::boundingRect() const{
-    return QRectF(-100,-100,200,200);
+    return QRectF(-88,-88,175,175);
 }
 
 void SuperItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
     painter->setPen(Qt::red);
-    painter->drawRoundedRect(-99,-99,198,198,5,5);
+    painter->drawRoundedRect(-88,-88,175,175,5,5);
 
 
 }

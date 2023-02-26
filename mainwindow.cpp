@@ -6,6 +6,14 @@
 #include <QDockWidget>
 #include <QGraphicsRectItem>
 #include <QGraphicsOpacityEffect>
+#include <QFile>
+#include <QFileDialog>
+#include <QString>
+
+#include <fstream>
+#include <iostream>
+#include <string>
+
 
 MainWindow::MainWindow(VulkanWindow *w, QVector<QStringList> strVector)
     : m_window(w)
@@ -52,7 +60,8 @@ MainWindow::MainWindow(VulkanWindow *w, QVector<QStringList> strVector)
     formInfo = new FormInfo;
     dockInfo->setWidget(formInfo);
 
-
+    resizeDocks({dockInfo, dockTop, dockMap, dockLayer, dockHier}, {200,200}, Qt::Horizontal);
+    resizeDocks({dockTop, dockMap}, {200,200}, Qt::Vertical);
 
 }
 
@@ -262,3 +271,26 @@ void VulkanWindow::keyReleaseEvent(QKeyEvent *e)
         break;
     }
 }
+
+void MainWindow::on_actionOpen_Map_File_triggered()
+{
+    QString fileNameInfo = QFileDialog::getOpenFileName(this,
+                                                        tr("Open map file"),
+                                                        "C:/",
+                                                        tr("text (*.txt)")
+                                                        );
+    FileDb *fileDb = new FileDb;
+    QVector<QVector<QVector<QList<float>>>> mapFile;
+    mapFile = fileDb->openFile(fileNameInfo);
+    for(int i = 0 ; i < (int(mapFile[0][0][0][2]*1000)-int(mapFile[0][0][0][0]*1000))/10+1 ; i++)
+    {
+        QDebug oneLine = qDebug();
+        for(int j = 0 ; j < (int(mapFile[0][0][0][3]*1000)-int(mapFile[0][0][0][1]*1000))/10+1 ; j++)
+        {
+            oneLine << "["<<i<<"]["<<j<<"] "<<mapFile[i][j];
+        }
+        qDebug() << "";
+    }
+
+}
+
