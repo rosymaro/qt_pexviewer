@@ -16,7 +16,7 @@ FormMap::FormMap(QWidget *parent) :
 
 }
 
-void FormMap::receiveFile(QVector<QVector<QVector<QList<float>>>> mapFile)
+void FormMap::receiveFile(QVector<QVector<QVector<QList<float>>>>& mapFile)
 {
     float minX=0, maxX=0, minY=0, maxY=0, scale=1;
     qDebug() << "formMap mapFile : " << &mapFile;

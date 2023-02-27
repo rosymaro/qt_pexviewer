@@ -14,7 +14,7 @@ class FormTop : public QDialog
 public:
     explicit FormTop(QWidget *parent = nullptr);
     ~FormTop();
-    void receiveFile(QVector<QVector<QVector<QList<float>>>> mapFile);
+    void receiveFile(QVector<QVector<QVector<QList<float>>>>& mapFile);
 
 private:
     Ui::FormTop *ui;

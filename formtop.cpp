@@ -14,7 +14,7 @@ FormTop::FormTop(QWidget *parent) :
     ui->setupUi(this);
 }
 
-void FormTop::receiveFile(QVector<QVector<QVector<QList<float>>>> mapFile)
+void FormTop::receiveFile(QVector<QVector<QVector<QList<float>>>>& mapFile)
 {
 
 //    QString temp;

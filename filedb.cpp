@@ -54,6 +54,7 @@ QVector<QVector<QVector<QList<float>>>> FileDb::openFile(QString fileNameInfo)
     mapFile[0][0][0].append({0, 0, minX, minY, maxX, maxY, 0, 0});
     //Layer , unknown, x1, y1, x2, y2, z, thk
 
+
     for (auto &data : strVector)
     {
         if(data.size() == 8)

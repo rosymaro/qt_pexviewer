@@ -289,6 +289,7 @@ void MainWindow::on_actionOpen_Map_File_triggered()
         }
         qDebug() << "";
     }
+    qDebug() << "MainWindow mapFile : " << &mapFile;
     formMap->receiveFile(mapFile);
     formTop->receiveFile(mapFile);
 }
