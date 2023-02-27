@@ -30,10 +30,7 @@ QVector<QVector<QVector<QList<float>>>> FileDb::openFile(QString fileNameInfo)
             }
             strVector.append(data);
             qDebug()<< "strVector : " << data;
-//            if(minX > data[2].toFloat()){minX = data[2].toFloat();}
-//            if(maxX < data[4].toFloat()){maxX = data[4].toFloat();}
-//            if(minY > data[3].toFloat()){minY = data[3].toFloat();}
-//            if(maxY < data[5].toFloat()){maxY = data[5].toFloat();}
+            // mapFile 개념 설정 필요
             if(data.size() == 8)
             {
                 if(minX > data[2]){minX = data[2];}
@@ -54,25 +51,29 @@ QVector<QVector<QVector<QList<float>>>> FileDb::openFile(QString fileNameInfo)
     qDebug() << "int n / int m : " << n << " , " <<m;
 
     QVector<QVector<QVector<QList<float>>>> mapFile(n, QVector<QVector<QList<float>>>(m, {{}}));
-    mapFile[0][0][0].append({minX, minY, maxX, maxY});
+    mapFile[0][0][0].append({0, 0, minX, minY, maxX, maxY, 0, 0});
+    //Layer , unknown, x1, y1, x2, y2, z, thk
 
-    for (QList data : strVector)
+    for (auto &data : strVector)
     {
         if(data.size() == 8)
         {
             qDebug() << " " << data[2] << " "<< int(data[2]*100) << " "<< data[3] << " "<< int(data[3]*100);
             int in_n = 0, in_m = 0;
-            if(int(data[2]*100)<0)
+            if(data[2]<0)
             {in_n = n + int(data[2]*100)-1;}
+            // -0.1 이 int 가 되면 0 이 됨 이때 가장 뒤에 들어가야 되므로
             else
-            {in_n = int(data[2]*100)+1;}
-            if(int(data[3]*100)<0)
+            {in_n = int(data[2]*100);}
+            if(data[3]<0)
             {in_m = m + int(data[3]*100)-1;}
             else
-            {in_m = int(data[3]*100)+1;}
+            {in_m = int(data[3]*100);}
             mapFile[in_n][in_m].append(data);
         }
     }
+    qDebug() << "fileDb mapFile1 : " << &mapFile;
+
     return mapFile;
 
 }

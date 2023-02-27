@@ -14,10 +14,11 @@ class FormTop : public QDialog
 public:
     explicit FormTop(QWidget *parent = nullptr);
     ~FormTop();
-    void receiveFile(QVector<QStringList> strVector);
+    void receiveFile(QVector<QVector<QVector<QList<float>>>> mapFile);
 
 private:
     Ui::FormTop *ui;
+    QVector<QVector<QVector<QList<float>>>> mapFile;
 };
 
 #endif // FORMTOP_H

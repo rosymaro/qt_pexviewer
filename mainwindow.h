@@ -25,7 +25,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow(VulkanWindow *w, QVector<QStringList> strVector);
+    MainWindow(VulkanWindow *w);
     ~MainWindow();
 
     void shareGeo(QRect size);
@@ -53,6 +53,7 @@ private:
     SuperItem *superItem;
     QRect *windowSize;
     FileDb *fileDb;
+    QVector<QVector<QVector<QList<float>>>> mapFile;
 };
 
 // Graphics output

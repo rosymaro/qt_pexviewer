@@ -36,7 +36,7 @@ class FormMap : public QDialog
 public:
     explicit FormMap(QWidget *parent = nullptr);
     ~FormMap();
-    void receiveFile(QVector<QStringList> strVector);
+    void receiveFile(QVector<QVector<QVector<QList<float>>>> mapFile);
 
 public slots:
     void slotInfoText(QString funcName, float value);

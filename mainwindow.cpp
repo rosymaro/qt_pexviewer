@@ -15,7 +15,7 @@
 #include <string>
 
 
-MainWindow::MainWindow(VulkanWindow *w, QVector<QStringList> strVector)
+MainWindow::MainWindow(VulkanWindow *w)
     : m_window(w)
     , ui(new Ui::MainWindow)
 {
@@ -42,7 +42,6 @@ MainWindow::MainWindow(VulkanWindow *w, QVector<QStringList> strVector)
     dockMap->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     addDockWidget(Qt::LeftDockWidgetArea, dockMap);
     formMap = new FormMap;
-    formMap->receiveFile(strVector);
     dockMap->setWidget(formMap);
 
     QDockWidget *dockTop = new QDockWidget(tr("Topview"), this);
@@ -50,7 +49,6 @@ MainWindow::MainWindow(VulkanWindow *w, QVector<QStringList> strVector)
     dockTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     addDockWidget(Qt::LeftDockWidgetArea, dockTop);
     formTop = new FormTop;
-    formTop->receiveFile(strVector);
     dockTop->setWidget(formTop);
 
     QDockWidget *dockInfo = new QDockWidget(tr("Info"), this);
@@ -291,6 +289,7 @@ void MainWindow::on_actionOpen_Map_File_triggered()
         }
         qDebug() << "";
     }
-
+    formMap->receiveFile(mapFile);
+    formTop->receiveFile(mapFile);
 }
 

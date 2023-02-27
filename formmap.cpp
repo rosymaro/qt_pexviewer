@@ -16,25 +16,31 @@ FormMap::FormMap(QWidget *parent) :
 
 }
 
-void FormMap::receiveFile(QVector<QStringList> strVector)
+void FormMap::receiveFile(QVector<QVector<QVector<QList<float>>>> mapFile)
 {
     float minX=0, maxX=0, minY=0, maxY=0, scale=1;
+    qDebug() << "formMap mapFile : " << &mapFile;
+    minX = mapFile[0][0][0][2];
+    minY = mapFile[0][0][0][3];
+    maxX = mapFile[0][0][0][4];
+    maxY = mapFile[0][0][0][5];
 
-    for (auto &data : strVector)
-    {
-        if(data.size() == 8)
-        {
-            float x1 = data[2].toFloat();
-            float y1 = data[3].toFloat();
-            float x2 = data[4].toFloat();
-            float y2 = data[5].toFloat();
+//    for (auto &data : strVector)
+//    {
+//        if(data.size() == 8)
+//        {
+//            float x1 = data[2].toFloat();
+//            float y1 = data[3].toFloat();
+//            float x2 = data[4].toFloat();
+//            float y2 = data[5].toFloat();
 
-            if (x1<minX){minX = x1;}
-            if (x2>maxX){maxX = x2;}
-            if (y1<minY){minY = y1;}
-            if (y2>maxY){maxY = y2;}
-        }
-    }
+//            if (x1<minX){minX = x1;}
+//            if (x2>maxX){maxX = x2;}
+//            if (y1<minY){minY = y1;}
+//            if (y2>maxY){maxY = y2;}
+//        }
+//    }
+
     width = maxX-minX;
     height = maxY-minY;
     qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;

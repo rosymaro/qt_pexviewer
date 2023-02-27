@@ -14,15 +14,17 @@ FormTop::FormTop(QWidget *parent) :
     ui->setupUi(this);
 }
 
-void FormTop::receiveFile(QVector<QStringList> strVector)
+void FormTop::receiveFile(QVector<QVector<QVector<QList<float>>>> mapFile)
 {
+
 //    QString temp;
 //    temp = strVector[1][3];
 //    float fTemp = temp.toFloat()*1000000;
 //    int iTemp = int(fTemp);
     float minX=0, maxX=0, minY=0, maxY=0;
-
+    qDebug() << "formTop mapFile : " << &mapFile;
     QMap<int, QColor> mapColor;
+    mapColor.insert(0,Qt::white);
     mapColor.insert(15,Qt::red);
     mapColor.insert(16,Qt::yellow);
     mapColor.insert(17,Qt::green);
@@ -53,6 +55,23 @@ void FormTop::receiveFile(QVector<QStringList> strVector)
     QTransform trans;
     trans.scale(1,-1);
 
+    QVector<QList<float>> strVector;
+    float posX = 0, posY = 0;
+    int areaX = 10, areaY = 10;
+    int startX = 0, startY= 0, endX=mapFile.size(), endY=mapFile[0].size();
+    if (posX - areaX > 0){startX=posX - areaX;}
+    if (posY - areaY > 0){startY=posY - areaY;}
+    if (posX + areaX < mapFile.size()){endX = posX + areaX;}
+    if (posY + areaY < mapFile[0].size()){endY = posY + areaY;}
+
+    for (int i = startX ; i < endX ; i++)
+    {
+        for (int j = startY ; j < endY ; j++)
+        {
+            strVector.append(mapFile[i][j]);
+        }
+    }
+
     for (auto &data : strVector)
     {
 
@@ -62,19 +81,19 @@ void FormTop::receiveFile(QVector<QStringList> strVector)
             rectItemList.push_back(rectItem);
 
 
-            float x = 500*(data[2].toFloat());
-            float y = 500*(data[3].toFloat());
-            float w = 500*(data[4].toFloat() - data[2].toFloat());
-            float h = 500*(data[5].toFloat() - data[3].toFloat());
+            float x = 500*(data[2]);
+            float y = 500*(data[3]);
+            float w = 500*(data[4] - data[2]);
+            float h = 500*(data[5] - data[3]);
 
             if (x<minX){minX = x;}
             if (x>maxX){maxX = x;}
             if (y<minY){minY = y;}
             if (y>maxY){maxY = y;}
             rectItem->setRect(x,y,w,h);
-            rectItem->setBrush(QBrush(QColor(mapColor[data[0].toInt()])));
+            rectItem->setBrush(QBrush(QColor(mapColor[int(data[0])])));
             rectItem->setOpacity(0.5);
-            rectItem->setZValue(data[6].toFloat());
+            rectItem->setZValue(data[6]);
 
             rectItem->setTransform(trans);
             scene->addItem(rectItem);
