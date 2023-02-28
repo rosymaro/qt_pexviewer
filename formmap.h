@@ -36,7 +36,7 @@ class FormMap : public QDialog
 public:
     explicit FormMap(QWidget *parent = nullptr);
     ~FormMap();
-    void receiveFile(QVector<QVector<QVector<QList<float>>>>& mapFile);
+    void receiveSize(float &xMinSize,float &yMinSize,float &xMaxSize,float &yMaxSize, float &zoomScale);
 
 public slots:
     void slotInfoText(QString funcName, float value);
