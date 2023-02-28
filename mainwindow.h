@@ -12,6 +12,7 @@
 #include "forminfo.h"
 #include "formmap.h"
 #include "filedb.h"
+#include "all_data.h"
 #include <QVector>
 
 class VulkanWindow;
@@ -33,9 +34,12 @@ public:
 public slots:
 
     void slotInfoText(QString funcName, float value);
+    void inputLayerStatus(QString text);
+    void on_actionOpen_file_triggered();
 
 signals:
     void signalInfoText(QString funcName, float value);
+    void sendSelectFileName(QString file_name);
 
 
 private slots:
@@ -53,7 +57,8 @@ private:
     SuperItem *superItem;
     QRect *windowSize;
     FileDb *fileDb;
-    QVector<QVector<QVector<QList<float>>>> mapFile;
+    all_data *input_dataS;
+    QStringList split_data;
 };
 
 // Graphics output
