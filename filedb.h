@@ -8,9 +8,8 @@ class FileDb
 {
 public:
     FileDb();
-    QVector<QVector<QVector<QList<float>>>> openFile(QString fileNameInfo);
-private:
-    QVector<QVector<QVector<QList<float>>>> mapFile;
+    void openFile(QString fileNameInfo,QVector<QList<float>> &vecList,
+                  float &xMinSize,float &yMinSize,float &xMaxSize,float &yMaxSize);
 };
 
 #endif // FILEDB_H
