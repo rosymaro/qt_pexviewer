@@ -50,7 +50,7 @@ void all_data::receiveSelectFileName(QString file_name)
 
     column = list.count()/row;
 
-//    qDebug() << list;
+//    qDebug() << list ;
 
 
     for(int i=0 ; i<row ; i++)
