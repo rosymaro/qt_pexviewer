@@ -2,38 +2,36 @@
 
 #include <QApplication>
 #include <QVulkanInstance>
+#include <QLoggingCategory>
 #include <fstream>
 #include <string>
 #include <iostream>
 #include "formtop.h"
 
+#include "Rendering/Src/lve_window.hpp"
+#include "Rendering/Src/simple_render_system.hpp"
+
+Q_LOGGING_CATEGORY(lcVk, "qt.vulkan")
+
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-    QVulkanInstance inst;
+    QLoggingCategory::setFilterRules(QStringLiteral("qt.vulkan=true"));
 
-#ifndef Q_OS_ANDROID
+    QVulkanInstance inst;
+    LveWindow *vulkanWindow = new LveWindow;
+
     inst.setLayers(QByteArrayList() << "VK_LAYER_LUNARG_standard_validation");
-#else
-    inst.setLayers(QByteArrayList()
-                   << "VK_LAYER_GOOGLE_threading"
-                   << "VK_LAYER_LUNARG_parameter_validation"
-                   << "VK_LAYER_LUNARG_object_tracker"
-                   << "VK_LAYER_LUNARG_core_validation"
-                   << "VK_LAYER_LUNARG_image"
-                   << "VK_LAYER_LUNARG_swapchain"
-                   << "VK_LAYER_GOOGLE_unique_objects");
-#endif
+
 
     if (!inst.create())
         qFatal("Failed to create Vulkan instance: %d", inst.errorCode());
 
-    VulkanWindow *vulkanWindow = new VulkanWindow;
     vulkanWindow->setVulkanInstance(&inst);
 
     MainWindow mainWindow(vulkanWindow);
-    QObject::connect(vulkanWindow, &VulkanWindow::signalInfoText, &mainWindow, &MainWindow::slotInfoText);
+    QObject::connect(vulkanWindow, &LveWindow::signalInfoText, &mainWindow, &MainWindow::slotInfoText);
 
     QRect size = mainWindow.geometry();
     mainWindow.shareGeo(size);
@@ -47,3 +45,8 @@ int main(int argc, char *argv[])
 
     return app.exec();
 }
+
+
+
+
+
