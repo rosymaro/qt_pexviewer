@@ -182,5 +182,4 @@ void SuperItem::slotMove(float x, float y, float zoom, float rot, float tilt)
 //        }
 //    }
 //    update();
-
 //}
