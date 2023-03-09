@@ -70,6 +70,4 @@ private:
     float y = 0;
 };
 
-
-
 #endif // FORMMAP_H
