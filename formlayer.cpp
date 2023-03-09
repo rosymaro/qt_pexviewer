@@ -9,32 +9,28 @@ FormLayer::FormLayer(QWidget *parent) :
 {
     ui->setupUi(this);
     QStringList defalutTableHeader;
-    defalutTableHeader << "" << "color" << "LayerName" << "LayerNum" << "LayerType";
+    defalutTableHeader << "" << "color" << "LayerName" << "LayerNum" << "LayerType" << "Opacity";
 
-    ui->tableWidget->setColumnCount(5);
+    ui->tableWidget->setColumnCount(6);
     ui->tableWidget->setRowCount(10);
-//    ui->tableWidget->setColumnWidth(0,12);
+    ui->tableWidget->setColumnWidth(0,15);
 //    ui->tableWidget->setColumnWidth(1,80);
 //    ui->tableWidget->setColumnWidth(2,80);
     ui->tableWidget->setHorizontalHeaderLabels(defalutTableHeader);
     ui->tableWidget->horizontalHeader()->setStyleSheet("QHeaderView::section {background-color:#404040;color:#FFFFFF;}");
 
-    QHeaderView *header = ui->tableWidget->horizontalHeader();
-    header->setSectionResizeMode(QHeaderView::Stretch);
-//    header->setDefaultAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+///////////////////////////////tableWidget Header 에 checkbox 넣고 위치 조정///////////////////////////////
+    QHeaderView *horizontalHeader = ui->tableWidget->horizontalHeader();
+    QHBoxLayout *layoutCheckBox = new QHBoxLayout(horizontalHeader);
+    QCheckBox *HeaderCheckBox = new QCheckBox();
+    HeaderCheckBox->setCheckState(Qt::Checked);
+    layoutCheckBox->addWidget(HeaderCheckBox);
+    layoutCheckBox->setContentsMargins(11,0,0,0);
+    ui->tableWidget->setHorizontalHeader(horizontalHeader);
 
-    QCheckBox *HeadercheckBoxItem = new QCheckBox(header);
-    HeadercheckBoxItem->setCheckState(Qt::Checked);
+    QObject::connect(HeaderCheckBox, SIGNAL(stateChanged(int)), this, SLOT(tableWidget_checkBoxChanged()));
 
-//    header->setC
-
-//    QWidget *HeadercheckboxWidget = new QWidget();
-//    QHBoxLayout *checkboxLayout = new QHBoxLayout(HeadercheckboxWidget);
-//    checkboxLayout->addWidget(HeadercheckBoxItem);
-//    checkboxLayout->setAlignment(Qt::AlignCenter);
-//    checkboxLayout->setContentsMargins(0,0,0,0);
-//    HeadercheckboxWidget->setLayout(checkboxLayout);
-//    ui->tableWidget->setCellWidget(0,0,HeadercheckboxWidget);
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 }
@@ -64,8 +60,11 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
     vectorTOqstringlistHoriLabels << " ";
 
 // QTableWidget 크기 설정
-    ui->tableWidget->setColumnCount(column-1);
+    ui->tableWidget->setColumnCount(6);
     ui->tableWidget->setRowCount(row-1);
+//    ui->tableWidget->setItemDelegateForColumn(5,new SliderDelegate);
+    ui->tableWidget->setColumnWidth(5,150);
+
 
 // Table Header Font size/bold change
     QFont font = ui->tableWidget->horizontalHeader()->font();
@@ -73,25 +72,41 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
     font.setPointSize(10);
     ui->tableWidget->horizontalHeader()->setFont(font);
 
+    //QSlider *slider = new QSlider(Qt::Horizontal);
+    //slider->setRange(0, 100);
+    //ui->tableWidget->setCellWidget(1, 5, slider);
+
+
 // Table 채우기
     for (int i=0; i<row ; i++)
     {
-        // table value 채우기
-        for (int j=0; j<(column-3) ; j++)
+       // table value 채우기
+        for (int j=0; j<(column-4) ; j++)
         {
             vectorTOqstringlist << inputDataVector.value(i+1).value(j);
 //            vectorTOqstringlistHoriLabels << inputDataVector.value(0).value(j+1);
-            ui->tableWidget->setItem(i,j+2,new QTableWidgetItem(vectorTOqstringlist[i*(column-3)+j]));
+            QTableWidgetItem *tableitem = new QTableWidgetItem;
+            tableitem->setText(vectorTOqstringlist[i*(column-4)+j]);
+            tableitem->setTextAlignment(Qt::AlignCenter);
+            ui->tableWidget->setItem(i,j+2,tableitem);
         }
 
+        //Opacity 채우기
+        QSlider *OpacitySlider = new QSlider(Qt::Horizontal);
+        QWidget *OpacitySliderWidget = new QWidget();
+        OpacitySlider->setRange(0,100);
+        OpacitySlider->setValue(100);
+        OpacitySlider->setFocusPolicy(Qt::StrongFocus);
+        QHBoxLayout *OpacityLayout = new QHBoxLayout(OpacitySliderWidget);
+        OpacityLayout->addWidget(OpacitySlider);
+        OpacitySliderWidget->setLayout(OpacityLayout);
+
+//        OpacitySlider->setTickPosition(QSlider::TicksBothSides);
+//        OpacitySlider->setTickInterval(10);
+        ui->tableWidget->setCellWidget(i, 5, OpacitySliderWidget);
+        QObject::connect(OpacitySlider, SIGNAL(valueChanged(int)), this, SLOT(handleOpacitySlider(int)));
+
         // checkbox 채우기
-//        QTableWidgetItem *checkBoxItem = new QTableWidgetItem();
-//        checkBoxItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
-//        checkBoxItem->setCheckState(Qt::Checked);
-//        ui->tableWidget->setItem(i,0,checkBoxItem);
-//        ui->tableWidget->setFocusPolicy(Qt::NoFocus);
-
-
         QCheckBox *checkBoxItem = new QCheckBox();
         checkBoxItem->setCheckState(Qt::Checked);
         QWidget *checkboxWidget = new QWidget();
@@ -122,8 +137,26 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
     }
     ui->tableWidget->setHorizontalHeaderLabels(vectorTOqstringlistHoriLabels);
     ui->tableWidget->resizeColumnsToContents();
+    ui->tableWidget->setColumnWidth(0,15);
+
+
+
+    // Opacity 추가
+//    QSlider *OpacitySlider = new QSlider(Qt::Horizontal);
+//    OpacitySlider->setRange(0,100);
+//    OpacitySlider->setGeometry(option.rect);
+//    QWidget *OpacitySliderWidget = new QWidget();
+//    QHBoxLayout *OpacitySliderLayout = new QHBoxLayout(OpacitySliderWidget);
+//    OpacitySliderLayout->addWidget(OpacitySlider);
+//    OpacitySliderWidget->setLayout(OpacitySliderLayout);
+
+//    ui->tableWidget->setCellWidget(1,6,OpacitySliderWidget);
+//    ui->tableWidget->setItemDelegate()
+
 
 }
+
+
 
 
 
@@ -134,8 +167,6 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void FormLayer::tableWidget_checkBoxChanged()
 {
-    qDebug() << "xxxxxxxxxxxxxxxxxxxxxxxzzzzzzzzzzzzzzzzzzzzz";
-    //ui->tableWidget->connect
     QCheckBox *checkboxInTable = qobject_cast<QCheckBox*>(sender());
     if (!checkboxInTable)
         return;
@@ -151,15 +182,33 @@ void FormLayer::tableWidget_checkBoxChanged()
     }
 
     if (checkboxrow == -1) {
-        qDebug() << "Failed to find row and column for checkbox.";
+        QString CommentAllCheckedCheckBox = "All Layer Checked";
+        QString CommentAllUncheckedCheckBox = "All Layer Unchecked";
+
+        if (checkboxInTable->isChecked()) {
+            for (int i = 0; i < ui->tableWidget->rowCount(); i++) {
+                QWidget *widget = ui->tableWidget->cellWidget(i, 0);
+                QCheckBox *checkbox = widget->findChild<QCheckBox*>();
+                checkbox->setCheckState(Qt::Checked);
+            }
+            qDebug() << "All Layer Checkbox Checked.";
+            emit outputLayerStatus(CommentAllCheckedCheckBox);
+
+        } else {
+                for (int i = 0; i < ui->tableWidget->rowCount(); i++) {
+                    QWidget *widget = ui->tableWidget->cellWidget(i, 0);
+                    QCheckBox *checkbox = widget->findChild<QCheckBox*>();
+                    checkbox->setCheckState(Qt::Unchecked);
+                }
+                qDebug() << "All Layer Checkbox Unchecked.";
+                emit outputLayerStatus(CommentAllUncheckedCheckBox);
+            }
         return;
     }
 
     QTableWidgetItem *readcheckbox = ui->tableWidget->item(checkboxrow,2);
     QString selectedLayer = readcheckbox->text();
     QString printLayer = "selectedLayer = " + selectedLayer;
-
-
 
     if (checkboxInTable->isChecked()) {
         printLayer = printLayer + "  Layer  On";
@@ -170,36 +219,7 @@ void FormLayer::tableWidget_checkBoxChanged()
         emit outputLayerStatus(printLayer);
         qDebug() << "Checkbox at row" << checkboxrow << "is unchecked.";
     }
-
 }
-
-
-//void FormLayer::on_tableWidget_itemChanged()
-//{
-//    int clickedRow = ui->tableWidget->currentRow();
-//    qDebug() << clickedRow;
-//    QTableWidgetItem *item = ui->tableWidget->item(clickedRow,2);
-
-//    if (item != nullptr) {
-//        QString selectedLayer = item->text();
-//        QString printLayer = "selectedLayer = " + selectedLayer;
-
-//        bool LayerOnOff = ui->tableWidget->cellWidget(clickedRow,0)->windowState();
-//        qDebug() << LayerOnOff;
-//        if (LayerOnOff==true){
-//            printLayer = printLayer + "  Layer  On";
-//            emit outputLayerStatus(printLayer);
-//            qDebug() << printLayer;
-//        } else {
-//            printLayer = printLayer + "  Layer  Off";
-//            emit outputLayerStatus(printLayer);
-//            qDebug() <<  printLayer;
-//        }
-
-//    } else {
-//        qDebug() << "No item";
-//    }
-//}
 
 void FormLayer::on_colorbutton_clicked()
 {
@@ -215,5 +235,28 @@ void FormLayer::on_colorbutton_clicked()
 //    qDebug() << ui->tableWidget->cellWidget(colorbuttonRow,1);
 
     ui->tableWidget->cellWidget(colorbuttonRow,1)->setStyleSheet(LayerColorText);
+}
+
+void FormLayer::handleOpacitySlider(int Opacity)
+{
+
+    int sliderrow=0;
+    QSlider *OpacityInTalbe = qobject_cast<QSlider*>(sender());
+    for (int i = 0; i < ui->tableWidget->rowCount(); i++) {
+    QWidget *widget = ui->tableWidget->cellWidget(i, 5);
+    QSlider *slider = widget->findChild<QSlider*>();
+    if (slider == OpacityInTalbe) {
+        sliderrow = i;
+        slider->setValue(Opacity);
+        break;
+        }
+    }
+
+    QTableWidgetItem *readslider = ui->tableWidget->item(sliderrow,2);
+    QString selectedLayer = readslider->text();
+    QString printLayer = "selectedLayer = " + selectedLayer;
+    printLayer = printLayer + "  Layer  Opacity = " + QString::number(Opacity);
+    emit outputLayerStatus(printLayer);
+    qDebug() << printLayer;
 
 }
