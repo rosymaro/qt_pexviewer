@@ -11,5 +11,4 @@ public:
     void openFile(QString fileNameInfo,QVector<QList<float>> &vecList,
                   float &xMinSize,float &yMinSize,float &xMaxSize,float &yMaxSize);
 };
-
-#endif // FILEDB_H
+#endif // FILEDB_H 
