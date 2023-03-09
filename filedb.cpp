@@ -43,7 +43,5 @@ void FileDb::openFile(QString fileNameInfo,QVector<QList<float>> &vecList,
     {        
         return;
     }
-
     return;
-
 }
