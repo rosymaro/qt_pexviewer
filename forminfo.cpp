@@ -3,6 +3,7 @@
 #include <QDebug>
 #include "cmath"
 
+
 FormInfo::FormInfo(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::FormInfo)
