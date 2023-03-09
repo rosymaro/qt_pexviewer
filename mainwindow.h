@@ -1,7 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "./trianglerenderer.h"
+#include "Rendering/Src/lve_window.hpp"
 
 #include <QMainWindow>
 #include <QVulkanWindow>
@@ -15,7 +15,7 @@
 #include "all_data.h"
 #include <QVector>
 
-class VulkanWindow;
+class LveWindow;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; class LayerForm; }
@@ -26,7 +26,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow(VulkanWindow *w);
+    MainWindow(LveWindow *w);
     ~MainWindow();
 
     void shareGeo(QRect size);
@@ -46,7 +46,7 @@ private slots:
     void on_actionOpen_Map_File_triggered();
 
 private:
-    QVulkanWindow *m_window;
+    LveWindow *m_window;
     Ui::MainWindow *ui;
     QString statusText;
     FormHier *formHier;
@@ -61,6 +61,7 @@ private:
     QStringList split_data;
 };
 
+/*
 // Graphics output
 class VulkanRenderer : public TriangleRenderer
 {
@@ -99,6 +100,6 @@ signals:
     void signalInfoText(QString funcName, float value);
 };
 
-
+*/
 
 #endif // MAINWINDOW_H
