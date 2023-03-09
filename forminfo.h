@@ -37,5 +37,4 @@ private:
     float x = 0;
     float y = 0;
 };
-
 #endif // FORMINFO_H
