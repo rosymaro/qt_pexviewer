@@ -84,7 +84,4 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
 //    ui->tableWidget->setColumnWidth(3,50);
 //    ui->tableWidget->setColumnWidth(4,50);
 //    ui->tableWidget->setColumnWidth(5,50);
-
-
-
 }
