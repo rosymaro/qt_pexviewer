@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "gitmerge.h"
 
 #include <QApplication>
 #include <QVulkanInstance>
@@ -17,12 +18,16 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
+///////// git merge
+    GitMerge gitMerge;
+/// /////
+
     QLoggingCategory::setFilterRules(QStringLiteral("qt.vulkan=true"));
 
     QVulkanInstance inst;
     LveWindow *vulkanWindow = new LveWindow;
 
-    inst.setLayers(QByteArrayList() << "VK_LAYER_LUNARG_standard_validation");
+    //inst.setLayers(QByteArrayList() << "VK_LAYER_LUNARG_standard_validation");
 
 
     if (!inst.create())
@@ -39,14 +44,8 @@ int main(int argc, char *argv[])
 
     mainWindow.show();
 
-
-
-
-
     return app.exec();
 }
-
-
 
 
 
