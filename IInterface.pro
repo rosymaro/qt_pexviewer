@@ -23,6 +23,7 @@ SOURCES += \
     Rendering/Src/lve_pipeline.cpp \
     Rendering/Src/lve_window.cpp \
     Rendering/Src/simple_render_system.cpp \
+    T2D.cpp \
     all_data.cpp \
     filedb.cpp \
     formhier.cpp \
@@ -30,6 +31,7 @@ SOURCES += \
     formlayer.cpp \
     formmap.cpp \
     formtop.cpp \
+    gitmerge.cpp \
     main.cpp \
     mainwindow.cpp \
     trianglerenderer.cpp
@@ -49,6 +51,7 @@ HEADERS += \
     Rendering/Src/lve_window.hpp \
     Rendering/Src/rapidcsv.h \
     Rendering/Src/simple_render_system.hpp \
+    T2D.h \
     all_data.h \
     filedb.h \
     formhier.h \
@@ -56,7 +59,7 @@ HEADERS += \
     formlayer.h \
     formmap.h \
     formtop.h \
-    mainwindow.h \
+    gitmerge.h \
     mainwindow.h \
     trianglerenderer.h
 
@@ -66,7 +69,6 @@ FORMS += \
     formlayer.ui \
     formmap.ui \
     formtop.ui \
-    mainwindow.ui \
     mainwindow.ui
 
 # Default rules for deployment.
@@ -103,9 +105,15 @@ DISTFILES += \
     Rendering/shaders/simple_shader_pex.frag \
     Rendering/shaders/simple_shader_pex.vert
 
+
+
+INCLUDEPATH += $$PWD/../../Library/glm-0.9.9.8
+
+
+
 unix:!macx|win32: LIBS += -L$$PWD/../../Library/VulkanSDK/1.3.239.0/Lib/ -lvulkan-1
 
 INCLUDEPATH += $$PWD/../../Library/VulkanSDK/1.3.239.0/Lib
 DEPENDPATH += $$PWD/../../Library/VulkanSDK/1.3.239.0/Lib
 
-INCLUDEPATH += $$PWD/../../Library/glm-0.9.9.8
+INCLUDEPATH += $$PWD/../../Library/glm-0.9.9.8/glm
