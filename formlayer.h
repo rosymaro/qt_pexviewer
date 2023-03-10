@@ -10,6 +10,7 @@
 #include <QCheckBox>
 #include <QPushButton>
 #include <QtWidgets/QSlider>
+#include <QRgba64>
 #include <QDebug>
 
 
