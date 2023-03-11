@@ -52,22 +52,24 @@ void GitMerge::mergeFiles(QString &totalMerge)
 
         itemMerge = itemMerge.remove("\\");
         itemMerge = itemMerge.trimmed();
-        if (itemMerge.contains(".cpp", Qt::CaseInsensitive) | itemMerge.contains(".h", Qt::CaseInsensitive) | itemMerge.contains(".ui", Qt::CaseInsensitive) )
+        if (itemMerge.contains(".cpp", Qt::CaseInsensitive) || itemMerge.contains(".h", Qt::CaseInsensitive) || itemMerge.contains(".ui", Qt::CaseInsensitive) || itemMerge.contains(".pro", Qt::CaseInsensitive))
         {
-
-            QFile codeFile(itemMerge.prepend("./"));
-            if(!codeFile.open(QFile::ReadOnly | QFile::Text))
+            if (!itemMerge.contains(".pro.user", Qt::CaseInsensitive))
             {
-                qDebug() << " Could not open the code file for reading " ;
-                return;
+                QFile codeFile(itemMerge.prepend("./"));
+                if(!codeFile.open(QFile::ReadOnly | QFile::Text))
+                {
+                    qDebug() << " Could not open the code file for reading " ;
+                    return;
+                }
+                QTextStream codeIn(&codeFile);
+                QString codeText = codeIn.readAll();
+                totalMerge.append("::::");
+                totalMerge.append(itemMerge);
+                totalMerge.append("::::");
+                totalMerge.append(codeText);
+                codeFile.close();
             }
-            QTextStream codeIn(&codeFile);
-            QString codeText = codeIn.readAll();
-            totalMerge.append("::::");
-            totalMerge.append(itemMerge);
-            totalMerge.append("::::");
-            totalMerge.append(codeText);
-            codeFile.close();
         }
 
     }
@@ -149,29 +151,53 @@ void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
 {
     QStringList codeList = codeFile.split("::::");
     QStringList fileList = gitMergeFile.split("::::");
-    for (int i = 0; i < qMin(codeList.size(), fileList.size()); i++)
+    for (int i = 0; i < fileList.size(); i+=2)
     {
-        if (codeList[i] != fileList[i])
+        for (int j = 0; j < codeList.size(); j+=2)
         {
-            qDebug()<< "codeFile : " << codeList[i-1] << " is not same as " << fileList[i-1];
-            if (codeList[i-1] == fileList[i-1])
+            if (codeList[j] == fileList[i])
             {
-                QFile file(fileList[i-1].append("_gitback"));
-                qDebug() << fileList[i-1].append("_gitback");
+                if (codeList[j+1] != fileList[i+1])
+                {
+                    QFile file_gitback(codeList[j]);
+                    if(!file_gitback.open(QFile::WriteOnly | QFile::Text))
+                    {
+                        qDebug() << " Could not open the file for writing ";
+                        return;
+                    }
+                    QTextStream out_gitback(&file_gitback);
+                    out_gitback << codeList[j+1];
+                    file_gitback.flush();
+                    file_gitback.close();
+
+                    QFile file(fileList[i]);
+                    if(!file.open(QFile::WriteOnly | QFile::Text))
+                    {
+                        qDebug() << " Could not open the file for writing ";
+                        return;
+                    }
+                    QTextStream out(&file);
+                    out << fileList[i+1];
+                    file.flush();
+                    file.close();
+                }
+                break;
+            }
+            if (j == codeList.size()-2)
+            {
+                QFile file(fileList[i]);
                 if(!file.open(QFile::WriteOnly | QFile::Text))
                 {
                     qDebug() << " Could not open the file for writing ";
                     return;
                 }
                 QTextStream out(&file);
-                out << fileList[i];
+                out << fileList[i+1];
                 file.flush();
                 file.close();
             }
-            else
-            {
-                qDebug() << "You change code file directly!!";
-            }
+
+
         }
     }
 
