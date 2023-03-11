@@ -3,8 +3,6 @@
 
 #include <QString>
 
-//test
-
 class GitMerge
 {
 public:

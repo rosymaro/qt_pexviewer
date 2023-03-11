@@ -4,6 +4,8 @@
 #include <QTextStream>
 #include <QDebug>
 
+//git test
+
 GitMerge::GitMerge()
 {
     QString totalMerge;
@@ -52,9 +54,9 @@ void GitMerge::mergeFiles(QString &totalMerge)
 
         itemMerge = itemMerge.remove("\\");
         itemMerge = itemMerge.trimmed();
-        if (itemMerge.contains(".cpp", Qt::CaseInsensitive) || itemMerge.contains(".h", Qt::CaseInsensitive) || itemMerge.contains(".ui", Qt::CaseInsensitive) || itemMerge.contains(".pro", Qt::CaseInsensitive))
+        if (itemMerge.contains(".cpp", Qt::CaseInsensitive) || itemMerge.contains(".h", Qt::CaseInsensitive) || itemMerge.contains(".ui", Qt::CaseInsensitive))
         {
-            if (!itemMerge.contains(".pro.user", Qt::CaseInsensitive))
+            if (!itemMerge.contains("gitmerge.cpp", Qt::CaseInsensitive))
             {
                 QFile codeFile(itemMerge.prepend("./"));
                 if(!codeFile.open(QFile::ReadOnly | QFile::Text))
@@ -73,6 +75,11 @@ void GitMerge::mergeFiles(QString &totalMerge)
         }
 
     }
+    totalMerge.append("::::");
+    totalMerge.append("./IInterface.pro");
+    totalMerge.append("::::");
+    totalMerge.append(merge);
+
     file.close();
 }
 
@@ -151,15 +158,15 @@ void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
 {
     QStringList codeList = codeFile.split("::::");
     QStringList fileList = gitMergeFile.split("::::");
-    for (int i = 0; i < fileList.size(); i+=2)
+    for (int i = 1; i < fileList.size(); i+=2)
     {
-        for (int j = 0; j < codeList.size(); j+=2)
+        for (int j = 1; j < codeList.size(); j+=2)
         {
             if (codeList[j] == fileList[i])
             {
                 if (codeList[j+1] != fileList[i+1])
                 {
-                    QFile file_gitback(codeList[j]);
+                    QFile file_gitback(codeList[j].append("_back"));
                     if(!file_gitback.open(QFile::WriteOnly | QFile::Text))
                     {
                         qDebug() << " Could not open the file for writing ";
