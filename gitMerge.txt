@@ -522,7 +522,7 @@ void PEXCapacitorModel::attachCapToPattern() {
     makeLayerToPatternCapMap();
 
     /*
-        //º´·ÄÃ³¸®·Î º¯°æÇØ¾ß ÇÔ
+        //捍纺贸府肺 函版秦具 窃
         //matchCapWithPattern(this->cap_layer_map, this->pattern_layer_map, 17, 0);
         for (auto& cur_layer : this->layers) {
             string layer = getLayerString(cur_layer.first, cur_layer.second);
@@ -1029,7 +1029,7 @@ void PEXResistorDataManager::loadData(const std::string file_path) {
 
         description = line[PEXINFO_INDEX::PEXINFO_INDEX_DESCRIPTION];
         PEXResDirection resistor_direction = PEXResistor::checkDirectionFromDescription(description);
-        if (value > 0) updateMinMaxRes(value, resistor_direction); //�의코드, 0보다 �� � 무시
+        if (value > 0) updateMinMaxRes(value, resistor_direction); //烙狼狼 内靛, 0焊促 累篮 历亲篮 公矫
         this->resistors.push_back(PEXResistor(item_name, node1, node2, value, resistor_direction));
     }
 }
@@ -1342,6 +1342,7 @@ void PEXResistorModel::makeIndices() {
 DtaoRenderSystem::DtaoRenderSystem(LveWindow *w)
     : lveWindow(w)
 {
+    this->trans_info = {};
     qDebug() << "\n$$$$$ DtaoRenderSystem()";
 }
 
@@ -1389,12 +1390,15 @@ void DtaoRenderSystem::beginRenderPass(VkCommandBuffer command_buffer){
 
 void DtaoRenderSystem::startNextFrame(){
     this->cameraController.moveCamera(
-                1.0, this->camera, this->getRenderScale());
+                1.0, this->camera, this->getRenderScale(), this->gameObjects);
+    this->cameraController.moveCameraMouse(
+                this->camera, this->getRenderScale(), this->gameObjects);
 
     VkCommandBuffer command_buffer = this->lveWindow->currentCommandBuffer();
     beginRenderPass(command_buffer);
 
-    this->simpleRenderSystem->renderGameObjects(command_buffer,this->gameObjects, this->camera);
+    this->simpleRenderSystem->renderGameObjects(
+                command_buffer, this->gameObjects, this->camera);
 
     m_devFuncs->vkCmdEndRenderPass(command_buffer);
 
@@ -1406,7 +1410,7 @@ void DtaoRenderSystem::initResources() {
     qDebug() << "\n$$$$$ DtaoRenderSystem::initResources()";
     createLveDevice();
     createSimpleRenderSystem();
-    if(!this->render_object_created) loadGameObjects();
+    //if(!this->render_object_created) loadGameObjects();
 
     this->camera.setViewTarget(
                 glm::vec3(1.0f,1.0f,1.0f),
@@ -1460,14 +1464,109 @@ void DtaoRenderSystem::deleteSimpleRenderSystem(){
     delete this->simpleRenderSystem;
 }
 
+void DtaoRenderSystem::createNewObject(MODEL_TYPE model_type, const std::string & file_path) {
+    if( model_type == MODEL_TYPE::MODEL_TYPE_LAYOUT) createNewLayoutObject(file_path);
+    else if( model_type == MODEL_TYPE::MODEL_TYPE_PEX_CAPACITOR) createNewPEXCapObject(file_path);
+    else if( model_type == MODEL_TYPE::MODEL_TYPE_PEX_RESISTOR) createNewPEXResObject(file_path);
+    else if( model_type == MODEL_TYPE::MODEL_TYPE_AXIS) createNewAxisObject(file_path);
+}
+
+void DtaoRenderSystem::createNewLayoutObject(const std::string & file_path){
+
+    //Layout model
+    std::string layout_info_file_path = file_path;
+    std::shared_ptr<LayoutModel> model
+            = std::make_unique<LayoutModel>(
+                *this->lveDevice, MODEL_TYPE_LAYOUT, layout_info_file_path);
+    model->opacity = 0.5f;
+
+    LayoutDataManager* layout_data = model->getLayoutDataManager();
+    this->trans_info.trans_x = static_cast<float>( layout_data->getMinX());
+    this->trans_info.trans_y = static_cast<float>( layout_data->getMinY());
+    this->trans_info.trans_z = static_cast<float>( layout_data->getMinZ());
+    this->trans_info.scale = static_cast<float>( layout_data->getScale());
+
+    //auto new_object = DTAOObject::createObject();
+    auto new_object = LveGameObject::createGameObject();
+    new_object.model = model;
+    new_object.transform.translation = {
+        -this->trans_info.trans_x, -this->trans_info.trans_y, -this->trans_info.trans_z};
+    new_object.transform.scale = {
+        this->trans_info.scale, this->trans_info.scale, this->trans_info.scale };
+
+    //this->dtao_objects.push_back(std::move(new_object));
+    this->gameObjects.push_back(std::move(new_object));
+    this->render_object_created = true;
+    this->layout_model = model;
+}
+
+void DtaoRenderSystem::createNewPEXResObject( const std::string & file_path){
+    //PEX Resistor model
+    std::string res_info_file_path = file_path;
+    std::shared_ptr<PEXResistorModel> model
+            = std::make_unique<PEXResistorModel>(
+                *this->lveDevice, MODEL_TYPE_PEX_RESISTOR, res_info_file_path);
+
+    //Resistor Object
+    //auto new_object = DTAOObject::createObject();
+    auto new_object = LveGameObject::createGameObject();
+    new_object.model = model;
+    new_object.transform.translation = {
+        -this->trans_info.trans_x, -this->trans_info.trans_y, -this->trans_info.trans_z};
+    new_object.transform.scale = {
+        this->trans_info.scale, this->trans_info.scale, this->trans_info.scale };
+
+    //this->dtao_objects.push_back(std::move(new_object));
+    this->gameObjects.push_back(std::move(new_object));
+}
+
+void DtaoRenderSystem::createNewPEXCapObject( const std::string & file_path){
+    //PEX Capacitor model
+    std::string cap_info_file_path = file_path;
+    std::shared_ptr<PEXCapacitorModel> model
+            = std::make_unique<PEXCapacitorModel>(
+                *this->lveDevice, MODEL_TYPE_PEX_CAPACITOR,
+                cap_info_file_path, this->layout_model->getLayoutDataManager());
+
+    //Capacitor Object
+    //auto new_object = DTAOObject::createObject();
+    auto new_object = LveGameObject::createGameObject();
+    new_object.model = model;
+    new_object.transform.translation = {
+        -this->trans_info.trans_x, -this->trans_info.trans_y, -this->trans_info.trans_z};
+    new_object.transform.scale = {
+        this->trans_info.scale, this->trans_info.scale, this->trans_info.scale };
+
+    //this->dtao_objects.push_back(std::move(new_object));
+    this->gameObjects.push_back(std::move(new_object));
+}
+
+void DtaoRenderSystem::createNewAxisObject(const std::string & file_path){
+    (void)(file_path);
+    //Axis model
+    std::shared_ptr<LveModel> model
+            = std::make_unique<LveModel>(*this->lveDevice, MODEL_TYPE_AXIS);
+
+    //auto new_object = DTAOObject::createObject();
+    auto new_object = LveGameObject::createGameObject();
+    new_object.model = model;
+    new_object.transform.translation = {0.0f, 0.0f, 0.0f};
+    new_object.transform.scale = { 1.0f, 1.0f, 1.0f };
+
+    //this->dtao_objects.push_back(std::move(new_object));
+    this->gameObjects.push_back(std::move(new_object));
+}
+
+/*
 void DtaoRenderSystem::loadGameObjects() {
     qDebug() << "\n$$$$$ DtaoRenderSystem::loadGameObjects()";
+    return;
 
     auto cube = LveGameObject::createGameObject();
 
     //Layout model
     std::string layout_info_file_path = "Rendering/Data/layout_input_data.csv";
-    //std::string layout_info_file_path = "Rendering/Data/test_espin.csv";
+    //std::string layout_info_file_path = "Rendering/Data/big_test_espin.csv";
     std::shared_ptr<LayoutModel> layout_model
             = std::make_unique<LayoutModel>(*this->lveDevice, MODEL_TYPE_LAYOUT, layout_info_file_path);
     layout_model->opacity = 0.5f;
@@ -1484,7 +1583,6 @@ void DtaoRenderSystem::loadGameObjects() {
     std::shared_ptr<LveModel> axis_model
             = std::make_unique<LveModel>(*this->lveDevice, MODEL_TYPE_AXIS);
 
-    //*
     //PEX Resistor model
     std::string res_info_file_path = "Rendering/Data/MVP_PEX_RC_r1_0130_0208version.csv";
     std::shared_ptr<PEXResistorModel> res_model
@@ -1509,7 +1607,6 @@ void DtaoRenderSystem::loadGameObjects() {
     cube.transform.translation = { -trans_x, -trans_y, -trans_z };
     cube.transform.scale = { scale, scale, scale };
     gameObjects.push_back(std::move(cube));
-    //*/
 
     //Layout Object
     cube = LveGameObject::createGameObject();
@@ -1527,7 +1624,7 @@ void DtaoRenderSystem::loadGameObjects() {
 
     this->render_object_created = true;
 }
-
+*/
 ::::./Rendering/Src/keyboard_movement_controller.cpp::::#include "keyboard_movement_controller.hpp"
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -1539,37 +1636,86 @@ void DtaoRenderSystem::loadGameObjects() {
 #include <glm/gtx/string_cast.hpp>
 #include "lve_model.hpp"
 
-void KeyboardMovementController::setAllMoveFlagOff(){
-    camera_moving_flag.moveLeft = false;
-    camera_moving_flag.moveRight = false;
+void KeyboardMovementController::setAllMoveFlagOff() {
+    camera_moving_flag.rotateLeft = false;
+    camera_moving_flag.rotateRight = false;
     camera_moving_flag.moveForward = false;
     camera_moving_flag.moveBackward = false;
-    camera_moving_flag.moveUp = false;
-    camera_moving_flag.moveDown = false;
+    camera_moving_flag.rotateForward = false;
+    camera_moving_flag.rotateBackward = false;
 }
 
-void KeyboardMovementController::moveKeyPressed(Qt::Key key){
+void KeyboardMovementController::setMouseFlagOff() {
+    camera_moving_flag.mouseLeft = false;
+    camera_moving_flag.mouseRight = false;
+}
+
+void KeyboardMovementController::moveKeyPressed(Qt::Key key) {
     //setAllMoveFlagOff();
     if (key == camera_move_key.moveForward) camera_moving_flag.moveForward = true;
     if (key == camera_move_key.moveBackward) camera_moving_flag.moveBackward = true;
-    if (key == camera_move_key.moveRight) camera_moving_flag.moveRight = true;
-    if (key == camera_move_key.moveLeft) camera_moving_flag.moveLeft = true;
+    if (key == camera_move_key.rotateRight) camera_moving_flag.rotateRight = true;
+    if (key == camera_move_key.rotateLeft) camera_moving_flag.rotateLeft = true;
+    if (key == camera_move_key.rotateForward) camera_moving_flag.rotateForward = true;
+    if (key == camera_move_key.rotateBackward) camera_moving_flag.rotateBackward = true;
     if (key == camera_move_key.moveUp) camera_moving_flag.moveUp = true;
     if (key == camera_move_key.moveDown) camera_moving_flag.moveDown = true;
+    if (key == camera_move_key.moveLeft) camera_moving_flag.moveLeft = true;
+    if (key == camera_move_key.moveRight) camera_moving_flag.moveRight = true;
+
 }
 
-void KeyboardMovementController::moveKeyReleased(Qt::Key key){
+void KeyboardMovementController::moveKeyReleased(Qt::Key key) {
     //setAllMoveFlagOff();
     if (key == camera_move_key.moveForward) camera_moving_flag.moveForward = false;
     if (key == camera_move_key.moveBackward) camera_moving_flag.moveBackward = false;
-    if (key == camera_move_key.moveRight) camera_moving_flag.moveRight = false;
-    if (key == camera_move_key.moveLeft) camera_moving_flag.moveLeft = false;
+    if (key == camera_move_key.rotateRight) camera_moving_flag.rotateRight = false;
+    if (key == camera_move_key.rotateLeft) camera_moving_flag.rotateLeft = false;
+    if (key == camera_move_key.rotateForward) camera_moving_flag.rotateForward = false;
+    if (key == camera_move_key.rotateBackward) camera_moving_flag.rotateBackward = false;
     if (key == camera_move_key.moveUp) camera_moving_flag.moveUp = false;
     if (key == camera_move_key.moveDown) camera_moving_flag.moveDown = false;
+    if (key == camera_move_key.moveLeft) camera_moving_flag.moveLeft = false;
+    if (key == camera_move_key.moveRight) camera_moving_flag.moveRight = false;
+}
+
+void KeyboardMovementController::setMousePosition(QPoint position, int mode) {
+    mouse_position.currentPosition = position;
+    if (mode == 1) {
+        mouse_position.pressPosition = position;
+        mouse_position.currentPosition = position;
+        xpos_prev = position.x();
+        ypos_prev = position.y();
+    }
+    if (mode == 2) {
+        mouse_position.releasePosition = position;
+        mouse_position.currentPosition = position;
+    }
+
+    //qDebug()<< position.y();
+}
+
+void KeyboardMovementController::setMouseScroll(QPoint scroll) {
+    mouse_position.scroll = scroll;
+}
+
+void KeyboardMovementController::moveButtonPressed(Qt::MouseButtons buttons) {
+    setMouseFlagOff();
+    if (buttons == camera_move_key.mouseLeft) camera_moving_flag.mouseLeft = true;
+    if (buttons == camera_move_key.mouseRight) camera_moving_flag.mouseRight = true;
+
+
+}
+
+void KeyboardMovementController::moveButtonReleased(Qt::MouseButtons buttons) {
+    setMouseFlagOff();
+    if (buttons == camera_move_key.mouseLeft) camera_moving_flag.mouseLeft = true;
+    if (buttons == camera_move_key.mouseRight) camera_moving_flag.mouseRight = true;
+    //qDebug()<<
 }
 
 void KeyboardMovementController::moveCamera(
-        float dt, LveCamera& camera, float render_scale){
+    float dt, LveCamera& camera, float render_scale, std::vector<LveGameObject>& gameObjects) {
     float scale = 0.0f;
     float rotate_lr = 0.0f;
     float rotate_ud = 0.0f;
@@ -1578,11 +1724,11 @@ void KeyboardMovementController::moveCamera(
     if (camera_moving_flag.moveForward) scale = 1.0f + 0.01f * obj_scale;
     else if (camera_moving_flag.moveBackward) scale = 1.0f - 0.01f * obj_scale;
 
-    if (camera_moving_flag.moveRight) rotate_lr = -0.1f * obj_scale;
-    else if (camera_moving_flag.moveLeft) rotate_lr = 0.1f * obj_scale;
+    if (camera_moving_flag.rotateRight) rotate_lr = -0.1f * obj_scale;
+    else if (camera_moving_flag.rotateLeft) rotate_lr = 0.1f * obj_scale;
 
-    if (camera_moving_flag.moveUp) rotate_ud = -0.1f * obj_scale;
-    else if (camera_moving_flag.moveDown) rotate_ud = 0.1f * obj_scale;
+    if (camera_moving_flag.rotateForward) rotate_ud = -0.1f * obj_scale;
+    else if (camera_moving_flag.rotateBackward) rotate_ud = 0.1f * obj_scale;
     //if (glfwGetMouseButton(window, camera_move_key.mouseLeft) == GLFW_PRESS) scale = 1.0f + 0.0001f * obj_scale;
     //if (glfwGetMouseButton(window, camera_move_key.mouseRight) == GLFW_PRESS) scale = 1.0f - 0.0001f * obj_scale;
 
@@ -1603,8 +1749,136 @@ void KeyboardMovementController::moveCamera(
     if (glm::dot(scale, scale) > std::numeric_limits<float>::epsilon()) {
         camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(scale, scale, scale));
     }
+
+
+    glm::vec3 moveDir{ 0.f };
+    camera.decomposeView(camera.getView());
+
+    if (camera.rotation_d.x * camera.rotation_d.y > 0) {
+        if (camera_moving_flag.moveRight) moveDir -= u;
+        if (camera_moving_flag.moveLeft)  moveDir += u;
+        if (camera_moving_flag.moveUp)  moveDir += v;
+        if (camera_moving_flag.moveDown)  moveDir -= v;
+    }
+    else {
+        if (camera_moving_flag.moveRight) moveDir += u;
+        if (camera_moving_flag.moveLeft)  moveDir -= u;
+        if (camera_moving_flag.moveUp)  moveDir -= v;
+        if (camera_moving_flag.moveDown)  moveDir += v;
+    }
+
+
+    if (glm::dot(moveDir, moveDir) > std::numeric_limits<float>::epsilon()) {
+        //camera.decomposeView(camera.getView());
+        //std::cout << glm::to_string(camera.rotation_d) << '\n';
+        for (auto& gameobject : gameObjects) {
+            if (gameobject.model->getModelType() != MODEL_TYPE::MODEL_TYPE_AXIS) {
+                gameobject.transform.translation += obj_scale * moveSpeed * dt * glm::normalize(moveDir);
+                //camera.viewMatrix = glm::translate(camera.getView(), moveSpeed * dt * moveDir);
+            }
+        }
+
+    }
 }
 
+void KeyboardMovementController::moveCameraMouse(LveCamera& camera, float render_scale, std::vector<LveGameObject>& gameObjects) {
+    if (camera_moving_flag.mouseRight)
+    {
+        std::cout << "rotation enable" << std::endl;
+        float rotate_lr = 0.0f;
+        float rotate_ud = 0.0f;
+
+        rotate_lr = mouse_position.currentPosition.x() - xpos_prev;
+        rotate_ud = mouse_position.currentPosition.y() - ypos_prev;
+
+        glm::vec3 direction{ camera.viewMatrix[0][2], camera.viewMatrix[1][2], 0 };
+        const glm::vec3 u{ glm::normalize(glm::cross(direction,glm::normalize(glm::cross(direction, glm::vec3{0,1,0})))) };
+        const glm::vec3 v{ glm::normalize(glm::cross(u,glm::vec3{0,0,1})) };
+
+        if (glm::dot(rotate_ud, rotate_ud) > std::numeric_limits<float>::epsilon()) {
+            if (camera.viewMatrix[1][0] > 0) {
+                camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_ud*0.5f), u);
+            }
+            else {
+                camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(-rotate_ud*0.5f), u);
+            }
+
+        }
+
+        if (glm::dot(rotate_lr, rotate_lr) > std::numeric_limits<float>::epsilon()) {
+            camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_lr*0.5f), glm::vec3(0.0f, 0.0f, 1.0f));
+            //std::cout << glm::to_string(camera.rotation_d) << '\n';
+        }
+
+        xpos_prev = mouse_position.currentPosition.x();
+        ypos_prev = mouse_position.currentPosition.y();
+    }
+    else if (camera_moving_flag.mouseLeft)
+    {
+        float camera_scale = sqrt(pow(camera.viewMatrix[0][2], 2) + pow(camera.viewMatrix[1][2], 2) + pow(camera.viewMatrix[2][2], 2));
+        float obj_scale = gameObjects.begin()->transform.scale.x;
+
+        float scale = 2.0f / camera_scale / obj_scale;
+        glm::vec3 moveDir{ 0.f };
+        float movement_lr = mouse_position.currentPosition.x() - xpos_prev;
+        float movement_ud = mouse_position.currentPosition.y() - ypos_prev;
+
+        glm::vec3 direction{ camera.viewMatrix[0][2], camera.viewMatrix[1][2], 0 };
+        const glm::vec3 u{ glm::normalize(glm::cross(direction, glm::vec3{0,0,1})) };
+        const glm::vec3 v{ glm::normalize(glm::cross(u,glm::vec3{0,0,1})) };
+
+
+        if (camera.viewMatrix[2][2] > 0 && camera.viewMatrix[2][1] > 0) {
+
+            moveDir -= u * (movement_lr);
+            moveDir -= v * (movement_ud);
+        }
+        else if (camera.viewMatrix[2][2] < 0 && camera.viewMatrix[2][1] > 0) {
+            moveDir -= u * (movement_lr);
+            moveDir += v * (movement_ud);
+        }
+        else if (camera.viewMatrix[2][2] < 0 && camera.viewMatrix[2][1] < 0) {
+            moveDir += u * (movement_lr);
+            moveDir -= v * (movement_ud);
+        }
+        else {
+            moveDir += u * (movement_lr);
+            moveDir += v * (movement_ud);
+        }
+
+
+        if (glm::dot(moveDir, moveDir) > std::numeric_limits<float>::epsilon()) {
+
+            //camera.decomposeView(camera.getView());
+            //std::cout << glm::to_string(camera.rotation_d) << '\n';
+            for (auto& gameobject : gameObjects) {
+                if (gameobject.model->getModelType() != MODEL_TYPE::MODEL_TYPE_AXIS) {
+                    gameobject.transform.translation += scale * 0.01f * glm::normalize(moveDir);
+                    //camera.viewMatrix = glm::translate(camera.getView(), moveSpeed * dt * moveDir);
+                }
+            }
+        }
+
+        xpos_prev = mouse_position.currentPosition.x();
+        ypos_prev = mouse_position.currentPosition.y();
+    }
+
+    if (mouse_position.scroll.y() != 0) {
+        float scale_mouse = 1.0f + 0.1f * (mouse_position.scroll.y() / 120);
+        camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(scale_mouse, scale_mouse, scale_mouse));
+        mouse_position.scroll.setY(0);
+    }
+}
+
+
+
+
+
+
+
+
+
+/*
 void KeyboardMovementController::moveCamera(
         Qt::Key key, float dt, LveCamera& camera,
         float render_scale) {
@@ -1618,10 +1892,10 @@ void KeyboardMovementController::moveCamera(
 
     if (key == camera_move_key.moveForward) scale = 1.0f + 0.01f * obj_scale;
     if (key == camera_move_key.moveBackward) scale = 1.0f - 0.01f * obj_scale;
-    if (key == camera_move_key.moveRight) rotate_lr = -0.1f * obj_scale;
-    if (key == camera_move_key.moveLeft) rotate_lr = 0.1f * obj_scale;
-    if (key == camera_move_key.moveUp) rotate_ud = -0.1f * obj_scale;
-    if (key == camera_move_key.moveDown) rotate_ud = 0.1f * obj_scale;
+    if (key == camera_move_key.rotateRight) rotate_lr = -0.1f * obj_scale;
+    if (key == camera_move_key.rotateLeft) rotate_lr = 0.1f * obj_scale;
+    if (key == camera_move_key.rotateForward) rotate_ud = -0.1f * obj_scale;
+    if (key == camera_move_key.rotateBackward) rotate_ud = 0.1f * obj_scale;
     //if (glfwGetMouseButton(window, camera_move_key.mouseLeft) == GLFW_PRESS) scale = 1.0f + 0.0001f * obj_scale;
     //if (glfwGetMouseButton(window, camera_move_key.mouseRight) == GLFW_PRESS) scale = 1.0f - 0.0001f * obj_scale;
 
@@ -1644,7 +1918,7 @@ void KeyboardMovementController::moveCamera(
     }
 }
 
-/*
+
 void KeyboardMovementController::visibleSetting(GLFWwindow* window, std::vector<LveGameObject>& gameObjects) {
     MODEL_TYPE target_model_type = MODEL_TYPE::MODEL_TYPE_DEFAULT;
     bool opacity_mode = false;
@@ -2847,11 +3121,10 @@ QVulkanWindowRenderer *LveWindow::createRenderer()
 
 void LveWindow::wheelEvent(QWheelEvent *e)
 {
-    //문제가 �나 �는..
-    //�로그램�택�어 �� �아moveZoom 명령�감
-    //근데 Ctrl � Vulkan Window 가 �택�었�만 
-    //moveZoom Level 까� �고 �려�
+    if( !this->m_renderer->isRenderModelLoaded() ) return;
     const float amount = e->angleDelta().y() / 8;
+    QPoint scroll = e->angleDelta();
+    this->m_renderer->cameraController.setMouseScroll(scroll);
 
     if (keyCtrl == true)
     {
@@ -2873,20 +3146,36 @@ void LveWindow::wheelEvent(QWheelEvent *e)
 
 void LveWindow::mousePressEvent(QMouseEvent *e)
 {
+    if( !this->m_renderer->isRenderModelLoaded() ) return;
     m_mouseButton = e->buttons();
+    Qt::MouseButtons cur_button = e->buttons();
+    QString funcName = "mousePress";
+    QPoint position = e->pos();
+    //emit signalInfoText(funcName, m_lastPos);
     m_lastPos = e->pos();
+    this->m_renderer->cameraController.moveButtonPressed(cur_button);
+    this->m_renderer->cameraController.setMousePosition(position, 1);
+
 }
 
-void LveWindow::mouseReleaseEvent(QMouseEvent *)
+void LveWindow::mouseReleaseEvent(QMouseEvent *e)
 {
+    if( !this->m_renderer->isRenderModelLoaded() ) return;
     m_mouseButton = 0;
     QString funcName = "mouseRelease";
+    Qt::MouseButtons cur_button = e->buttons();
+    QPoint position = e->pos();
     float value = 0;
-    emit signalInfoText(funcName, value);
+    emit signalInfoText(funcName, cur_button);
+    this->m_renderer->cameraController.moveButtonReleased(cur_button);
+    this->m_renderer->cameraController.setMousePosition(position, 2);
 }
 
 void LveWindow::mouseMoveEvent(QMouseEvent *e)
 {
+    if( !this->m_renderer->isRenderModelLoaded() ) return;
+    QPoint position = e->pos();
+    this->m_renderer->cameraController.setMousePosition(position, 0);
     if (m_mouseButton == 0)
         return;
 
@@ -2936,97 +3225,17 @@ void LveWindow::mouseMoveEvent(QMouseEvent *e)
 
 void LveWindow::keyPressEvent(QKeyEvent *e)
 {
+    if( !this->m_renderer->isRenderModelLoaded() ) return;
     Qt::Key cur_key = (Qt::Key)e->key();
 
-    //const float amount = e->modifiers().testFlag(Qt::ShiftModifier) ? 1.0f : 0.1f;
-    //QString funcName;
-    //float value = 0;
-    /*
-    //switch (e->key()) {
-    switch (cur_key) {
-    case Qt::Key_Up:
-        funcName = "moveGdsY";
-        value = amount;
-        //        m_renderer->moveGdsY(value);
-        break;
-    case Qt::Key_Down:
-        funcName = "moveGdsY";
-        value = -amount;
-        //        m_renderer->moveGdsY(value);
-        break;
-    case Qt::Key_Right:
-        funcName = "moveGdsX";
-        value = amount;
-        //        m_renderer->moveGdsX(value);
-        break;
-    case Qt::Key_Left:
-        funcName = "moveGdsX";
-        value = -amount;
-        //        m_renderer->moveGdsX(value);
-        break;
-    case Qt::Key_PageUp:
-        funcName = "moveGdsZ";
-        value = amount;
-        //        m_renderer->moveGdsZ(value);
-        break;
-    case Qt::Key_PageDown:
-        funcName = "moveGdsZ";
-        value = -amount;
-        //        m_renderer->moveGdsZ(value);
-        break;
-    case Qt::Key_Control:
-        keyCtrl = true;
-        qDebug() << "Control";
-        break;
-    case Qt::Key_Alt:
-        keyAlt = true;
-        qDebug() << "Alt";
-        break;
-    case Qt::Key_Shift:
-        keyShift = true;
-        qDebug() << "Shift";
-        break;
-    default:
-        break;
-    }
-    emit signalInfoText(funcName, value);
-    qDebug()<<funcName << " : " << value;
-
-    qDebug()<< "Pressed Key : " << cur_key;
-    */
-    /*
-    this->m_renderer->cameraController.moveCamera(
-                cur_key,
-                1.0,
-                this->m_renderer->camera,
-                this->m_renderer->getRenderScale()
-                );
-                */
     this->m_renderer->cameraController.moveKeyPressed(cur_key);
 
 }
 void LveWindow::keyReleaseEvent(QKeyEvent *e)
 {
+    if( !this->m_renderer->isRenderModelLoaded() ) return;
     Qt::Key cur_key = (Qt::Key)e->key();
     this->m_renderer->cameraController.moveKeyReleased(cur_key);
-    /*
-    switch (e->key()) {
-    case Qt::Key_Control:
-        keyCtrl = false;
-        qDebug() << "Control off";
-        break;
-    case Qt::Key_Alt:
-        keyAlt = false;
-        qDebug() << "Alt off";
-        break;
-    case Qt::Key_Shift:
-        keyShift = false;
-        qDebug() << "Shift off";
-        break;
-    default:
-        break;
-    }
-    */
 }
 
 ::::./Rendering/Src/simple_render_system.cpp::::#include <vulkan/vulkan.h>
@@ -3407,7 +3616,9 @@ void FileDb::openFile(QString fileNameInfo,QVector<QList<float>> &vecList,
     {        
         return;
     }
+
     return;
+
 }
 ::::./formhier.cpp::::#include "formhier.h"
 #include "ui_formhier.h"
@@ -3421,7 +3632,7 @@ FormHier::FormHier(QWidget *parent) :
     ui(new Ui::FormHier)
 {
     ui->setupUi(this);
-    // QTableWidget defalut �기 �정
+    // QTableWidget defalut 赴 れ爼
     QStringList defalutTableHeader;
     defalutTableHeader << "LayerName" << "LayerNum" << "LayerType" << "Red" << "Green" << "Blue";
 
@@ -3462,11 +3673,11 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
 //    qDebug() << "3rd" << inputDataVector.value(2);
 //    qDebug() << "1st_1st" << inputDataVector.value(0).value(0);
 
-// QTableWidget �서 QStringList 로만 받기�문�료��
+// QTableWidget 愳劀 QStringList 搿滊 氚涥赴岆愲曤
     QStringList vectorTOqstringlist;
     QStringList vectorTOqstringlistHoriLabels;
 
-// QTableWidget �기 �정
+// QTableWidget 赴 れ爼
     ui->tableWidget->setColumnCount(column);
     ui->tableWidget->setRowCount(row);
 
@@ -3476,7 +3687,7 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
     font.setPointSize(10);
     ui->tableWidget->horizontalHeader()->setFont(font);
 
-// Table 채우�
+// Table 毂勳毎旮
     for (int i=0; i<row ; i++)
     {
         for (int j=0; j<column ; j++)
@@ -3495,12 +3706,14 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
 //    ui->tableWidget->setColumnWidth(3,50);
 //    ui->tableWidget->setColumnWidth(4,50);
 //    ui->tableWidget->setColumnWidth(5,50);
+
+
+
 }
 ::::./forminfo.cpp::::#include "forminfo.h"
 #include "ui_forminfo.h"
 #include <QDebug>
 #include "cmath"
-
 
 FormInfo::FormInfo(QWidget *parent) :
     QDialog(parent),
@@ -3559,7 +3772,7 @@ void FormInfo::slotInfoText(QString funcName, float value)
     if (funcName == "moveZoom")
     {
         qDebug()<<"moveZoom";
-        infoZoom = infoZoom + infoZoom*value/1500;        //�정 �이�100% 롤정�요 �음, 결국 초기값� GDS Size �라 바뀈음.
+        infoZoom = infoZoom + infoZoom*value/1500;        //检爼 掛澊毳100% 搿れ爼勳殧 堨潓, 瓴瓣淡 齑堦赴臧掛 GDS Size 半澕 氚旊�堨潓.
         if (infoZoom < 0.01)
             infoZoom = 0.01;
         if (infoZoom > 100)
@@ -3645,7 +3858,7 @@ FormLayer::FormLayer(QWidget *parent) :
     ui->tableWidget->setColumnWidth(5,100);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// TableWidget Title Format �정
+/// TableWidget Title Format れ爼
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     QBrush brush(QColor(255, 255, 255, 255));
     brush.setStyle(Qt::SolidPattern);
@@ -3654,7 +3867,7 @@ FormLayer::FormLayer(QWidget *parent) :
     font.setWeight(75);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// TableWidget Title �력 �반영
+/// TableWidget Title 呺牓 氚氚橃榿
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     for (int i=1; i<6; i++){
         QTableWidgetItem *TableHeaderItem = new QTableWidgetItem;
@@ -3682,7 +3895,7 @@ FormLayer::~FormLayer()
 
 void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QString>> &inputDataVector)
 {
-// QTableWidget �서 QStringList 로만 받기�문�료��
+// QTableWidget 愳劀 QStringList 搿滊 氚涥赴岆愲曤
     QStringList vectorTOqstringlist;
     QStringList vectorTOqstringlistHoriLabels;
     QStringList vectorTOqstringcolorlist;
@@ -3692,17 +3905,17 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
     QString LayerColorText;
     vectorTOqstringlistHoriLabels << " ";
 
-// QTableWidget �기 �정
+// QTableWidget 赴 れ爼
     ui->tableWidget->setColumnCount(6);
     ui->tableWidget->setRowCount(row);
 //    ui->tableWidget->setItemDelegateForColumn(5,new SliderDelegate);
     ui->tableWidget->setColumnWidth(5,150);
 
-// Table 채우�
-    int TalbeColumnCount = 3;       //input data �서 가column 갈�
+// Table 毂勳毎旮
+    int TalbeColumnCount = 3;       //input data 愳劀 臧�column 臧垬
     for (int i=0; i<row ; i++)
     {
-       // table value 채우�
+       // table value 毂勳毎旮
         for (int j=0; j < TalbeColumnCount ; j++)
         {
             vectorTOqstringlist << inputDataVector.value(i+1).value(j);
@@ -3713,7 +3926,7 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
             ui->tableWidget->setItem((i+1),j+2,tableitem);
         }
 
-        //Opacity 채우�
+        //Opacity 毂勳毎旮
         QSlider *OpacitySlider = new QSlider(Qt::Horizontal);
         QWidget *OpacitySliderWidget = new QWidget();
         OpacitySlider->setRange(0,100);
@@ -3728,7 +3941,7 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
         ui->tableWidget->setCellWidget(i+1, 5, OpacitySliderWidget);
         QObject::connect(OpacitySlider, SIGNAL(valueChanged(int)), this, SLOT(handleOpacitySlider(int)));
 
-        // checkbox 채우�
+        // checkbox 毂勳毎旮
         QCheckBox *checkBoxItem = new QCheckBox();
         checkBoxItem->setCheckState(Qt::Checked);
         QWidget *checkboxWidget = new QWidget();
@@ -3751,7 +3964,7 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
         LayerColorText = "background-color: rgb(" + LayerColorRed;
         LayerColorText = LayerColorText + "," + LayerColorGreen + "," + LayerColorBlue + ")";
 
-        // color pushbutton 채우�
+        // color pushbutton 毂勳毎旮
         QPushButton *colorbutton = new QPushButton();
         colorbutton->setStyleSheet(LayerColorText);
         ui->tableWidget->setCellWidget(i+1,1,colorbutton);
@@ -3795,7 +4008,7 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// \brief FormLayer::on_tableWidget_itemChanged
 /// \param checkBoxItem
-/// description : checkbox �택�라 Layer On/Off mainwindow status 창에 출력
+/// description : checkbox 犿儩半澕 Layer On/Off mainwindow status 彀届棎 於滊牓
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void FormLayer::tableWidget_checkBoxChanged()
 {
@@ -3975,7 +4188,7 @@ void FormMap::receiveSize(float &xMinSize,float &yMinSize,float &xMaxSize,float 
     scale = 178/std::max(width,height);
     width = scale * width;
     height = scale * height;
-//    float rectScale = 176*zoomScale; 추후 변�
+//    float rectScale = 176*zoomScale; 於旐泟 氤�瓴
 
     qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
 
@@ -4028,7 +4241,7 @@ void FormMap::slotInfoText(QString funcName, float value)
     }
     if (funcName == "moveZoom")
     {
-        infoZoom = infoZoom + infoZoom*value/1500;        //�정 �이�100% 롤정�요 �음, 결국 초기값� GDS Size �라 바뀈음.
+        infoZoom = infoZoom + infoZoom*value/1500;        //检爼 掛澊毳100% 搿れ爼勳殧 堨潓, 瓴瓣淡 齑堦赴臧掛 GDS Size 半澕 氚旊�堨潓.
         if (infoZoom < 0.01)
             infoZoom = 0.01;
         if (infoZoom > 100)
@@ -4131,6 +4344,7 @@ void SuperItem::slotMove(float x, float y, float zoom, float rot, float tilt)
 //        }
 //    }
 //    update();
+
 //}
 ::::./formtop.cpp::::#include "formtop.h"
 #include "ui_formtop.h"
@@ -4184,7 +4398,7 @@ void FormTop::receiveFile(QVector<QVector<QVector<QList<float>>>>& mapFile)
     QPen mPen;
     mPen.setWidth(5);
     mPen.setColor(Qt::red);
-// 기존�는 vector 륨겨�야 : delete 륄해
+// 旮办〈堧姅 vector 毳波旍暭 : delete 毳勴暣
     //            for(auto cur_item : rectItemList){
     //                delete cur_item;
     //            }
@@ -4315,8 +4529,13 @@ int main(int argc, char *argv[])
 
 
 
+
+
 ::::./mainwindow.cpp::::#include "mainwindow.h"
 #include "ui_mainwindow.h"
+
+#include "Rendering/Src/dtaorendersystem.h"
+#include "Rendering/Src/lve_model.hpp"
 
 #include <QMouseEvent>
 #include <QKeyEvent>
@@ -4427,7 +4646,7 @@ void MainWindow::on_actionOpen_Map_File_triggered()
 {
     QString fileNameInfo = QFileDialog::getOpenFileName(this,
                                                         tr("Open map file"),
-                                                        "C:/",
+                                                        ".",
                                                         tr("text (*.txt)")
                                                         );
     FileDb *fileDb = new FileDb;
@@ -4435,7 +4654,7 @@ void MainWindow::on_actionOpen_Map_File_triggered()
     float xMinSize = 0, yMinSize = 0, xMaxSize = 0, yMaxSize = 0;
     fileDb->openFile(fileNameInfo, vecList , xMinSize, yMinSize, xMaxSize, yMaxSize);
 
-    int posScale = 1000, splitSize = 10; //posScale 1�면 um �위, posScale 1000�면 nm �위
+    int posScale = 1000, splitSize = 10; //posScale 1措┐ um 渼, posScale 1000措┐ nm 渼
     int n = (int(xMaxSize *posScale)-int(xMinSize *posScale))/splitSize +1;
     int m = (int(yMaxSize *posScale)-int(yMinSize *posScale))/splitSize +1;
     qDebug() << "int n / int m : " << n << " , " <<m;
@@ -4443,8 +4662,8 @@ void MainWindow::on_actionOpen_Map_File_triggered()
     ////////////////////////////////////////////////
     QVector<QVector<QVector<QList<float>>>> mapFile(n, QVector<QVector<QList<float>>>(m, {{}}));
 //    QVector<QList<float>> mapFile[n][m];
-    // 구조 변경에 ��각�요 �음
-    // 주형 구조 : struct(layer, r, g, b, z, thk, opacity, vector())
+    // 甑“ 氤�瓴届棎 �濌皝勳殧 堨潓
+    // 欤柬槙 甑“ : struct(layer, r, g, b, z, thk, opacity, vector())
 
     mapFile[0][0][0].append({0, 0, xMinSize, yMinSize, xMaxSize, yMaxSize, 0, 0});
 
@@ -4487,194 +4706,76 @@ void MainWindow::on_actionOpen_Map_File_triggered()
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "�일 �택","C:\\","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 犿儩",".","Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
 
 }
 
-
 void MainWindow::inputLayerStatus(QString text)
 {
     ui->statusbar->showMessage(text);
 }
 
-/*
-QVulkanWindowRenderer *VulkanWindow::createRenderer()
+
+
+void MainWindow::on_actionOpen_Layout_triggered()
 {
-    m_renderer = new VulkanRenderer(this);
-    return m_renderer;
+    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 犿儩",".","Files(*.*)");
+    DtaoRenderSystem * renderer = this->m_window->getRenderer();
+
+    renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
+
+
 }
 
-VulkanRenderer::VulkanRenderer(VulkanWindow *w)
-    : TriangleRenderer(w)
-{
-}
+void MainWindow::on_actionOpen_DB_triggered(){
+    std::cout << "callv" << std::endl;
+    QString file_name = QFileDialog::getOpenFileName(this, "OpenDB", "C:\\", "Text (*.txt) ;; Files (*.*)");
+    if(file_name != ""){
+        std::cout << file_name.toStdString() << std::endl;
+        this->t2d.text2data(file_name.toStdString());
 
-void VulkanWindow::wheelEvent(QWheelEvent *e)
-{
-    //문제가 �나 �는..
-    //�로그램�택�어 �� �아moveZoom 명령�감
-    //근데 Ctrl � Vulkan Window 가 �택�었�만 
-    //moveZoom Level 까� �고 �려�
-    const float amount = e->angleDelta().y() / 8;
-
-    if (keyCtrl == true)
-    {
-//      m_rendere->windowZoom(amount);
-        QString funcName = "windowZoom";
-        float value = amount;
-        emit signalInfoText(funcName, value);
-//        qDebug()<<funcName << " : " << value;
-    }
-    else
-    {
-//      m_renderer->moveZoom(amount);
-        QString funcName = "moveZoom";
-        float value = amount;
-        emit signalInfoText(funcName, value);
-//        qDebug()<<funcName << " : " << value;
-    }
-}
-
-void VulkanWindow::mousePressEvent(QMouseEvent *e)
-{
-    m_mouseButton = e->buttons();
-    m_lastPos = e->pos();
-}
-
-void VulkanWindow::mouseReleaseEvent(QMouseEvent *)
-{
-    m_mouseButton = 0;
-    QString funcName = "mouseRelease";
-    float value = 0;
-    emit signalInfoText(funcName, value);
-}
-
-void VulkanWindow::mouseMoveEvent(QMouseEvent *e)
-{
-    if (m_mouseButton == 0)
-        return;
-
-    int dx = e->pos().x() - m_lastPos.x();
-    int dy = e->pos().y() - m_lastPos.y();
-
-    if (dx)
-    {
-        if (m_mouseButton == 2)
-        {
-//            m_renderer->rotateRenderY(dx / 10.0f);
-            QString funcName = "rotateRenderX";
-            float value = -dx / 10.0f;
-            emit signalInfoText(funcName, value);
-            qDebug()<< "mouseEvent "<<funcName << " : " << value;
-        }
-        else if (m_mouseButton == 4)
-        {
-//            m_renderer->moveRenderX(dx / 10.0f);
-            QString funcName = "moveRenderX";
-            float value = -dx / 10.0f;
-            emit signalInfoText(funcName, value);
-//            qDebug()<<funcName << " : " << value;
+        printf("%-9f %-9f %-9f %-9f %-9f %-9f", t2d.LayoutMinMax.minx, t2d.LayoutMinMax.miny, t2d.LayoutMinMax.maxx, t2d.LayoutMinMax.maxy, t2d.LayoutMinMax.minz, t2d.LayoutMinMax.maxz);
+        for(int i = 0 ; i < t2d.LayoutData10by10.size() ; i++){
+            printf("\n%-9s %-9d %-9d %-9d %-9d %-9d %-9d %-9f %-9f ",
+                   t2d.LayoutData10by10[i].layername.c_str(),
+                   t2d.LayoutData10by10[i].layernum,
+                   t2d.LayoutData10by10[i].datatype,
+                   t2d.LayoutData10by10[i].color.r,
+                   t2d.LayoutData10by10[i].color.g,
+                   t2d.LayoutData10by10[i].color.b,
+                   t2d.LayoutData10by10[i].color.a,
+                   t2d.LayoutData10by10[i].bot,
+                   t2d.LayoutData10by10[i].top);
+            for(int j = 0 ; j < (t2d.LayoutData10by10[i].xy).size() ; j++){
+                for(int x = 0 ; x < (t2d.LayoutData10by10[i].xy[j]).size() ; x++){
+                    printf("\n%d %d %d", j, x, (t2d.LayoutData10by10[i].xy[j][x]).size());
+                    for(int y = 0 ; y < (t2d.LayoutData10by10[i].xy[j][x]).size() ; y++){
+                        printf("\n%-9f %-9f %-9f %-9f",
+                               t2d.LayoutData10by10[i].xy[j][x][y].minx,
+                               t2d.LayoutData10by10[i].xy[j][x][y].miny,
+                               t2d.LayoutData10by10[i].xy[j][x][y].maxx,
+                               t2d.LayoutData10by10[i].xy[j][x][y].maxy);
+                    }
+                }
+            }
         }
     }
-
-    if (dy)
-    {
-        if (m_mouseButton == 2)
-        {
-//            m_renderer->rotateRenderY(dy / 10.0f);
-            QString funcName = "rotateRenderY";
-            float value = dy / 10.0f;
-            emit signalInfoText(funcName, value);
-//            qDebug()<<funcName << " : " << value;
-        }
-        else if (m_mouseButton == 4)
-        {
-//            m_renderer->moveRenderY(dy / 10.0f);
-            QString funcName = "moveRenderY";
-            float value = dy / 10.0f;
-            emit signalInfoText(funcName, value);
-//            qDebug()<<funcName << " : " << value;
-        }
-    }
+    fflush(stdout);
+    cout << "test end" << endl;
 }
 
-void VulkanWindow::keyPressEvent(QKeyEvent *e)
-{
-    const float amount = e->modifiers().testFlag(Qt::ShiftModifier) ? 1.0f : 0.1f;
-    QString funcName;
-    float value = 0;
-    switch (e->key()) {
-    case Qt::Key_Up:
-        funcName = "moveGdsY";
-        value = amount;
-//        m_renderer->moveGdsY(value);
-        break;
-    case Qt::Key_Down:
-        funcName = "moveGdsY";
-        value = -amount;
-//        m_renderer->moveGdsY(value);
-        break;
-    case Qt::Key_Right:
-        funcName = "moveGdsX";
-        value = amount;
-//        m_renderer->moveGdsX(value);
-        break;
-    case Qt::Key_Left:
-        funcName = "moveGdsX";
-        value = -amount;
-//        m_renderer->moveGdsX(value);
-        break;
-    case Qt::Key_PageUp:
-        funcName = "moveGdsZ";
-        value = amount;
-//        m_renderer->moveGdsZ(value);
-        break;
-    case Qt::Key_PageDown:
-        funcName = "moveGdsZ";
-        value = -amount;
-//        m_renderer->moveGdsZ(value);
-        break;
-    case Qt::Key_Control:
-        keyCtrl = true;
-        qDebug() << "Control";
-        break;
-    case Qt::Key_Alt:
-        keyAlt = true;
-        qDebug() << "Alt";
-        break;
-    case Qt::Key_Shift:
-        keyShift = true;
-        qDebug() << "Shift";
-        break;
-    default:
-        break;
-    }
-    emit signalInfoText(funcName, value);
-    qDebug()<<funcName << " : " << value;
-}
-void VulkanWindow::keyReleaseEvent(QKeyEvent *e)
-{
-    switch (e->key()) {
-    case Qt::Key_Control:
-        keyCtrl = false;
-        qDebug() << "Control off";
-        break;
-    case Qt::Key_Alt:
-        keyAlt = false;
-        qDebug() << "Alt off";
-        break;
-    case Qt::Key_Shift:
-        keyShift = false;
-        qDebug() << "Shift off";
-        break;
-    default:
-        break;
-    }
-}
-*/
+
+
+
+
+
+
+
+
+
 
 ::::./trianglerenderer.cpp::::/****************************************************************************
 **
@@ -5155,7 +5256,7 @@ void TriangleRenderer::startNextFrame()
     if (err != VK_SUCCESS)
         qFatal("Failed to map memory: %d", err);
     QMatrix4x4 m = m_proj;
-    m.rotate(m_rotation, 0, 1, 0);
+    m.rotate(m_rotation, m_rotation_ver , 1, 0);
     memcpy(p, m.constData(), 16 * sizeof(float));
     m_devFuncs->vkUnmapMemory(dev, m_bufMem);
 
@@ -5189,6 +5290,7 @@ void TriangleRenderer::startNextFrame()
     m_window->frameReady();
     m_window->requestUpdate(); // render continuously, throttled by the presentation rate
 }
+
 ::::./Rendering/Src/LayoutModel.h::::#pragma once
 
 #include "lve_model.hpp"
@@ -5665,10 +5767,12 @@ private:
 #include "lve_camera.hpp"
 #include "keyboard_movement_controller.hpp"
 
+
 #include <iostream>
 #include <vector>
 
 
+class LayoutModel;
 
 class DtaoRenderSystem : public QVulkanWindowRenderer
 {
@@ -5687,11 +5791,14 @@ public:
 
     void startNextFrame() override;
 
-    float getRenderScale() {return this->render_scale;};
+    float getRenderScale() {return this->trans_info.scale;}
+    LayoutModel* getLayoutModel();
+    bool isRenderModelLoaded(){return this->render_object_created;}
 
 public:
     LveCamera camera{};
     KeyboardMovementController cameraController{};
+
 
 private:
     QVulkanDeviceFunctions *m_devFuncs = nullptr;
@@ -5705,9 +5812,25 @@ private:
     std::vector<LveGameObject> gameObjects{};
     bool render_object_created = {false};
 
-    //KeyboardMovementController cameraController;
 
-    float render_scale{1.0f};
+    struct TRANS_INFORMATION{
+       float trans_x;
+       float trans_y;
+       float trans_z;
+       float scale;
+    };
+    TRANS_INFORMATION trans_info;
+    std::shared_ptr<LayoutModel> layout_model = {nullptr};
+
+public:
+    void createNewObject(MODEL_TYPE model_type, const std::string & file_path);
+
+private:
+    void createNewLayoutObject(const std::string & file_path);
+    void createNewPEXCapObject(const std::string & file_path);
+    void createNewPEXResObject(const std::string & file_path);
+    void createNewAxisObject(const std::string & file_path);
+
 
 private:
     void createLveDevice();
@@ -5722,7 +5845,7 @@ private:
 ::::./Rendering/Src/keyboard_movement_controller.hpp::::#pragma once
 
 #include <QKeyEvent>
-
+#include <QMouseEvent>
 #include "lve_game_object.hpp"
 #include "lve_window.hpp"
 #include "lve_camera.hpp"
@@ -5731,42 +5854,56 @@ private:
 class KeyboardMovementController {
 public:
     struct CameraMoveKeyMappings {
-        int moveLeft = Qt::Key_A;
-        int moveRight = Qt::Key_D;
+        int rotateLeft = Qt::Key_A;
+        int rotateRight = Qt::Key_D;
         int moveForward = Qt::Key_W;
         int moveBackward = Qt::Key_S;
-        int moveUp = Qt::Key_E;
-        int moveDown = Qt::Key_Q;
-        //int lookLeft = GLFW_KEY_LEFT;
-        //int lookRight = GLFW_KEY_RIGHT;
-        //int lookUp = GLFW_KEY_UP;
-        //int lookDown = GLFW_KEY_DOWN;
-        //int mouseLeft = GLFW_MOUSE_BUTTON_LEFT;
-        //int mouseRight = GLFW_MOUSE_BUTTON_RIGHT;
+        int rotateForward = Qt::Key_E;
+        int rotateBackward = Qt::Key_Q;
+        int moveUp = Qt::Key_Up;
+        int moveDown= Qt::Key_Down;
+        int moveLeft= Qt::Key_Left;
+        int moveRight= Qt::Key_Right;
+        Qt::MouseButtons mouseLeft = Qt::LeftButton;
+        Qt::MouseButtons mouseRight = Qt::RightButton;
     };
 
     struct CameraMovingContinousFlags {
-        bool moveLeft = false;
-        bool moveRight = false;
+        bool rotateLeft = false;
+        bool rotateRight = false;
         bool moveForward = false;
         bool moveBackward = false;
+        bool rotateForward = false;
+        bool rotateBackward = false;
         bool moveUp = false;
-        bool moveDown = false;
-        //int lookLeft = GLFW_KEY_LEFT;
-        //int lookRight = GLFW_KEY_RIGHT;
-        //int lookUp = GLFW_KEY_UP;
-        //int lookDown = GLFW_KEY_DOWN;
-        //int mouseLeft = GLFW_MOUSE_BUTTON_LEFT;
-        //int mouseRight = GLFW_MOUSE_BUTTON_RIGHT;
+        bool moveDown= false;
+        bool moveLeft= false;
+        bool moveRight= false;
+        bool mouseLeft= false;
+        bool mouseRight= false;
+    };
+
+    struct MousePosition {
+        QPoint pressPosition;
+        QPoint releasePosition;
+        QPoint currentPosition;
+        QPoint scroll;
     };
 
     void moveCamera(Qt::Key key, float dt, LveCamera& camera, float render_scale);
     CameraMoveKeyMappings camera_move_key;
+    MousePosition mouse_position;
 
-    void moveCamera(float dt, LveCamera& camera, float render_scale);
+    void moveCamera(float dt, LveCamera& camera, float render_scale,std::vector<LveGameObject>& gameObjects);
+    void moveCameraMouse(LveCamera& camera, float render_scale,std::vector<LveGameObject>& gameObjects);
     void moveKeyPressed(Qt::Key key);
     void moveKeyReleased(Qt::Key key);
+    void moveButtonPressed(Qt::MouseButtons buttons);
+    void moveButtonReleased(Qt::MouseButtons buttons);
     void setAllMoveFlagOff();
+    void setMouseFlagOff();
+    void setMousePosition(QPoint position, int mode);
+    void setMouseScroll(QPoint position);
     CameraMovingContinousFlags camera_moving_flag;
 
 
@@ -5831,8 +5968,10 @@ public:
 
     //KeyMappings keys{};
 */
-    float moveSpeed{ 3.f };
+    float moveSpeed{ 0.05f };
     float lookSpeed{ 1.5f };
+    int xpos_prev;
+    int ypos_prev;
 };
 
 ::::./Rendering/Src/lve_camera.hpp::::#pragma once
@@ -6054,6 +6193,41 @@ private:
     bool axis_line_enabled = { true };
 };
 
+class DTAOObject {
+public:
+    using id_t = unsigned int;
+
+    static DTAOObject createObject() {
+        static id_t currentId = 0;
+        std::cout << "\n\n***DTAOObject :: id : " << currentId << "\n\n";
+        return DTAOObject{ currentId++ };
+    }
+
+    DTAOObject(const DTAOObject&) = delete;
+    DTAOObject& operator=(const DTAOObject&) = delete;
+    DTAOObject(DTAOObject&&) = default;
+    DTAOObject& operator=(DTAOObject&&) = default;
+
+    id_t getId() { return id; }
+
+    void setEdgeLineEnable(bool flag) { this->edge_line_enabled = flag; }
+    void setAxisLineEnable(bool flag) { this->axis_line_enabled = flag; }
+
+public:
+    std::shared_ptr<LveModel> model{};
+    //LveModel* model{};
+    glm::vec3 color{};
+    TransformComponent transform{};
+
+private:
+    DTAOObject(id_t objId) : id{ objId } {}
+
+    id_t id;
+
+private:
+    bool edge_line_enabled = { true };
+    bool axis_line_enabled = { true };
+};
 ::::./Rendering/Src/lve_model.hpp::::#pragma once
 
 #include "lve_device.hpp"
@@ -6261,6 +6435,10 @@ public:
 public:
     QVulkanWindowRenderer *createRenderer() override;
     //QVulkanWindowRenderer * getRenderer(){ return this->m_renderer;}
+    //LveCamera* camera;
+
+public:
+    DtaoRenderSystem * getRenderer(){return this->m_renderer;}
 
 private:
     DtaoRenderSystem *m_renderer;
@@ -8137,8 +8315,6 @@ public:
             std::vector<LveGameObject>& gameObjects,
             const LveCamera& camera);
 
-
-
 private:
     void createPipelineLayout(VkPipelineLayout & pipeline_layout);
     void createPipelineForFace(VkRenderPass renderPass);
@@ -8247,7 +8423,7 @@ signals:
 
 };
 
-#endif // ALL_DATA_H 
+#endif // ALL_DATA_H
 ::::./filedb.h::::#ifndef FILEDB_H
 #define FILEDB_H
 
@@ -8261,7 +8437,8 @@ public:
     void openFile(QString fileNameInfo,QVector<QList<float>> &vecList,
                   float &xMinSize,float &yMinSize,float &xMaxSize,float &yMaxSize);
 };
-#endif // FILEDB_H 
+
+#endif // FILEDB_H
 ::::./formhier.h::::#ifndef FORMHIER_H
 #define FORMHIER_H
 
@@ -8294,7 +8471,9 @@ public:
     //void testMyData();
 
 };
+
 #endif // FORMHIER_H
+
 /////
 ::::./forminfo.h::::#ifndef FORMINFO_H
 #define FORMINFO_H
@@ -8324,7 +8503,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom 초기값에 �GDS size �갖고� �정 �요
+    float infoZoom = 1; //Zoom 齑堦赴臧掛棎 �GDS size 毳臧栮碃� 橃爼 勳殧
 
     float initRot = 0;
     float initTilt = 90;
@@ -8335,6 +8514,7 @@ private:
     float x = 0;
     float y = 0;
 };
+
 #endif // FORMINFO_H
 ::::./formlayer.h::::#ifndef FORMLAYER_H
 #define FORMLAYER_H
@@ -8483,7 +8663,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom 초기값에 �GDS size �갖고� �정 �요
+    float infoZoom = 1; //Zoom 齑堦赴臧掛棎 �GDS size 毳臧栮碃� 橃爼 勳殧
 
     float initRot = 0;
     float initTilt = 90;
@@ -8494,6 +8674,8 @@ private:
     float x = 0;
     float y = 0;
 };
+
+
 
 #endif // FORMMAP_H
 ::::./formtop.h::::#ifndef FORMTOP_H
@@ -8524,8 +8706,6 @@ private:
 #define GITMERGE_H
 
 #include <QString>
-
-//test
 
 class GitMerge
 {
@@ -8558,6 +8738,8 @@ private:
 #include "all_data.h"
 #include <QVector>
 
+#include "T2D.h"
+
 class LveWindow;
 
 QT_BEGIN_NAMESPACE
@@ -8574,6 +8756,8 @@ public:
 
     void shareGeo(QRect size);
 
+    T2D t2d;
+
 public slots:
 
     void slotInfoText(QString funcName, float value);
@@ -8587,6 +8771,10 @@ signals:
 
 private slots:
     void on_actionOpen_Map_File_triggered();
+
+    void on_actionOpen_Layout_triggered();
+
+    void on_actionOpen_DB_triggered();
 
 private:
     LveWindow *m_window;
@@ -8603,47 +8791,6 @@ private:
     all_data *input_dataS;
     QStringList split_data;
 };
-
-/*
-// Graphics output
-class VulkanRenderer : public TriangleRenderer
-{
-public:
-    VulkanRenderer(VulkanWindow *w);
-};
-
-// Graphics output -> Qt
-class VulkanWindow : public QVulkanWindow
-{
-    Q_OBJECT
-
-public:
-    QVulkanWindowRenderer *createRenderer() override;
-
-
-private:
-    VulkanRenderer *m_renderer;
-    void wheelEvent(QWheelEvent *) override;
-    void mousePressEvent(QMouseEvent *) override;
-    void mouseReleaseEvent(QMouseEvent *) override;
-    void mouseMoveEvent(QMouseEvent *) override;
-    void keyPressEvent(QKeyEvent *) override;
-    void keyReleaseEvent(QKeyEvent *) override;
-
-    bool keyCtrl = false;
-    bool keyShift = false;
-    bool keyAlt = false;
-
-    int m_mouseButton = 0;
-
-
-    QPoint m_lastPos;
-
-signals:
-    void signalInfoText(QString funcName, float value);
-};
-
-*/
 
 #endif // MAINWINDOW_H
 ::::./trianglerenderer.h::::/****************************************************************************
@@ -8710,6 +8857,8 @@ public:
 
     void startNextFrame() override;
 
+
+
 protected:
     VkShaderModule createShader(const QString &name);
 
@@ -8730,6 +8879,7 @@ protected:
 
     QMatrix4x4 m_proj;
     float m_rotation = 0.0f;
+    float m_rotation_ver = 0.0f;
 };
 ::::./formhier.ui::::<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
@@ -8739,13 +8889,19 @@ protected:
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>511</width>
-    <height>400</height>
+    <width>510</width>
+    <height>300</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="minimumSize">
    <size>
-    <width>380</width>
+    <width>450</width>
     <height>100</height>
    </size>
   </property>
@@ -9135,9 +9291,27 @@ protected:
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>411</width>
-    <height>475</height>
+    <width>450</width>
+    <height>600</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>450</width>
+    <height>300</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>430</width>
+    <height>16777215</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
@@ -9156,6 +9330,9 @@ protected:
        <property name="textElideMode">
         <enum>Qt::ElideMiddle</enum>
        </property>
+       <attribute name="horizontalHeaderVisible">
+        <bool>false</bool>
+       </attribute>
        <attribute name="verticalHeaderVisible">
         <bool>false</bool>
        </attribute>
@@ -9275,7 +9452,7 @@ protected:
      <x>0</x>
      <y>0</y>
      <width>1024</width>
-     <height>25</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -9285,6 +9462,9 @@ protected:
     <addaction name="actionOpen_file"/>
     <addaction name="separator"/>
     <addaction name="actionOpen_Map_File"/>
+    <addaction name="actionOpen_Layout"/>
+    <addaction name="separator"/>
+    <addaction name="actionOpen_DB"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -9320,6 +9500,16 @@ protected:
   <action name="actionOpen_Map_File">
    <property name="text">
     <string>Open Map File</string>
+   </property>
+  </action>
+  <action name="actionOpen_Layout">
+   <property name="text">
+    <string>Open Layout</string>
+   </property>
+  </action>
+  <action name="actionOpen_DB">
+   <property name="text">
+    <string>Open DB</string>
    </property>
   </action>
  </widget>
@@ -9445,3 +9635,5 @@ INCLUDEPATH += $$PWD/../../Library/VulkanSDK/1.3.239.0/Lib
 DEPENDPATH += $$PWD/../../Library/VulkanSDK/1.3.239.0/Lib
 
 INCLUDEPATH += $$PWD/../../Library/glm-0.9.9.8/glm
+
+
