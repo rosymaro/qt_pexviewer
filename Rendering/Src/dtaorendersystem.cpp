@@ -17,6 +17,7 @@
 DtaoRenderSystem::DtaoRenderSystem(LveWindow *w)
     : lveWindow(w)
 {
+    this->trans_info = {};
     qDebug() << "\n$$$$$ DtaoRenderSystem()";
 }
 
@@ -64,12 +65,15 @@ void DtaoRenderSystem::beginRenderPass(VkCommandBuffer command_buffer){
 
 void DtaoRenderSystem::startNextFrame(){
     this->cameraController.moveCamera(
-                1.0, this->camera, this->getRenderScale());
+                1.0, this->camera, this->getRenderScale(), this->gameObjects);
+    this->cameraController.moveCameraMouse(
+                this->camera, this->getRenderScale(), this->gameObjects);
 
     VkCommandBuffer command_buffer = this->lveWindow->currentCommandBuffer();
     beginRenderPass(command_buffer);
 
-    this->simpleRenderSystem->renderGameObjects(command_buffer,this->gameObjects, this->camera);
+    this->simpleRenderSystem->renderGameObjects(
+                command_buffer, this->gameObjects, this->camera);
 
     m_devFuncs->vkCmdEndRenderPass(command_buffer);
 
@@ -81,7 +85,7 @@ void DtaoRenderSystem::initResources() {
     qDebug() << "\n$$$$$ DtaoRenderSystem::initResources()";
     createLveDevice();
     createSimpleRenderSystem();
-    if(!this->render_object_created) loadGameObjects();
+    //if(!this->render_object_created) loadGameObjects();
 
     this->camera.setViewTarget(
                 glm::vec3(1.0f,1.0f,1.0f),
@@ -135,14 +139,109 @@ void DtaoRenderSystem::deleteSimpleRenderSystem(){
     delete this->simpleRenderSystem;
 }
 
+void DtaoRenderSystem::createNewObject(MODEL_TYPE model_type, const std::string & file_path) {
+    if( model_type == MODEL_TYPE::MODEL_TYPE_LAYOUT) createNewLayoutObject(file_path);
+    else if( model_type == MODEL_TYPE::MODEL_TYPE_PEX_CAPACITOR) createNewPEXCapObject(file_path);
+    else if( model_type == MODEL_TYPE::MODEL_TYPE_PEX_RESISTOR) createNewPEXResObject(file_path);
+    else if( model_type == MODEL_TYPE::MODEL_TYPE_AXIS) createNewAxisObject(file_path);
+}
+
+void DtaoRenderSystem::createNewLayoutObject(const std::string & file_path){
+
+    //Layout model
+    std::string layout_info_file_path = file_path;
+    std::shared_ptr<LayoutModel> model
+            = std::make_unique<LayoutModel>(
+                *this->lveDevice, MODEL_TYPE_LAYOUT, layout_info_file_path);
+    model->opacity = 0.5f;
+
+    LayoutDataManager* layout_data = model->getLayoutDataManager();
+    this->trans_info.trans_x = static_cast<float>( layout_data->getMinX());
+    this->trans_info.trans_y = static_cast<float>( layout_data->getMinY());
+    this->trans_info.trans_z = static_cast<float>( layout_data->getMinZ());
+    this->trans_info.scale = static_cast<float>( layout_data->getScale());
+
+    //auto new_object = DTAOObject::createObject();
+    auto new_object = LveGameObject::createGameObject();
+    new_object.model = model;
+    new_object.transform.translation = {
+        -this->trans_info.trans_x, -this->trans_info.trans_y, -this->trans_info.trans_z};
+    new_object.transform.scale = {
+        this->trans_info.scale, this->trans_info.scale, this->trans_info.scale };
+
+    //this->dtao_objects.push_back(std::move(new_object));
+    this->gameObjects.push_back(std::move(new_object));
+    this->render_object_created = true;
+    this->layout_model = model;
+}
+
+void DtaoRenderSystem::createNewPEXResObject( const std::string & file_path){
+    //PEX Resistor model
+    std::string res_info_file_path = file_path;
+    std::shared_ptr<PEXResistorModel> model
+            = std::make_unique<PEXResistorModel>(
+                *this->lveDevice, MODEL_TYPE_PEX_RESISTOR, res_info_file_path);
+
+    //Resistor Object
+    //auto new_object = DTAOObject::createObject();
+    auto new_object = LveGameObject::createGameObject();
+    new_object.model = model;
+    new_object.transform.translation = {
+        -this->trans_info.trans_x, -this->trans_info.trans_y, -this->trans_info.trans_z};
+    new_object.transform.scale = {
+        this->trans_info.scale, this->trans_info.scale, this->trans_info.scale };
+
+    //this->dtao_objects.push_back(std::move(new_object));
+    this->gameObjects.push_back(std::move(new_object));
+}
+
+void DtaoRenderSystem::createNewPEXCapObject( const std::string & file_path){
+    //PEX Capacitor model
+    std::string cap_info_file_path = file_path;
+    std::shared_ptr<PEXCapacitorModel> model
+            = std::make_unique<PEXCapacitorModel>(
+                *this->lveDevice, MODEL_TYPE_PEX_CAPACITOR,
+                cap_info_file_path, this->layout_model->getLayoutDataManager());
+
+    //Capacitor Object
+    //auto new_object = DTAOObject::createObject();
+    auto new_object = LveGameObject::createGameObject();
+    new_object.model = model;
+    new_object.transform.translation = {
+        -this->trans_info.trans_x, -this->trans_info.trans_y, -this->trans_info.trans_z};
+    new_object.transform.scale = {
+        this->trans_info.scale, this->trans_info.scale, this->trans_info.scale };
+
+    //this->dtao_objects.push_back(std::move(new_object));
+    this->gameObjects.push_back(std::move(new_object));
+}
+
+void DtaoRenderSystem::createNewAxisObject(const std::string & file_path){
+    (void)(file_path);
+    //Axis model
+    std::shared_ptr<LveModel> model
+            = std::make_unique<LveModel>(*this->lveDevice, MODEL_TYPE_AXIS);
+
+    //auto new_object = DTAOObject::createObject();
+    auto new_object = LveGameObject::createGameObject();
+    new_object.model = model;
+    new_object.transform.translation = {0.0f, 0.0f, 0.0f};
+    new_object.transform.scale = { 1.0f, 1.0f, 1.0f };
+
+    //this->dtao_objects.push_back(std::move(new_object));
+    this->gameObjects.push_back(std::move(new_object));
+}
+
+/*
 void DtaoRenderSystem::loadGameObjects() {
     qDebug() << "\n$$$$$ DtaoRenderSystem::loadGameObjects()";
+    return;
 
     auto cube = LveGameObject::createGameObject();
 
     //Layout model
     std::string layout_info_file_path = "Rendering/Data/layout_input_data.csv";
-    //std::string layout_info_file_path = "Rendering/Data/test_espin.csv";
+    //std::string layout_info_file_path = "Rendering/Data/big_test_espin.csv";
     std::shared_ptr<LayoutModel> layout_model
             = std::make_unique<LayoutModel>(*this->lveDevice, MODEL_TYPE_LAYOUT, layout_info_file_path);
     layout_model->opacity = 0.5f;
@@ -159,7 +258,6 @@ void DtaoRenderSystem::loadGameObjects() {
     std::shared_ptr<LveModel> axis_model
             = std::make_unique<LveModel>(*this->lveDevice, MODEL_TYPE_AXIS);
 
-    //*
     //PEX Resistor model
     std::string res_info_file_path = "Rendering/Data/MVP_PEX_RC_r1_0130_0208version.csv";
     std::shared_ptr<PEXResistorModel> res_model
@@ -184,7 +282,6 @@ void DtaoRenderSystem::loadGameObjects() {
     cube.transform.translation = { -trans_x, -trans_y, -trans_z };
     cube.transform.scale = { scale, scale, scale };
     gameObjects.push_back(std::move(cube));
-    //*/
 
     //Layout Object
     cube = LveGameObject::createGameObject();
@@ -202,4 +299,4 @@ void DtaoRenderSystem::loadGameObjects() {
 
     this->render_object_created = true;
 }
-
+*/

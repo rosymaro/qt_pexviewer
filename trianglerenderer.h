@@ -62,6 +62,8 @@ public:
 
     void startNextFrame() override;
 
+
+
 protected:
     VkShaderModule createShader(const QString &name);
 
@@ -82,4 +84,5 @@ protected:
 
     QMatrix4x4 m_proj;
     float m_rotation = 0.0f;
+    float m_rotation_ver = 0.0f;
 };

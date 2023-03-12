@@ -13,10 +13,12 @@
 #include "lve_camera.hpp"
 #include "keyboard_movement_controller.hpp"
 
+
 #include <iostream>
 #include <vector>
 
 
+class LayoutModel;
 
 class DtaoRenderSystem : public QVulkanWindowRenderer
 {
@@ -35,11 +37,14 @@ public:
 
     void startNextFrame() override;
 
-    float getRenderScale() {return this->render_scale;};
+    float getRenderScale() {return this->trans_info.scale;}
+    LayoutModel* getLayoutModel();
+    bool isRenderModelLoaded(){return this->render_object_created;}
 
 public:
     LveCamera camera{};
     KeyboardMovementController cameraController{};
+
 
 private:
     QVulkanDeviceFunctions *m_devFuncs = nullptr;
@@ -53,9 +58,25 @@ private:
     std::vector<LveGameObject> gameObjects{};
     bool render_object_created = {false};
 
-    //KeyboardMovementController cameraController;
 
-    float render_scale{1.0f};
+    struct TRANS_INFORMATION{
+       float trans_x;
+       float trans_y;
+       float trans_z;
+       float scale;
+    };
+    TRANS_INFORMATION trans_info;
+    std::shared_ptr<LayoutModel> layout_model = {nullptr};
+
+public:
+    void createNewObject(MODEL_TYPE model_type, const std::string & file_path);
+
+private:
+    void createNewLayoutObject(const std::string & file_path);
+    void createNewPEXCapObject(const std::string & file_path);
+    void createNewPEXResObject(const std::string & file_path);
+    void createNewAxisObject(const std::string & file_path);
+
 
 private:
     void createLveDevice();

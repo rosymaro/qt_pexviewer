@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'formhier.ui'
 **
-** Created by: Qt User Interface Compiler version 5.14.2
+** Created by: Qt User Interface Compiler version 5.15.2
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
@@ -30,17 +30,19 @@ public:
     {
         if (FormHier->objectName().isEmpty())
             FormHier->setObjectName(QString::fromUtf8("FormHier"));
-        FormHier->resize(511, 400);
-        FormHier->setMinimumSize(QSize(380, 100));
+        FormHier->resize(510, 300);
+        QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        sizePolicy.setHorizontalStretch(0);
+        sizePolicy.setVerticalStretch(0);
+        sizePolicy.setHeightForWidth(FormHier->sizePolicy().hasHeightForWidth());
+        FormHier->setSizePolicy(sizePolicy);
+        FormHier->setMinimumSize(QSize(450, 100));
         verticalLayout = new QVBoxLayout(FormHier);
         verticalLayout->setObjectName(QString::fromUtf8("verticalLayout"));
         gridLayout = new QGridLayout();
         gridLayout->setObjectName(QString::fromUtf8("gridLayout"));
         tableWidget = new QTableWidget(FormHier);
         tableWidget->setObjectName(QString::fromUtf8("tableWidget"));
-        QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        sizePolicy.setHorizontalStretch(0);
-        sizePolicy.setVerticalStretch(0);
         sizePolicy.setHeightForWidth(tableWidget->sizePolicy().hasHeightForWidth());
         tableWidget->setSizePolicy(sizePolicy);
         tableWidget->setMinimumSize(QSize(260, 100));

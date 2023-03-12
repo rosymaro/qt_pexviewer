@@ -15,6 +15,8 @@
 #include "all_data.h"
 #include <QVector>
 
+#include "T2D.h"
+
 class LveWindow;
 
 QT_BEGIN_NAMESPACE
@@ -31,6 +33,8 @@ public:
 
     void shareGeo(QRect size);
 
+    T2D t2d;
+
 public slots:
 
     void slotInfoText(QString funcName, float value);
@@ -44,6 +48,10 @@ signals:
 
 private slots:
     void on_actionOpen_Map_File_triggered();
+
+    void on_actionOpen_Layout_triggered();
+
+    void on_actionOpen_DB_triggered();
 
 private:
     LveWindow *m_window;
@@ -60,46 +68,5 @@ private:
     all_data *input_dataS;
     QStringList split_data;
 };
-
-/*
-// Graphics output
-class VulkanRenderer : public TriangleRenderer
-{
-public:
-    VulkanRenderer(VulkanWindow *w);
-};
-
-// Graphics output -> Qt
-class VulkanWindow : public QVulkanWindow
-{
-    Q_OBJECT
-
-public:
-    QVulkanWindowRenderer *createRenderer() override;
-
-
-private:
-    VulkanRenderer *m_renderer;
-    void wheelEvent(QWheelEvent *) override;
-    void mousePressEvent(QMouseEvent *) override;
-    void mouseReleaseEvent(QMouseEvent *) override;
-    void mouseMoveEvent(QMouseEvent *) override;
-    void keyPressEvent(QKeyEvent *) override;
-    void keyReleaseEvent(QKeyEvent *) override;
-
-    bool keyCtrl = false;
-    bool keyShift = false;
-    bool keyAlt = false;
-
-    int m_mouseButton = 0;
-
-
-    QPoint m_lastPos;
-
-signals:
-    void signalInfoText(QString funcName, float value);
-};
-
-*/
 
 #endif // MAINWINDOW_H

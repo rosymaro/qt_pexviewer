@@ -1,6 +1,9 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include "Rendering/Src/dtaorendersystem.h"
+#include "Rendering/Src/lve_model.hpp"
+
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QDockWidget>
@@ -110,7 +113,7 @@ void MainWindow::on_actionOpen_Map_File_triggered()
 {
     QString fileNameInfo = QFileDialog::getOpenFileName(this,
                                                         tr("Open map file"),
-                                                        "C:/",
+                                                        ".",
                                                         tr("text (*.txt)")
                                                         );
     FileDb *fileDb = new FileDb;
@@ -118,7 +121,7 @@ void MainWindow::on_actionOpen_Map_File_triggered()
     float xMinSize = 0, yMinSize = 0, xMaxSize = 0, yMaxSize = 0;
     fileDb->openFile(fileNameInfo, vecList , xMinSize, yMinSize, xMaxSize, yMaxSize);
 
-    int posScale = 1000, splitSize = 10; //posScale 이 1이면 um 단위, posScale 이 1000이면 nm 단위
+    int posScale = 1000, splitSize = 10; //posScale 1�┐ um �渼, posScale 1000�┐ nm �渼
     int n = (int(xMaxSize *posScale)-int(xMinSize *posScale))/splitSize +1;
     int m = (int(yMaxSize *posScale)-int(yMinSize *posScale))/splitSize +1;
     qDebug() << "int n / int m : " << n << " , " <<m;
@@ -126,8 +129,8 @@ void MainWindow::on_actionOpen_Map_File_triggered()
     ////////////////////////////////////////////////
     QVector<QVector<QVector<QList<float>>>> mapFile(n, QVector<QVector<QList<float>>>(m, {{}}));
 //    QVector<QList<float>> mapFile[n][m];
-    // 구조 변경에 대해 생각할 필요 있음
-    // 주형 구조 : struct(layer, r, g, b, z, thk, opacity, vector())
+    // �氤��届��濌�勳殨潓
+    // 欤柬槑: struct(layer, r, g, b, z, thk, opacity, vector())
 
     mapFile[0][0][0].append({0, 0, xMinSize, yMinSize, xMaxSize, yMaxSize, 0, 0});
 
@@ -170,192 +173,74 @@ void MainWindow::on_actionOpen_Map_File_triggered()
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "파일 선택","C:\\","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 �儩",".","Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
 
 }
 
-
 void MainWindow::inputLayerStatus(QString text)
 {
     ui->statusbar->showMessage(text);
 }
 
-/*
-QVulkanWindowRenderer *VulkanWindow::createRenderer()
+
+
+void MainWindow::on_actionOpen_Layout_triggered()
 {
-    m_renderer = new VulkanRenderer(this);
-    return m_renderer;
+    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 �儩",".","Files(*.*)");
+    DtaoRenderSystem * renderer = this->m_window->getRenderer();
+
+    renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
+
+
 }
 
-VulkanRenderer::VulkanRenderer(VulkanWindow *w)
-    : TriangleRenderer(w)
-{
-}
+void MainWindow::on_actionOpen_DB_triggered(){
+    std::cout << "callv" << std::endl;
+    QString file_name = QFileDialog::getOpenFileName(this, "OpenDB", "C:\\", "Text (*.txt) ;; Files (*.*)");
+    if(file_name != ""){
+        std::cout << file_name.toStdString() << std::endl;
+        this->t2d.text2data(file_name.toStdString());
 
-void VulkanWindow::wheelEvent(QWheelEvent *e)
-{
-    //문제가 하나 있는데...
-    //프로그램이 선택되어 있지 않아도 moveZoom 명령이 나감
-    //근데 Ctrl 은 Vulkan Window 가 선택되었을 때만 됨
-    //moveZoom 을 이 Level 까지 끌고 내려와야 함
-    const float amount = e->angleDelta().y() / 8;
-
-    if (keyCtrl == true)
-    {
-//      m_rendere->windowZoom(amount);
-        QString funcName = "windowZoom";
-        float value = amount;
-        emit signalInfoText(funcName, value);
-//        qDebug()<<funcName << " : " << value;
-    }
-    else
-    {
-//      m_renderer->moveZoom(amount);
-        QString funcName = "moveZoom";
-        float value = amount;
-        emit signalInfoText(funcName, value);
-//        qDebug()<<funcName << " : " << value;
-    }
-}
-
-void VulkanWindow::mousePressEvent(QMouseEvent *e)
-{
-    m_mouseButton = e->buttons();
-    m_lastPos = e->pos();
-}
-
-void VulkanWindow::mouseReleaseEvent(QMouseEvent *)
-{
-    m_mouseButton = 0;
-    QString funcName = "mouseRelease";
-    float value = 0;
-    emit signalInfoText(funcName, value);
-}
-
-void VulkanWindow::mouseMoveEvent(QMouseEvent *e)
-{
-    if (m_mouseButton == 0)
-        return;
-
-    int dx = e->pos().x() - m_lastPos.x();
-    int dy = e->pos().y() - m_lastPos.y();
-
-    if (dx)
-    {
-        if (m_mouseButton == 2)
-        {
-//            m_renderer->rotateRenderY(dx / 10.0f);
-            QString funcName = "rotateRenderX";
-            float value = -dx / 10.0f;
-            emit signalInfoText(funcName, value);
-            qDebug()<< "mouseEvent "<<funcName << " : " << value;
-        }
-        else if (m_mouseButton == 4)
-        {
-//            m_renderer->moveRenderX(dx / 10.0f);
-            QString funcName = "moveRenderX";
-            float value = -dx / 10.0f;
-            emit signalInfoText(funcName, value);
-//            qDebug()<<funcName << " : " << value;
+        printf("%-9f %-9f %-9f %-9f %-9f %-9f", t2d.LayoutMinMax.minx, t2d.LayoutMinMax.miny, t2d.LayoutMinMax.maxx, t2d.LayoutMinMax.maxy, t2d.LayoutMinMax.minz, t2d.LayoutMinMax.maxz);
+        for(int i = 0 ; i < t2d.LayoutData10by10.size() ; i++){
+            printf("\n%-9s %-9d %-9d %-9d %-9d %-9d %-9d %-9f %-9f ",
+                   t2d.LayoutData10by10[i].layername.c_str(),
+                   t2d.LayoutData10by10[i].layernum,
+                   t2d.LayoutData10by10[i].datatype,
+                   t2d.LayoutData10by10[i].color.r,
+                   t2d.LayoutData10by10[i].color.g,
+                   t2d.LayoutData10by10[i].color.b,
+                   t2d.LayoutData10by10[i].color.a,
+                   t2d.LayoutData10by10[i].bot,
+                   t2d.LayoutData10by10[i].top);
+            for(int j = 0 ; j < (t2d.LayoutData10by10[i].xy).size() ; j++){
+                for(int x = 0 ; x < (t2d.LayoutData10by10[i].xy[j]).size() ; x++){
+                    printf("\n%d %d %d", j, x, (t2d.LayoutData10by10[i].xy[j][x]).size());
+                    for(int y = 0 ; y < (t2d.LayoutData10by10[i].xy[j][x]).size() ; y++){
+                        printf("\n%-9f %-9f %-9f %-9f",
+                               t2d.LayoutData10by10[i].xy[j][x][y].minx,
+                               t2d.LayoutData10by10[i].xy[j][x][y].miny,
+                               t2d.LayoutData10by10[i].xy[j][x][y].maxx,
+                               t2d.LayoutData10by10[i].xy[j][x][y].maxy);
+                    }
+                }
+            }
         }
     }
-
-    if (dy)
-    {
-        if (m_mouseButton == 2)
-        {
-//            m_renderer->rotateRenderY(dy / 10.0f);
-            QString funcName = "rotateRenderY";
-            float value = dy / 10.0f;
-            emit signalInfoText(funcName, value);
-//            qDebug()<<funcName << " : " << value;
-        }
-        else if (m_mouseButton == 4)
-        {
-//            m_renderer->moveRenderY(dy / 10.0f);
-            QString funcName = "moveRenderY";
-            float value = dy / 10.0f;
-            emit signalInfoText(funcName, value);
-//            qDebug()<<funcName << " : " << value;
-        }
-    }
+    fflush(stdout);
+    cout << "test end" << endl;
 }
 
-void VulkanWindow::keyPressEvent(QKeyEvent *e)
-{
-    const float amount = e->modifiers().testFlag(Qt::ShiftModifier) ? 1.0f : 0.1f;
-    QString funcName;
-    float value = 0;
-    switch (e->key()) {
-    case Qt::Key_Up:
-        funcName = "moveGdsY";
-        value = amount;
-//        m_renderer->moveGdsY(value);
-        break;
-    case Qt::Key_Down:
-        funcName = "moveGdsY";
-        value = -amount;
-//        m_renderer->moveGdsY(value);
-        break;
-    case Qt::Key_Right:
-        funcName = "moveGdsX";
-        value = amount;
-//        m_renderer->moveGdsX(value);
-        break;
-    case Qt::Key_Left:
-        funcName = "moveGdsX";
-        value = -amount;
-//        m_renderer->moveGdsX(value);
-        break;
-    case Qt::Key_PageUp:
-        funcName = "moveGdsZ";
-        value = amount;
-//        m_renderer->moveGdsZ(value);
-        break;
-    case Qt::Key_PageDown:
-        funcName = "moveGdsZ";
-        value = -amount;
-//        m_renderer->moveGdsZ(value);
-        break;
-    case Qt::Key_Control:
-        keyCtrl = true;
-        qDebug() << "Control";
-        break;
-    case Qt::Key_Alt:
-        keyAlt = true;
-        qDebug() << "Alt";
-        break;
-    case Qt::Key_Shift:
-        keyShift = true;
-        qDebug() << "Shift";
-        break;
-    default:
-        break;
-    }
-    emit signalInfoText(funcName, value);
-    qDebug()<<funcName << " : " << value;
-}
-void VulkanWindow::keyReleaseEvent(QKeyEvent *e)
-{
-    switch (e->key()) {
-    case Qt::Key_Control:
-        keyCtrl = false;
-        qDebug() << "Control off";
-        break;
-    case Qt::Key_Alt:
-        keyAlt = false;
-        qDebug() << "Alt off";
-        break;
-    case Qt::Key_Shift:
-        keyShift = false;
-        qDebug() << "Shift off";
-        break;
-    default:
-        break;
-    }
-}
-*/
+
+
+
+
+
+
+
+
+
 

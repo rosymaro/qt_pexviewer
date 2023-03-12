@@ -33,11 +33,10 @@ QVulkanWindowRenderer *LveWindow::createRenderer()
 
 void LveWindow::wheelEvent(QWheelEvent *e)
 {
-    //문제가 하나 있는데...
-    //프로그램이 선택되어 있지 않아도 moveZoom 명령이 나감
-    //근데 Ctrl 은 Vulkan Window 가 선택되었을 때만 됨
-    //moveZoom 을 이 Level 까지 끌고 내려와야 함
+    if( !this->m_renderer->isRenderModelLoaded() ) return;
     const float amount = e->angleDelta().y() / 8;
+    QPoint scroll = e->angleDelta();
+    this->m_renderer->cameraController.setMouseScroll(scroll);
 
     if (keyCtrl == true)
     {
@@ -59,20 +58,36 @@ void LveWindow::wheelEvent(QWheelEvent *e)
 
 void LveWindow::mousePressEvent(QMouseEvent *e)
 {
+    if( !this->m_renderer->isRenderModelLoaded() ) return;
     m_mouseButton = e->buttons();
+    Qt::MouseButtons cur_button = e->buttons();
+    QString funcName = "mousePress";
+    QPoint position = e->pos();
+    //emit signalInfoText(funcName, m_lastPos);
     m_lastPos = e->pos();
+    this->m_renderer->cameraController.moveButtonPressed(cur_button);
+    this->m_renderer->cameraController.setMousePosition(position, 1);
+
 }
 
-void LveWindow::mouseReleaseEvent(QMouseEvent *)
+void LveWindow::mouseReleaseEvent(QMouseEvent *e)
 {
+    if( !this->m_renderer->isRenderModelLoaded() ) return;
     m_mouseButton = 0;
     QString funcName = "mouseRelease";
+    Qt::MouseButtons cur_button = e->buttons();
+    QPoint position = e->pos();
     float value = 0;
-    emit signalInfoText(funcName, value);
+    emit signalInfoText(funcName, cur_button);
+    this->m_renderer->cameraController.moveButtonReleased(cur_button);
+    this->m_renderer->cameraController.setMousePosition(position, 2);
 }
 
 void LveWindow::mouseMoveEvent(QMouseEvent *e)
 {
+    if( !this->m_renderer->isRenderModelLoaded() ) return;
+    QPoint position = e->pos();
+    this->m_renderer->cameraController.setMousePosition(position, 0);
     if (m_mouseButton == 0)
         return;
 
@@ -122,96 +137,16 @@ void LveWindow::mouseMoveEvent(QMouseEvent *e)
 
 void LveWindow::keyPressEvent(QKeyEvent *e)
 {
+    if( !this->m_renderer->isRenderModelLoaded() ) return;
     Qt::Key cur_key = (Qt::Key)e->key();
 
-    //const float amount = e->modifiers().testFlag(Qt::ShiftModifier) ? 1.0f : 0.1f;
-    //QString funcName;
-    //float value = 0;
-    /*
-    //switch (e->key()) {
-    switch (cur_key) {
-    case Qt::Key_Up:
-        funcName = "moveGdsY";
-        value = amount;
-        //        m_renderer->moveGdsY(value);
-        break;
-    case Qt::Key_Down:
-        funcName = "moveGdsY";
-        value = -amount;
-        //        m_renderer->moveGdsY(value);
-        break;
-    case Qt::Key_Right:
-        funcName = "moveGdsX";
-        value = amount;
-        //        m_renderer->moveGdsX(value);
-        break;
-    case Qt::Key_Left:
-        funcName = "moveGdsX";
-        value = -amount;
-        //        m_renderer->moveGdsX(value);
-        break;
-    case Qt::Key_PageUp:
-        funcName = "moveGdsZ";
-        value = amount;
-        //        m_renderer->moveGdsZ(value);
-        break;
-    case Qt::Key_PageDown:
-        funcName = "moveGdsZ";
-        value = -amount;
-        //        m_renderer->moveGdsZ(value);
-        break;
-    case Qt::Key_Control:
-        keyCtrl = true;
-        qDebug() << "Control";
-        break;
-    case Qt::Key_Alt:
-        keyAlt = true;
-        qDebug() << "Alt";
-        break;
-    case Qt::Key_Shift:
-        keyShift = true;
-        qDebug() << "Shift";
-        break;
-    default:
-        break;
-    }
-    emit signalInfoText(funcName, value);
-    qDebug()<<funcName << " : " << value;
-
-    qDebug()<< "Pressed Key : " << cur_key;
-    */
-    /*
-    this->m_renderer->cameraController.moveCamera(
-                cur_key,
-                1.0,
-                this->m_renderer->camera,
-                this->m_renderer->getRenderScale()
-                );
-                */
     this->m_renderer->cameraController.moveKeyPressed(cur_key);
 
 }
 void LveWindow::keyReleaseEvent(QKeyEvent *e)
 {
+    if( !this->m_renderer->isRenderModelLoaded() ) return;
     Qt::Key cur_key = (Qt::Key)e->key();
     this->m_renderer->cameraController.moveKeyReleased(cur_key);
-    /*
-    switch (e->key()) {
-    case Qt::Key_Control:
-        keyCtrl = false;
-        qDebug() << "Control off";
-        break;
-    case Qt::Key_Alt:
-        keyAlt = false;
-        qDebug() << "Alt off";
-        break;
-    case Qt::Key_Shift:
-        keyShift = false;
-        qDebug() << "Shift off";
-        break;
-    default:
-        break;
-    }
-    */
 }
 

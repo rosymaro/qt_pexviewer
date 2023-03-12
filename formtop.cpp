@@ -50,7 +50,7 @@ void FormTop::receiveFile(QVector<QVector<QVector<QList<float>>>>& mapFile)
     QPen mPen;
     mPen.setWidth(5);
     mPen.setColor(Qt::red);
-// 기존에 있는 vector 를 남겨놔야 함 : delete 를 위해
+// ���堧�vector 毳波旍: delete 毳勴
     //            for(auto cur_item : rectItemList){
     //                delete cur_item;
     //            }

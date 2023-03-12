@@ -26,7 +26,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom 초기값에 대한 GDS size 를 갖고와 수정 필요
+    float infoZoom = 1; //Zoom 齑堦赴臧�棎 �GDS size 毳臧���橃爼 ��
 
     float initRot = 0;
     float initTilt = 90;
@@ -37,4 +37,5 @@ private:
     float x = 0;
     float y = 0;
 };
+
 #endif // FORMINFO_H

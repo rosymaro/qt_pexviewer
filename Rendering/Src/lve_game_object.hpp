@@ -68,3 +68,38 @@ private:
     bool axis_line_enabled = { true };
 };
 
+class DTAOObject {
+public:
+    using id_t = unsigned int;
+
+    static DTAOObject createObject() {
+        static id_t currentId = 0;
+        std::cout << "\n\n***DTAOObject :: id : " << currentId << "\n\n";
+        return DTAOObject{ currentId++ };
+    }
+
+    DTAOObject(const DTAOObject&) = delete;
+    DTAOObject& operator=(const DTAOObject&) = delete;
+    DTAOObject(DTAOObject&&) = default;
+    DTAOObject& operator=(DTAOObject&&) = default;
+
+    id_t getId() { return id; }
+
+    void setEdgeLineEnable(bool flag) { this->edge_line_enabled = flag; }
+    void setAxisLineEnable(bool flag) { this->axis_line_enabled = flag; }
+
+public:
+    std::shared_ptr<LveModel> model{};
+    //LveModel* model{};
+    glm::vec3 color{};
+    TransformComponent transform{};
+
+private:
+    DTAOObject(id_t objId) : id{ objId } {}
+
+    id_t id;
+
+private:
+    bool edge_line_enabled = { true };
+    bool axis_line_enabled = { true };
+};

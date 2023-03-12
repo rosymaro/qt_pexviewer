@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'mainwindow.ui'
 **
-** Created by: Qt User Interface Compiler version 5.14.2
+** Created by: Qt User Interface Compiler version 5.15.2
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
@@ -29,6 +29,8 @@ public:
     QAction *actionOpen_file;
     QAction *actionLayer_information;
     QAction *actionOpen_Map_File;
+    QAction *actionOpen_Layout;
+    QAction *actionOpen_DB;
     QWidget *centralwidget;
     QVBoxLayout *verticalLayout_2;
     QGraphicsView *graphicsView;
@@ -49,6 +51,10 @@ public:
         actionLayer_information->setObjectName(QString::fromUtf8("actionLayer_information"));
         actionOpen_Map_File = new QAction(MainWindow);
         actionOpen_Map_File->setObjectName(QString::fromUtf8("actionOpen_Map_File"));
+        actionOpen_Layout = new QAction(MainWindow);
+        actionOpen_Layout->setObjectName(QString::fromUtf8("actionOpen_Layout"));
+        actionOpen_DB = new QAction(MainWindow);
+        actionOpen_DB->setObjectName(QString::fromUtf8("actionOpen_DB"));
         centralwidget = new QWidget(MainWindow);
         centralwidget->setObjectName(QString::fromUtf8("centralwidget"));
         verticalLayout_2 = new QVBoxLayout(centralwidget);
@@ -61,7 +67,7 @@ public:
         MainWindow->setCentralWidget(centralwidget);
         menubar = new QMenuBar(MainWindow);
         menubar->setObjectName(QString::fromUtf8("menubar"));
-        menubar->setGeometry(QRect(0, 0, 1024, 25));
+        menubar->setGeometry(QRect(0, 0, 1024, 21));
         menuFile = new QMenu(menubar);
         menuFile->setObjectName(QString::fromUtf8("menuFile"));
         menuView = new QMenu(menubar);
@@ -79,6 +85,9 @@ public:
         menuFile->addAction(actionOpen_file);
         menuFile->addSeparator();
         menuFile->addAction(actionOpen_Map_File);
+        menuFile->addAction(actionOpen_Layout);
+        menuFile->addSeparator();
+        menuFile->addAction(actionOpen_DB);
         menuView->addAction(actionLayer_information);
 
         retranslateUi(MainWindow);
@@ -92,6 +101,8 @@ public:
         actionOpen_file->setText(QCoreApplication::translate("MainWindow", "Open file", nullptr));
         actionLayer_information->setText(QCoreApplication::translate("MainWindow", "Layer information", nullptr));
         actionOpen_Map_File->setText(QCoreApplication::translate("MainWindow", "Open Map File", nullptr));
+        actionOpen_Layout->setText(QCoreApplication::translate("MainWindow", "Open Layout", nullptr));
+        actionOpen_DB->setText(QCoreApplication::translate("MainWindow", "Open DB", nullptr));
         menuFile->setTitle(QCoreApplication::translate("MainWindow", "File", nullptr));
         menuView->setTitle(QCoreApplication::translate("MainWindow", "View", nullptr));
         toolBar->setWindowTitle(QCoreApplication::translate("MainWindow", "toolBar", nullptr));

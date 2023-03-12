@@ -477,7 +477,7 @@ void TriangleRenderer::startNextFrame()
     if (err != VK_SUCCESS)
         qFatal("Failed to map memory: %d", err);
     QMatrix4x4 m = m_proj;
-    m.rotate(m_rotation, 0, 1, 0);
+    m.rotate(m_rotation, m_rotation_ver , 1, 0);
     memcpy(p, m.constData(), 16 * sizeof(float));
     m_devFuncs->vkUnmapMemory(dev, m_bufMem);
 
@@ -511,3 +511,4 @@ void TriangleRenderer::startNextFrame()
     m_window->frameReady();
     m_window->requestUpdate(); // render continuously, throttled by the presentation rate
 }
+

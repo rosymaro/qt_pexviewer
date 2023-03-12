@@ -26,7 +26,7 @@ void FormMap::receiveSize(float &xMinSize,float &yMinSize,float &xMaxSize,float 
     scale = 178/std::max(width,height);
     width = scale * width;
     height = scale * height;
-//    float rectScale = 176*zoomScale; 추후 변경
+//    float rectScale = 176*zoomScale; �旐�氤�
 
     qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
 
@@ -79,7 +79,7 @@ void FormMap::slotInfoText(QString funcName, float value)
     }
     if (funcName == "moveZoom")
     {
-        infoZoom = infoZoom + infoZoom*value/1500;        //일정 높이를 100% 로 설정할 필요 있음, 결국 초기값은 GDS Size 에 따라 바뀔 수 있음.
+        infoZoom = infoZoom + infoZoom*value/1500;        //检�澊�00% �れ�勳殨潓, �瓣�齑堦赴臧GDS Size �澕 氚旊�堨�
         if (infoZoom < 0.01)
             infoZoom = 0.01;
         if (infoZoom > 100)
@@ -182,4 +182,5 @@ void SuperItem::slotMove(float x, float y, float zoom, float rot, float tilt)
 //        }
 //    }
 //    update();
+
 //}

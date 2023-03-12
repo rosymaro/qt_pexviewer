@@ -27,4 +27,4 @@ signals:
 
 };
 
-#endif // ALL_DATA_H 
+#endif // ALL_DATA_H

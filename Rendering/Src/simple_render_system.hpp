@@ -27,8 +27,6 @@ public:
             std::vector<LveGameObject>& gameObjects,
             const LveCamera& camera);
 
-
-
 private:
     void createPipelineLayout(VkPipelineLayout & pipeline_layout);
     void createPipelineForFace(VkRenderPass renderPass);

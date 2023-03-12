@@ -21,7 +21,7 @@ FormLayer::FormLayer(QWidget *parent) :
     ui->tableWidget->setColumnWidth(5,100);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// TableWidget Title Format 설정
+/// TableWidget Title Format �爼
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     QBrush brush(QColor(255, 255, 255, 255));
     brush.setStyle(Qt::SolidPattern);
@@ -30,7 +30,7 @@ FormLayer::FormLayer(QWidget *parent) :
     font.setWeight(75);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// TableWidget Title 입력 및 반영
+/// TableWidget Title �牓 氚氚橃榿
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     for (int i=1; i<6; i++){
         QTableWidgetItem *TableHeaderItem = new QTableWidgetItem;
@@ -58,7 +58,7 @@ FormLayer::~FormLayer()
 
 void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QString>> &inputDataVector)
 {
-// QTableWidget 에서 QStringList 로만 받기때문에 자료형변환
+// QTableWidget �� QStringList �滊氚涥赴岆�愲�曤
     QStringList vectorTOqstringlist;
     QStringList vectorTOqstringlistHoriLabels;
     QStringList vectorTOqstringcolorlist;
@@ -68,17 +68,17 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
     QString LayerColorText;
     vectorTOqstringlistHoriLabels << " ";
 
-// QTableWidget 크기 설정
+// QTableWidget �赴 �爼
     ui->tableWidget->setColumnCount(6);
     ui->tableWidget->setRowCount(row);
 //    ui->tableWidget->setItemDelegateForColumn(5,new SliderDelegate);
     ui->tableWidget->setColumnWidth(5,150);
 
-// Table 채우기
-    int TalbeColumnCount = 3;       //input data 에서 가져 올 column 갯수
+// Table 毂勳毎旮
+    int TalbeColumnCount = 3;       //input data �� ��column �垬
     for (int i=0; i<row ; i++)
     {
-       // table value 채우기
+       // table value 毂勳毎旮
         for (int j=0; j < TalbeColumnCount ; j++)
         {
             vectorTOqstringlist << inputDataVector.value(i+1).value(j);
@@ -89,7 +89,7 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
             ui->tableWidget->setItem((i+1),j+2,tableitem);
         }
 
-        //Opacity 채우기
+        //Opacity 毂勳毎旮
         QSlider *OpacitySlider = new QSlider(Qt::Horizontal);
         QWidget *OpacitySliderWidget = new QWidget();
         OpacitySlider->setRange(0,100);
@@ -104,7 +104,7 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
         ui->tableWidget->setCellWidget(i+1, 5, OpacitySliderWidget);
         QObject::connect(OpacitySlider, SIGNAL(valueChanged(int)), this, SLOT(handleOpacitySlider(int)));
 
-        // checkbox 채우기
+        // checkbox 毂勳毎旮
         QCheckBox *checkBoxItem = new QCheckBox();
         checkBoxItem->setCheckState(Qt::Checked);
         QWidget *checkboxWidget = new QWidget();
@@ -127,14 +127,14 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
         LayerColorText = "background-color: rgb(" + LayerColorRed;
         LayerColorText = LayerColorText + "," + LayerColorGreen + "," + LayerColorBlue + ")";
 
-        // color pushbutton 채우기
+        // color pushbutton 毂勳毎旮
         QPushButton *colorbutton = new QPushButton();
         colorbutton->setStyleSheet(LayerColorText);
         ui->tableWidget->setCellWidget(i+1,1,colorbutton);
         QObject::connect(colorbutton, SIGNAL(clicked()), this, SLOT(on_colorbutton_clicked()));
     }
 
-///////////////////////////////tableWidget title 에 checkbox ///////////////////////////////
+///////////////////////////////tableWidget title checkbox ///////////////////////////////
         QCheckBox *checkBoxItem = new QCheckBox();
         checkBoxItem->setCheckState(Qt::Checked);
         QWidget *checkboxWidget = new QWidget();
@@ -149,7 +149,7 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
         QCheckBox *checkboxInTable = findwidget->findChild<QCheckBox *>();
         QObject::connect(checkboxInTable, SIGNAL(stateChanged(int)), this, SLOT(tableWidget_checkBoxChanged()));
 
-///////////////////////////////tableWidget title 에 slider ///////////////////////////////
+///////////////////////////////tableWidget title slider ///////////////////////////////
 
         QSpacerItem *HeaderVerticalSpacer = new QSpacerItem(0,20,QSizePolicy::Fixed, QSizePolicy::Fixed);
         QSlider *HeaderOpacitySlider = new QSlider();
@@ -171,7 +171,7 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// \brief FormLayer::on_tableWidget_itemChanged
 /// \param checkBoxItem
-/// description : checkbox 선택에 따라 Layer On/Off mainwindow status 창에 출력
+/// description : checkbox �儩�澕 Layer On/Off mainwindow status 彀届棎 �滊
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void FormLayer::tableWidget_checkBoxChanged()
 {

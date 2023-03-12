@@ -24,6 +24,10 @@ public:
 public:
     QVulkanWindowRenderer *createRenderer() override;
     //QVulkanWindowRenderer * getRenderer(){ return this->m_renderer;}
+    //LveCamera* camera;
+
+public:
+    DtaoRenderSystem * getRenderer(){return this->m_renderer;}
 
 private:
     DtaoRenderSystem *m_renderer;

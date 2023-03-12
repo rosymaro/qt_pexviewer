@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'formlayer.ui'
 **
-** Created by: Qt User Interface Compiler version 5.14.2
+** Created by: Qt User Interface Compiler version 5.15.2
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
@@ -30,7 +30,14 @@ public:
     {
         if (FormLayer->objectName().isEmpty())
             FormLayer->setObjectName(QString::fromUtf8("FormLayer"));
-        FormLayer->resize(411, 475);
+        FormLayer->resize(450, 600);
+        QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        sizePolicy.setHorizontalStretch(0);
+        sizePolicy.setVerticalStretch(0);
+        sizePolicy.setHeightForWidth(FormLayer->sizePolicy().hasHeightForWidth());
+        FormLayer->setSizePolicy(sizePolicy);
+        FormLayer->setMinimumSize(QSize(450, 300));
+        FormLayer->setMaximumSize(QSize(430, 16777215));
         verticalLayout = new QVBoxLayout(FormLayer);
         verticalLayout->setObjectName(QString::fromUtf8("verticalLayout"));
         gridLayout = new QGridLayout();
@@ -40,6 +47,7 @@ public:
         tableWidget->setFocusPolicy(Qt::ClickFocus);
         tableWidget->setAlternatingRowColors(true);
         tableWidget->setTextElideMode(Qt::ElideMiddle);
+        tableWidget->horizontalHeader()->setVisible(false);
         tableWidget->verticalHeader()->setVisible(false);
 
         gridLayout->addWidget(tableWidget, 0, 0, 1, 1);

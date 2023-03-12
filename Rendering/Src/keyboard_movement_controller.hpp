@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QKeyEvent>
-
+#include <QMouseEvent>
 #include "lve_game_object.hpp"
 #include "lve_window.hpp"
 #include "lve_camera.hpp"
@@ -10,42 +10,56 @@
 class KeyboardMovementController {
 public:
     struct CameraMoveKeyMappings {
-        int moveLeft = Qt::Key_A;
-        int moveRight = Qt::Key_D;
+        int rotateLeft = Qt::Key_A;
+        int rotateRight = Qt::Key_D;
         int moveForward = Qt::Key_W;
         int moveBackward = Qt::Key_S;
-        int moveUp = Qt::Key_E;
-        int moveDown = Qt::Key_Q;
-        //int lookLeft = GLFW_KEY_LEFT;
-        //int lookRight = GLFW_KEY_RIGHT;
-        //int lookUp = GLFW_KEY_UP;
-        //int lookDown = GLFW_KEY_DOWN;
-        //int mouseLeft = GLFW_MOUSE_BUTTON_LEFT;
-        //int mouseRight = GLFW_MOUSE_BUTTON_RIGHT;
+        int rotateForward = Qt::Key_E;
+        int rotateBackward = Qt::Key_Q;
+        int moveUp = Qt::Key_Up;
+        int moveDown= Qt::Key_Down;
+        int moveLeft= Qt::Key_Left;
+        int moveRight= Qt::Key_Right;
+        Qt::MouseButtons mouseLeft = Qt::LeftButton;
+        Qt::MouseButtons mouseRight = Qt::RightButton;
     };
 
     struct CameraMovingContinousFlags {
-        bool moveLeft = false;
-        bool moveRight = false;
+        bool rotateLeft = false;
+        bool rotateRight = false;
         bool moveForward = false;
         bool moveBackward = false;
+        bool rotateForward = false;
+        bool rotateBackward = false;
         bool moveUp = false;
-        bool moveDown = false;
-        //int lookLeft = GLFW_KEY_LEFT;
-        //int lookRight = GLFW_KEY_RIGHT;
-        //int lookUp = GLFW_KEY_UP;
-        //int lookDown = GLFW_KEY_DOWN;
-        //int mouseLeft = GLFW_MOUSE_BUTTON_LEFT;
-        //int mouseRight = GLFW_MOUSE_BUTTON_RIGHT;
+        bool moveDown= false;
+        bool moveLeft= false;
+        bool moveRight= false;
+        bool mouseLeft= false;
+        bool mouseRight= false;
+    };
+
+    struct MousePosition {
+        QPoint pressPosition;
+        QPoint releasePosition;
+        QPoint currentPosition;
+        QPoint scroll;
     };
 
     void moveCamera(Qt::Key key, float dt, LveCamera& camera, float render_scale);
     CameraMoveKeyMappings camera_move_key;
+    MousePosition mouse_position;
 
-    void moveCamera(float dt, LveCamera& camera, float render_scale);
+    void moveCamera(float dt, LveCamera& camera, float render_scale,std::vector<LveGameObject>& gameObjects);
+    void moveCameraMouse(LveCamera& camera, float render_scale,std::vector<LveGameObject>& gameObjects);
     void moveKeyPressed(Qt::Key key);
     void moveKeyReleased(Qt::Key key);
+    void moveButtonPressed(Qt::MouseButtons buttons);
+    void moveButtonReleased(Qt::MouseButtons buttons);
     void setAllMoveFlagOff();
+    void setMouseFlagOff();
+    void setMousePosition(QPoint position, int mode);
+    void setMouseScroll(QPoint position);
     CameraMovingContinousFlags camera_moving_flag;
 
 
@@ -110,7 +124,9 @@ public:
 
     //KeyMappings keys{};
 */
-    float moveSpeed{ 3.f };
+    float moveSpeed{ 0.05f };
     float lookSpeed{ 1.5f };
+    int xpos_prev;
+    int ypos_prev;
 };
 
