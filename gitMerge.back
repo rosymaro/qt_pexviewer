@@ -4588,12 +4588,14 @@ MainWindow::MainWindow(LveWindow *w)
     formTop = new FormTop;    
     dockTop->setWidget(formTop);
 
-    QDockWidget *dockInfo = new QDockWidget(tr("Info"), this);
+//    QDockWidget *dockInfo = new QDockWidget(tr("Info"), this);
+    dockInfo = new QDockWidget(tr("Info"), this);
     dockInfo->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockInfo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     addDockWidget(Qt::LeftDockWidgetArea, dockInfo);
     formInfo = new FormInfo;
     dockInfo->setWidget(formInfo);
+
 
     resizeDocks({dockInfo, dockTop, dockMap, dockLayer, dockHier}, {200,200}, Qt::Horizontal);
     resizeDocks({dockTop, dockMap}, {200,200}, Qt::Vertical);
@@ -4654,7 +4656,7 @@ void MainWindow::on_actionOpen_Map_File_triggered()
     float xMinSize = 0, yMinSize = 0, xMaxSize = 0, yMaxSize = 0;
     fileDb->openFile(fileNameInfo, vecList , xMinSize, yMinSize, xMaxSize, yMaxSize);
 
-    int posScale = 1000, splitSize = 10; //posScale 1�┐ um �渼, posScale 1000�┐ nm �渼
+    int posScale = 1000, splitSize = 10; //posScale 1�┐ um �渼, posScale 1000�┐ nm �渼
     int n = (int(xMaxSize *posScale)-int(xMinSize *posScale))/splitSize +1;
     int m = (int(yMaxSize *posScale)-int(yMinSize *posScale))/splitSize +1;
     qDebug() << "int n / int m : " << n << " , " <<m;
@@ -4662,7 +4664,7 @@ void MainWindow::on_actionOpen_Map_File_triggered()
     ////////////////////////////////////////////////
     QVector<QVector<QVector<QList<float>>>> mapFile(n, QVector<QVector<QList<float>>>(m, {{}}));
 //    QVector<QList<float>> mapFile[n][m];
-    // �氤��届��濌�勳殨潓
+    // �氤��届���濌�勳殨潓
     // 欤柬槑: struct(layer, r, g, b, z, thk, opacity, vector())
 
     mapFile[0][0][0].append({0, 0, xMinSize, yMinSize, xMaxSize, yMaxSize, 0, 0});
@@ -4706,7 +4708,7 @@ void MainWindow::on_actionOpen_Map_File_triggered()
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 �儩",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 �儩",".","Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
@@ -4722,7 +4724,7 @@ void MainWindow::inputLayerStatus(QString text)
 
 void MainWindow::on_actionOpen_Layout_triggered()
 {
-    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 �儩",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 �儩",".","Files(*.*)");
     DtaoRenderSystem * renderer = this->m_window->getRenderer();
 
     renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
@@ -4776,6 +4778,25 @@ void MainWindow::on_actionOpen_DB_triggered(){
 
 
 
+
+
+void MainWindow::on_actionLayer_information_triggered()
+{
+    qDebug()<< "feature : " << dockInfo->toggleViewAction();
+    if(dockInfo->toggleViewAction()->isVisible())
+    {
+        qDebug() << "dockInfo visiable true";
+        dockInfo->hide();
+        dockInfo->toggleViewAction()->setVisible(false);
+    }
+    else
+    {
+        qDebug() << "dockInfo visiable false";
+        dockInfo->show();
+        dockInfo->toggleViewAction()->setVisible(true);
+    }
+
+}
 
 ::::./trianglerenderer.cpp::::/****************************************************************************
 **
@@ -8776,6 +8797,8 @@ private slots:
 
     void on_actionOpen_DB_triggered();
 
+    void on_actionLayer_information_triggered();
+
 private:
     LveWindow *m_window;
     Ui::MainWindow *ui;
@@ -8785,6 +8808,7 @@ private:
     FormTop *formTop;
     FormInfo *formInfo;
     FormMap *formMap;
+    QDockWidget *dockInfo;
     SuperItem *superItem;
     QRect *windowSize;
     FileDb *fileDb;

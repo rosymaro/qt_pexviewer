@@ -53,6 +53,8 @@ private slots:
 
     void on_actionOpen_DB_triggered();
 
+    void on_actionLayer_information_triggered();
+
 private:
     LveWindow *m_window;
     Ui::MainWindow *ui;
@@ -62,6 +64,7 @@ private:
     FormTop *formTop;
     FormInfo *formInfo;
     FormMap *formMap;
+    QDockWidget *dockInfo;
     SuperItem *superItem;
     QRect *windowSize;
     FileDb *fileDb;

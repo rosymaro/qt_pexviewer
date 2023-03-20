@@ -522,7 +522,7 @@ void PEXCapacitorModel::attachCapToPattern() {
     makeLayerToPatternCapMap();
 
     /*
-        //捍纺贸府肺 函版秦具 窃
+        //�纺贸府�版秅� �
         //matchCapWithPattern(this->cap_layer_map, this->pattern_layer_map, 17, 0);
         for (auto& cur_layer : this->layers) {
             string layer = getLayerString(cur_layer.first, cur_layer.second);
@@ -1029,7 +1029,7 @@ void PEXResistorDataManager::loadData(const std::string file_path) {
 
         description = line[PEXINFO_INDEX::PEXINFO_INDEX_DESCRIPTION];
         PEXResDirection resistor_direction = PEXResistor::checkDirectionFromDescription(description);
-        if (value > 0) updateMinMaxRes(value, resistor_direction); //烙狼狼 内靛, 0焊促 累篮 历亲篮 公矫
+        if (value > 0) updateMinMaxRes(value, resistor_direction); //�狼�靛, 0�促 � �亲篬矫
         this->resistors.push_back(PEXResistor(item_name, node1, node2, value, resistor_direction));
     }
 }
@@ -3632,7 +3632,7 @@ FormHier::FormHier(QWidget *parent) :
     ui(new Ui::FormHier)
 {
     ui->setupUi(this);
-    // QTableWidget defalut 赴 れ爼
+    // QTableWidget defalut �赴 �爼
     QStringList defalutTableHeader;
     defalutTableHeader << "LayerName" << "LayerNum" << "LayerType" << "Red" << "Green" << "Blue";
 
@@ -3673,11 +3673,11 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
 //    qDebug() << "3rd" << inputDataVector.value(2);
 //    qDebug() << "1st_1st" << inputDataVector.value(0).value(0);
 
-// QTableWidget 愳劀 QStringList 搿滊 氚涥赴岆愲曤
+// QTableWidget �� QStringList �滊氚涥赴岆�愲�曤
     QStringList vectorTOqstringlist;
     QStringList vectorTOqstringlistHoriLabels;
 
-// QTableWidget 赴 れ爼
+// QTableWidget �赴 �爼
     ui->tableWidget->setColumnCount(column);
     ui->tableWidget->setRowCount(row);
 
@@ -3772,7 +3772,7 @@ void FormInfo::slotInfoText(QString funcName, float value)
     if (funcName == "moveZoom")
     {
         qDebug()<<"moveZoom";
-        infoZoom = infoZoom + infoZoom*value/1500;        //检爼 掛澊毳100% 搿れ爼勳殧 堨潓, 瓴瓣淡 齑堦赴臧掛 GDS Size 半澕 氚旊�堨潓.
+        infoZoom = infoZoom + infoZoom*value/1500;        //检�澊�00% �れ�勳殨潓, �瓣�齑堦赴臧GDS Size �澕 氚旊�堨�
         if (infoZoom < 0.01)
             infoZoom = 0.01;
         if (infoZoom > 100)
@@ -3858,7 +3858,7 @@ FormLayer::FormLayer(QWidget *parent) :
     ui->tableWidget->setColumnWidth(5,100);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// TableWidget Title Format れ爼
+/// TableWidget Title Format �爼
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     QBrush brush(QColor(255, 255, 255, 255));
     brush.setStyle(Qt::SolidPattern);
@@ -3867,7 +3867,7 @@ FormLayer::FormLayer(QWidget *parent) :
     font.setWeight(75);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// TableWidget Title 呺牓 氚氚橃榿
+/// TableWidget Title �牓 氚氚橃榿
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     for (int i=1; i<6; i++){
         QTableWidgetItem *TableHeaderItem = new QTableWidgetItem;
@@ -3895,7 +3895,7 @@ FormLayer::~FormLayer()
 
 void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QString>> &inputDataVector)
 {
-// QTableWidget 愳劀 QStringList 搿滊 氚涥赴岆愲曤
+// QTableWidget �� QStringList �滊氚涥赴岆�愲�曤
     QStringList vectorTOqstringlist;
     QStringList vectorTOqstringlistHoriLabels;
     QStringList vectorTOqstringcolorlist;
@@ -3905,14 +3905,14 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
     QString LayerColorText;
     vectorTOqstringlistHoriLabels << " ";
 
-// QTableWidget 赴 れ爼
+// QTableWidget �赴 �爼
     ui->tableWidget->setColumnCount(6);
     ui->tableWidget->setRowCount(row);
 //    ui->tableWidget->setItemDelegateForColumn(5,new SliderDelegate);
     ui->tableWidget->setColumnWidth(5,150);
 
 // Table 毂勳毎旮
-    int TalbeColumnCount = 3;       //input data 愳劀 臧�column 臧垬
+    int TalbeColumnCount = 3;       //input data �� ��column �垬
     for (int i=0; i<row ; i++)
     {
        // table value 毂勳毎旮
@@ -4008,7 +4008,7 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// \brief FormLayer::on_tableWidget_itemChanged
 /// \param checkBoxItem
-/// description : checkbox 犿儩半澕 Layer On/Off mainwindow status 彀届棎 於滊牓
+/// description : checkbox �儩�澕 Layer On/Off mainwindow status 彀届棎 �滊
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void FormLayer::tableWidget_checkBoxChanged()
 {
@@ -4188,7 +4188,7 @@ void FormMap::receiveSize(float &xMinSize,float &yMinSize,float &xMaxSize,float 
     scale = 178/std::max(width,height);
     width = scale * width;
     height = scale * height;
-//    float rectScale = 176*zoomScale; 於旐泟 氤�瓴
+//    float rectScale = 176*zoomScale; �旐�氤�
 
     qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
 
@@ -4241,7 +4241,7 @@ void FormMap::slotInfoText(QString funcName, float value)
     }
     if (funcName == "moveZoom")
     {
-        infoZoom = infoZoom + infoZoom*value/1500;        //检爼 掛澊毳100% 搿れ爼勳殧 堨潓, 瓴瓣淡 齑堦赴臧掛 GDS Size 半澕 氚旊�堨潓.
+        infoZoom = infoZoom + infoZoom*value/1500;        //检�澊�00% �れ�勳殨潓, �瓣�齑堦赴臧GDS Size �澕 氚旊�堨�
         if (infoZoom < 0.01)
             infoZoom = 0.01;
         if (infoZoom > 100)
@@ -4398,7 +4398,7 @@ void FormTop::receiveFile(QVector<QVector<QVector<QList<float>>>>& mapFile)
     QPen mPen;
     mPen.setWidth(5);
     mPen.setColor(Qt::red);
-// 旮办〈堧姅 vector 毳波旍暭 : delete 毳勴暣
+// ���堧�vector 毳波旍: delete 毳勴
     //            for(auto cur_item : rectItemList){
     //                delete cur_item;
     //            }
@@ -4588,12 +4588,14 @@ MainWindow::MainWindow(LveWindow *w)
     formTop = new FormTop;    
     dockTop->setWidget(formTop);
 
-    QDockWidget *dockInfo = new QDockWidget(tr("Info"), this);
+//    QDockWidget *dockInfo = new QDockWidget(tr("Info"), this);
+    dockInfo = new QDockWidget(tr("Info"), this);
     dockInfo->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockInfo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     addDockWidget(Qt::LeftDockWidgetArea, dockInfo);
     formInfo = new FormInfo;
     dockInfo->setWidget(formInfo);
+
 
     resizeDocks({dockInfo, dockTop, dockMap, dockLayer, dockHier}, {200,200}, Qt::Horizontal);
     resizeDocks({dockTop, dockMap}, {200,200}, Qt::Vertical);
@@ -4654,7 +4656,7 @@ void MainWindow::on_actionOpen_Map_File_triggered()
     float xMinSize = 0, yMinSize = 0, xMaxSize = 0, yMaxSize = 0;
     fileDb->openFile(fileNameInfo, vecList , xMinSize, yMinSize, xMaxSize, yMaxSize);
 
-    int posScale = 1000, splitSize = 10; //posScale 1措┐ um 渼, posScale 1000措┐ nm 渼
+    int posScale = 1000, splitSize = 10; //posScale 1�┐ um �渼, posScale 1000�┐ nm �渼
     int n = (int(xMaxSize *posScale)-int(xMinSize *posScale))/splitSize +1;
     int m = (int(yMaxSize *posScale)-int(yMinSize *posScale))/splitSize +1;
     qDebug() << "int n / int m : " << n << " , " <<m;
@@ -4662,8 +4664,8 @@ void MainWindow::on_actionOpen_Map_File_triggered()
     ////////////////////////////////////////////////
     QVector<QVector<QVector<QList<float>>>> mapFile(n, QVector<QVector<QList<float>>>(m, {{}}));
 //    QVector<QList<float>> mapFile[n][m];
-    // 甑“ 氤�瓴届棎 �濌皝勳殧 堨潓
-    // 欤柬槙 甑“ : struct(layer, r, g, b, z, thk, opacity, vector())
+    // �氤��届���濌�勳殨潓
+    // 欤柬槑: struct(layer, r, g, b, z, thk, opacity, vector())
 
     mapFile[0][0][0].append({0, 0, xMinSize, yMinSize, xMaxSize, yMaxSize, 0, 0});
 
@@ -4706,7 +4708,7 @@ void MainWindow::on_actionOpen_Map_File_triggered()
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 犿儩",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 �儩",".","Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
@@ -4722,7 +4724,7 @@ void MainWindow::inputLayerStatus(QString text)
 
 void MainWindow::on_actionOpen_Layout_triggered()
 {
-    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 犿儩",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 �儩",".","Files(*.*)");
     DtaoRenderSystem * renderer = this->m_window->getRenderer();
 
     renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
@@ -4776,6 +4778,25 @@ void MainWindow::on_actionOpen_DB_triggered(){
 
 
 
+
+
+void MainWindow::on_actionLayer_information_triggered()
+{
+    qDebug()<< "feature : " << dockInfo->toggleViewAction();
+    if(dockInfo->toggleViewAction()->isVisible())
+    {
+        qDebug() << "dockInfo visiable true";
+        dockInfo->hide();
+        dockInfo->toggleViewAction()->setVisible(false);
+    }
+    else
+    {
+        qDebug() << "dockInfo visiable false";
+        dockInfo->show();
+        dockInfo->toggleViewAction()->setVisible(true);
+    }
+
+}
 
 ::::./trianglerenderer.cpp::::/****************************************************************************
 **
@@ -8503,7 +8524,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom 齑堦赴臧掛棎 �GDS size 毳臧栮碃� 橃爼 勳殧
+    float infoZoom = 1; //Zoom 齑堦赴臧�棎 �GDS size 毳臧���橃爼 ��
 
     float initRot = 0;
     float initTilt = 90;
@@ -8663,7 +8684,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom 齑堦赴臧掛棎 �GDS size 毳臧栮碃� 橃爼 勳殧
+    float infoZoom = 1; //Zoom 齑堦赴臧�棎 �GDS size 毳臧���橃爼 ��
 
     float initRot = 0;
     float initTilt = 90;
@@ -8776,6 +8797,8 @@ private slots:
 
     void on_actionOpen_DB_triggered();
 
+    void on_actionLayer_information_triggered();
+
 private:
     LveWindow *m_window;
     Ui::MainWindow *ui;
@@ -8785,6 +8808,7 @@ private:
     FormTop *formTop;
     FormInfo *formInfo;
     FormMap *formMap;
+    QDockWidget *dockInfo;
     SuperItem *superItem;
     QRect *windowSize;
     FileDb *fileDb;
