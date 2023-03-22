@@ -14,6 +14,12 @@ private:
     bool compareFiles(QString &A, QString &B);
     void writeMergeFile(QString fileName, QString &originFile);
     void makeCodeFiles(QString &codeFile, QString &gitMergeFile);
+
+    QString split1;
+    QString split2;
+    QString hash = "!@hash[]";
+    QString file = "!@file[]";
+    QString code = "!@code[]";
 };
 
 #endif // GITMERGE_H
