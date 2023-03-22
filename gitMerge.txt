@@ -1,4 +1,4 @@
-::::./Rendering/Src/LayoutData.cpp::::#include "LayoutPEXData.h"
+!@hash[]!@file[]./Rendering/Src/LayoutData.cpp!@hash[]!@code[]#include "LayoutPEXData.h"
 
 #include <iostream>
 #include <string>
@@ -10,12 +10,13 @@
 #include "rapidcsv.h"
 
 #include <QFile>
+#include <QDebug>
+
+
 
 using namespace std;
 
 inline double coord_normalize(double in_value, double move, double scale) {
-    //return 2 * (in_value - min_value) / (max_value - min_value) - 1.0f;
-    //return (2 * (in_value - move) / (scale)-1.0f);
     return 2 * ((in_value - move) * (scale)) - 1.0f;
 }
 
@@ -51,41 +52,50 @@ void LayoutDataManager::calculateScale() {
     this->scale = 1.0f / max_diff;
 }
 
-void LayoutDataManager::loadLayoutData(const std::string file_path) {
+bool LayoutDataManager::compareByLength(const LDATA10BY10 &a, const LDATA10BY10 &b) {
+    //qDebug() << "is working";
+    return a.top < b.top;
+}
+
+void LayoutDataManager::loadLayoutData(T2D &t2d) {
+    /*
     if (!QFile::exists(file_path.c_str())) {
         cerr << "File is not exist : " << file_path << endl;
         return;
     }
-
+    */
 
     std::chrono::system_clock::time_point start, end;
     std::chrono::seconds run_time;
 
     start = std::chrono::system_clock::now();
 
-    rapidcsv::Document infile(file_path, rapidcsv::LabelParams(-1, -1));
+   // rapidcsv::Document infile(file_path, rapidcsv::LabelParams(-1, -1));
 
     end = std::chrono::system_clock::now();
     run_time = std::chrono::duration_cast<std::chrono::seconds>(end - start);
     std::cout << "Run Time / LayoutDataManager / loadLayoutData / rapidcsv::infile [sec] : "
               << run_time.count() << "\n";
 
-    std::vector<float> bbox = infile.GetRow<float>(0);
-    this->layout_min_x = bbox[0];
-    this->layout_min_y = bbox[1];
-    this->layout_max_x = bbox[2];
-    this->layout_max_y = bbox[3];
-    this->layout_min_z = bbox[4];
-    this->layout_max_z = bbox[5];
+    //std::vector<float> bbox = infile.GetRow<float>(0);
+    this->layout_min_x = t2d.LayoutMinMax.minx;
+    this->layout_min_y = t2d.LayoutMinMax.miny;
+    this->layout_max_x = t2d.LayoutMinMax.maxx;
+    this->layout_max_y = t2d.LayoutMinMax.maxy;
+    this->layout_min_z = t2d.LayoutMinMax.minz;
+    this->layout_max_z = t2d.LayoutMinMax.maxz;
 
     calculateScale();
 
-    size_t line_count = infile.GetRowCount();
-    cube_info cur_cube;
-    int layer_number, layer_datatype;
+    t2d_ptr = &t2d;
+
+    //size_t line_count = infile.GetRowCount();
+    //cube_info cur_cube;
+    //int layer_number, layer_datatype;
 
     start = std::chrono::system_clock::now();
 
+    /*
     for (size_t i = 1; i < line_count; ++i) { //first line is bbox area
         vector<string> line = infile.GetRow<string>(i);
         //if (line[LAYOUTINFO_IDX_STRUCTURE] != "Poly") continue;
@@ -112,14 +122,23 @@ void LayoutDataManager::loadLayoutData(const std::string file_path) {
 
         this->patterns.push_back(LayoutItem(cur_cube, layer_number, layer_datatype, LAYOUT_LAYER_TYPE::LAYOUT_LAYER_TYPE_DEFAULT));
 
-    }
+    }*/
 
     end = std::chrono::system_clock::now();
     run_time = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+    start = std::chrono::system_clock::now();
     std::cout << "Run Time / LayoutDataManager / loadLayoutData / pattern push [sec] : "
               << run_time.count() << "\n";
 
-    infile.Clear();
+    std::sort(t2d_ptr->LayoutData10by10.begin(), t2d_ptr->LayoutData10by10.end(), compareByLength);
+
+
+    end = std::chrono::system_clock::now();
+    run_time = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+    qDebug() << "Run Time / LayoutDataManager / loadLayoutData / pattern sort [sec] : "
+              << run_time.count() << "\n";
+
+   // infile.Clear();
 
     /*
         printf("\n\nLayout Info Data\n\n");
@@ -133,12 +152,12 @@ void LayoutDataManager::loadLayoutData(const std::string file_path) {
 }
 
 void testLayoutData() {
-    LayoutDataManager layout_data;
-    layout_data.loadLayoutData("Data/layout_input_data.csv");
+    //LayoutDataManager layout_data;
+    //layout_data.loadLayoutData("Data/layout_input_data.csv");
 
 }
 
-::::./Rendering/Src/LayoutModel.cpp::::#include "LayoutModel.h"
+!@hash[]!@file[]./Rendering/Src/LayoutModel.cpp!@hash[]!@code[]#include "LayoutModel.h"
 
 #include <iostream>
 #include <string>
@@ -146,13 +165,13 @@ void testLayoutData() {
 #include <chrono>
 
 #include "LayoutPEXData.h"
-
+#include <unordered_set>
 #include <QFile>
 
 
-LayoutModel::LayoutModel(LveDevice& device, MODEL_TYPE model_type, const std::string& data_file)
+LayoutModel::LayoutModel(LveDevice& device, MODEL_TYPE model_type, T2D &t2d)
     : LveModel(device, model_type), layout_data{} {
-    this->makeRenderingData(data_file);
+    this->makeRenderingData(t2d);
     this->createBuffers();
 }
 
@@ -160,17 +179,13 @@ LayoutModel::~LayoutModel() {
     this->layout_data.clear();
 }
 
-void LayoutModel::makeRenderingData(const std::string& file_path) {
-    if (!QFile::exists(file_path.c_str())) {
-        std::cerr << "Error! " << file_path << " is not exist!!\n";
-        return;
-    }
-
+void LayoutModel::makeRenderingData(T2D &t2d) {
+    loadData(t2d);
     std::chrono::system_clock::time_point start, end;
     std::chrono::seconds run_time;
 
     start = std::chrono::system_clock::now();
-    loadData(file_path);
+    //loadData(file_path);
     end = std::chrono::system_clock::now();
     run_time = std::chrono::duration_cast<std::chrono::seconds>(end - start);
     std::cout << "Run Time / LayoutModel / loadData [sec] : "
@@ -198,34 +213,56 @@ void LayoutModel::makeRenderingData(const std::string& file_path) {
               << run_time.count() << "\n";
 }
 
-void LayoutModel::loadData(const std::string& file_path) {
-    this->layout_data.loadLayoutData(file_path);
+void LayoutModel::loadData(T2D &t2d) {
+    this->layout_data.loadLayoutData(t2d);
 }
 
 void LayoutModel::makeCubeVertices() {
-    std::vector<LayoutItem>& layout_items = this->layout_data.getPatterns();
-    std::vector<LayoutItem>::iterator it = layout_items.begin();
+    std::vector<LDATA10BY10> &layout_items = this->layout_data.getPatterns_t2d();
+    std::vector<LDATA10BY10>::iterator it = layout_items.begin();
     cube_vertex cur_cube_vertices;
+    std::unordered_set<int> checking_set;
 
 
     for (it = layout_items.begin(); it != layout_items.end(); ++it) {
-        cur_cube_vertices.layernum = it->layer_number;
-        cur_cube_vertices.vertex[0] = { it->pattern.minx, it->pattern.maxy, it->pattern.maxz };
-        cur_cube_vertices.vertex[1] = { it->pattern.minx, it->pattern.miny, it->pattern.maxz };
-        cur_cube_vertices.vertex[2] = { it->pattern.maxx, it->pattern.miny, it->pattern.maxz };
-        cur_cube_vertices.vertex[3] = { it->pattern.maxx, it->pattern.maxy, it->pattern.maxz };
+        cur_cube_vertices.layernum = it->layernum;
+        for(auto row : it->xy ){
+            for (auto col : row){
+                if(col.size() == 0) break;
+                for(auto each_box : col){
+                    cur_cube_vertices.vertex[0] = { each_box.minx, each_box.maxy, it->top };
+                    cur_cube_vertices.vertex[1] = { each_box.minx, each_box.miny, it->top };
+                    cur_cube_vertices.vertex[2] = { each_box.maxx, each_box.miny, it->top };
+                    cur_cube_vertices.vertex[3] = { each_box.maxx, each_box.maxy, it->top };
 
-        cur_cube_vertices.vertex[4] = { it->pattern.minx, it->pattern.maxy, it->pattern.minz };
-        cur_cube_vertices.vertex[5] = { it->pattern.minx, it->pattern.miny, it->pattern.minz };
-        cur_cube_vertices.vertex[6] = { it->pattern.maxx, it->pattern.miny, it->pattern.minz };
-        cur_cube_vertices.vertex[7] = { it->pattern.maxx, it->pattern.maxy, it->pattern.minz };
+                    cur_cube_vertices.vertex[4] = { each_box.minx, each_box.maxy, it->bot };
+                    cur_cube_vertices.vertex[5] = { each_box.minx, each_box.miny, it->bot };
+                    cur_cube_vertices.vertex[6] = { each_box.maxx, each_box.miny, it->bot };
+                    cur_cube_vertices.vertex[7] = { each_box.maxx, each_box.maxy, it->bot };
 
-        this->cube_vertices.push_back(cur_cube_vertices);
+                    this->cube_vertices.push_back(cur_cube_vertices);
+
+                    if(checking_set.find(it->layernum) == checking_set.end()){
+                        checking_set.insert(it->layernum);
+                        drawing_order_layerby.push_back(it->layernum);
+                    }
+                }
+
+            }
+            layerList[it->layernum].color = glm::vec3 {it->color.r/(float)255,it->color.g/(float)255, it->color.b/(float)255};
+            layerList[it->layernum].opacity = it->color.a/(float)255;
+            layerList[it->layernum].visiblity = it->checking;
+
+        }
+
+
         //std::cout << cube_vertices.back().layernum << '\n';
     }
 }
 
 void LayoutModel::makeVertices() {
+    std::vector<LDATA10BY10> &layout_items = this->layout_data.getPatterns_t2d();
+    std::vector<LDATA10BY10>::iterator it = layout_items.begin();
     Vertex temp_vertex;
 
     float up_color = 0.15f;
@@ -237,6 +274,7 @@ void LayoutModel::makeVertices() {
 
             if (i < 4) temp_vertex.color = { up_color , up_color , up_color };
             else       temp_vertex.color = { down_color , down_color , down_color };
+
 
             layerby_vertices[cur_cube.layernum].push_back(temp_vertex);
         }
@@ -278,6 +316,8 @@ void LayoutModel::makeIndicesForFace_map() {
             indices[key].push_back(start_idx + 6); indices[key].push_back(start_idx + 2); indices[key].push_back(start_idx + 1);//back
         }
     }
+
+    qDebug() << layerby_vertices.size();
 
 }
 
@@ -403,7 +443,7 @@ void LayoutModel::makeIndicesForEdge() {
 }
 
 
-::::./Rendering/Src/PEXCapacitorModel.cpp::::#include "PEXCapacitorModel.h"
+!@hash[]!@file[]./Rendering/Src/PEXCapacitorModel.cpp!@hash[]!@code[]#include "PEXCapacitorModel.h"
 
 #include <iostream>
 #include <map>
@@ -522,7 +562,7 @@ void PEXCapacitorModel::attachCapToPattern() {
     makeLayerToPatternCapMap();
 
     /*
-        //�纺贸府�版秅� �
+        //º´·ÄÃ³¸®·Î º¯°æÇØ¾ß ÇÔ
         //matchCapWithPattern(this->cap_layer_map, this->pattern_layer_map, 17, 0);
         for (auto& cur_layer : this->layers) {
             string layer = getLayerString(cur_layer.first, cur_layer.second);
@@ -864,7 +904,7 @@ void PEXCapacitorModel::printLayerList() {
 
 
 
-::::./Rendering/Src/PEXData.cpp::::#include "LayoutPEXData.h"
+!@hash[]!@file[]./Rendering/Src/PEXData.cpp!@hash[]!@code[]#include "LayoutPEXData.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -1029,7 +1069,7 @@ void PEXResistorDataManager::loadData(const std::string file_path) {
 
         description = line[PEXINFO_INDEX::PEXINFO_INDEX_DESCRIPTION];
         PEXResDirection resistor_direction = PEXResistor::checkDirectionFromDescription(description);
-        if (value > 0) updateMinMaxRes(value, resistor_direction); //�狼�靛, 0�促 � �亲篬矫
+        if (value > 0) updateMinMaxRes(value, resistor_direction); //ÀÓÀÇÀÇ ÄÚµå, 0º¸´Ù ÀÛÀº ÀúÇ×Àº ¹«½Ã
         this->resistors.push_back(PEXResistor(item_name, node1, node2, value, resistor_direction));
     }
 }
@@ -1150,7 +1190,7 @@ void testPEXData() {
     capacitor_data.loadData("Data/MVP_PEX_RC_r1_0130_0208version.csv");
     capacitor_data.printData();
 }
-::::./Rendering/Src/PEXResistorModel.cpp::::#include "PEXResistorModel.h"
+!@hash[]!@file[]./Rendering/Src/PEXResistorModel.cpp!@hash[]!@code[]#include "PEXResistorModel.h"
 
 #include <iostream>
 #include <string>
@@ -1323,7 +1363,7 @@ void PEXResistorModel::makeIndices() {
 
 
 
-::::./Rendering/Src/dtaorendersystem.cpp::::
+!@hash[]!@file[]./Rendering/Src/dtaorendersystem.cpp!@hash[]!@code[]
 
 #include <QVulkanWindow>
 #include <QVulkanInstance>
@@ -1343,6 +1383,10 @@ DtaoRenderSystem::DtaoRenderSystem(LveWindow *w)
     : lveWindow(w)
 {
     this->trans_info = {};
+    this->camera.setViewTarget(
+                glm::vec3(1.0f,1.0f,1.0f),
+                glm::vec3(0.0f, 0.0f, 0.0f),
+                glm::vec3(0.0f, 0.0f, 1.0f));
     qDebug() << "\n$$$$$ DtaoRenderSystem()";
 }
 
@@ -1390,9 +1434,11 @@ void DtaoRenderSystem::beginRenderPass(VkCommandBuffer command_buffer){
 
 void DtaoRenderSystem::startNextFrame(){
     this->cameraController.moveCamera(
-                1.0, this->camera, this->getRenderScale(), this->gameObjects);
+                aspect, this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
     this->cameraController.moveCameraMouse(
-                this->camera, this->getRenderScale(), this->gameObjects);
+                this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
+    //this->cameraController.setPerspective(this->camera, aspect);
+
 
     VkCommandBuffer command_buffer = this->lveWindow->currentCommandBuffer();
     beginRenderPass(command_buffer);
@@ -1404,6 +1450,7 @@ void DtaoRenderSystem::startNextFrame(){
 
     lveWindow->frameReady();
     lveWindow->requestUpdate(); // render continuously, throttled by the presentation rate
+
 }
 
 void DtaoRenderSystem::initResources() {
@@ -1412,10 +1459,7 @@ void DtaoRenderSystem::initResources() {
     createSimpleRenderSystem();
     //if(!this->render_object_created) loadGameObjects();
 
-    this->camera.setViewTarget(
-                glm::vec3(1.0f,1.0f,1.0f),
-                glm::vec3(0.0f, 0.0f, 0.0f),
-                glm::vec3(0.0f, 0.0f, 1.0f));
+
 
     VkDevice dev = this->lveWindow->device();
     m_devFuncs = this->lveWindow->vulkanInstance()->deviceFunctions(dev);
@@ -1434,8 +1478,9 @@ void DtaoRenderSystem::releaseResources() {
 void DtaoRenderSystem::initSwapChainResources() {
     qDebug() << "\n$$$$$ DtaoRenderSystem::initSwapChainResources()";
     const QSize sz = this->lveWindow->swapChainImageSize();
-    float aspect = sz.width()/(double)sz.height();
+    aspect = sz.width()/(double)sz.height();
     this->camera.setPerspectiveProjection(glm::radians(50.f), aspect, 0.1f, 100.f);
+    //this->camera.setOrthographicProjection(-1,1,-1,1,0.1f,100.f);
 }
 
 
@@ -1463,14 +1508,91 @@ void DtaoRenderSystem::deleteSimpleRenderSystem(){
     qDebug() << "\n$$$$$ DtaoRenderSystem::deleteSimpleRenderSystem()";
     delete this->simpleRenderSystem;
 }
-
+/*
 void DtaoRenderSystem::createNewObject(MODEL_TYPE model_type, const std::string & file_path) {
     if( model_type == MODEL_TYPE::MODEL_TYPE_LAYOUT) createNewLayoutObject(file_path);
     else if( model_type == MODEL_TYPE::MODEL_TYPE_PEX_CAPACITOR) createNewPEXCapObject(file_path);
     else if( model_type == MODEL_TYPE::MODEL_TYPE_PEX_RESISTOR) createNewPEXResObject(file_path);
     else if( model_type == MODEL_TYPE::MODEL_TYPE_AXIS) createNewAxisObject(file_path);
+}*/
+
+void DtaoRenderSystem::createT2DObject(MODEL_TYPE model_type, T2D t2d) {
+    if( model_type == MODEL_TYPE::MODEL_TYPE_LAYOUT) createT2DLayoutObject(t2d);
+    //else if( model_type == MODEL_TYPE::MODEL_TYPE_PEX_CAPACITOR) createNewPEXCapObject(file_path);
+    //else if( model_type == MODEL_TYPE::MODEL_TYPE_PEX_RESISTOR) createNewPEXResObject(file_path);
+    //else if( model_type == MODEL_TYPE::MODEL_TYPE_AXIS) createNewAxisObject(file_path);
 }
 
+void DtaoRenderSystem::getCustomColor(float layernumber, glm::vec3 rgb){
+    if(!gameObjects.empty()){
+        for (auto& obj : gameObjects){
+          if(obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_LAYOUT){
+              obj.model->changeLayerColor(layernumber,rgb);
+          }
+        }
+
+    } else {
+        qDebug() << "there is no layer. get layer first!";
+    }
+
+}
+
+void DtaoRenderSystem::getCustomOpacity(float layernumber, float opacity){
+    if(!gameObjects.empty()){
+        for (auto& obj : gameObjects){
+          if(obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_LAYOUT){
+              obj.model->changeLayerOpacity(layernumber,opacity);
+          }
+        }
+
+    } else {
+        qDebug() << "there is no layer. get layer first!";
+    }
+}
+
+void DtaoRenderSystem::getCustomVisiblity(float layernumber, bool visibility){
+    if(!gameObjects.empty()){
+        for (auto& obj : gameObjects){
+          if(obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_LAYOUT){
+              obj.model->changeLayerVisiblity(layernumber,visibility);
+          }
+        }
+
+    } else {
+        qDebug() << "there is no layer. get layer first!";
+    }
+}
+
+void DtaoRenderSystem::createT2DLayoutObject(T2D & t2d){
+
+    //Layout model
+    //std::string layout_info_file_path = file_path;
+    std::shared_ptr<LayoutModel> model
+            = std::make_unique<LayoutModel>(
+                *this->lveDevice, MODEL_TYPE_LAYOUT, t2d);
+    model->opacity = 0.5f;
+
+    LayoutDataManager* layout_data = model->getLayoutDataManager();
+    this->trans_info.trans_x = static_cast<float>( layout_data->getMinX());
+    this->trans_info.trans_y = static_cast<float>( layout_data->getMinY());
+    this->trans_info.trans_z = static_cast<float>( layout_data->getMinZ());
+    this->trans_info.scale = static_cast<float>( layout_data->getScale());
+
+    //auto new_object = DTAOObject::createObject();
+    auto new_object = LveGameObject::createGameObject();
+    new_object.model = model;
+    new_object.transform.translation = {
+        -this->trans_info.trans_x, -this->trans_info.trans_y, -this->trans_info.trans_z};
+    new_object.transform.scale = {
+        this->trans_info.scale, this->trans_info.scale, this->trans_info.scale };
+
+    //this->dtao_objects.push_back(std::move(new_object));
+    this->gameObjects.push_back(std::move(new_object));
+    this->render_object_created = true;
+    this->layout_model = model;
+}
+
+/*
 void DtaoRenderSystem::createNewLayoutObject(const std::string & file_path){
 
     //Layout model
@@ -1556,6 +1678,7 @@ void DtaoRenderSystem::createNewAxisObject(const std::string & file_path){
     //this->dtao_objects.push_back(std::move(new_object));
     this->gameObjects.push_back(std::move(new_object));
 }
+*/
 
 /*
 void DtaoRenderSystem::loadGameObjects() {
@@ -1625,7 +1748,8 @@ void DtaoRenderSystem::loadGameObjects() {
     this->render_object_created = true;
 }
 */
-::::./Rendering/Src/keyboard_movement_controller.cpp::::#include "keyboard_movement_controller.hpp"
+!@hash[]!@file[]./Rendering/Src/keyboard_movement_controller.cpp!@hash[]!@code[]#include "keyboard_movement_controller.hpp"
+#include "lve_window.hpp"
 
 #define GLM_ENABLE_EXPERIMENTAL
 
@@ -1648,6 +1772,7 @@ void KeyboardMovementController::setAllMoveFlagOff() {
 void KeyboardMovementController::setMouseFlagOff() {
     camera_moving_flag.mouseLeft = false;
     camera_moving_flag.mouseRight = false;
+    camera_moving_flag.mouseMiddle = false;
 }
 
 void KeyboardMovementController::moveKeyPressed(Qt::Key key) {
@@ -1662,6 +1787,11 @@ void KeyboardMovementController::moveKeyPressed(Qt::Key key) {
     if (key == camera_move_key.moveDown) camera_moving_flag.moveDown = true;
     if (key == camera_move_key.moveLeft) camera_moving_flag.moveLeft = true;
     if (key == camera_move_key.moveRight) camera_moving_flag.moveRight = true;
+    if (key == camera_move_key.toggleDemension) {
+        camera_moving_flag.toggleDemension = true;
+        camera_moving_flag.toggleDemensionXY = true;
+    }
+
 
 }
 
@@ -1677,6 +1807,7 @@ void KeyboardMovementController::moveKeyReleased(Qt::Key key) {
     if (key == camera_move_key.moveDown) camera_moving_flag.moveDown = false;
     if (key == camera_move_key.moveLeft) camera_moving_flag.moveLeft = false;
     if (key == camera_move_key.moveRight) camera_moving_flag.moveRight = false;
+
 }
 
 void KeyboardMovementController::setMousePosition(QPoint position, int mode) {
@@ -1696,13 +1827,18 @@ void KeyboardMovementController::setMousePosition(QPoint position, int mode) {
 }
 
 void KeyboardMovementController::setMouseScroll(QPoint scroll) {
-    mouse_position.scroll = scroll;
+    if (camera_moving_flag.mouseMiddle){
+        mouse_position.scrollClicked = scroll;
+    } else {
+        mouse_position.scroll = scroll;
+    }
 }
 
 void KeyboardMovementController::moveButtonPressed(Qt::MouseButtons buttons) {
     setMouseFlagOff();
     if (buttons == camera_move_key.mouseLeft) camera_moving_flag.mouseLeft = true;
     if (buttons == camera_move_key.mouseRight) camera_moving_flag.mouseRight = true;
+    if (buttons == camera_move_key.mouseMiddle) camera_moving_flag.mouseMiddle = true;
 
 
 }
@@ -1711,14 +1847,17 @@ void KeyboardMovementController::moveButtonReleased(Qt::MouseButtons buttons) {
     setMouseFlagOff();
     if (buttons == camera_move_key.mouseLeft) camera_moving_flag.mouseLeft = true;
     if (buttons == camera_move_key.mouseRight) camera_moving_flag.mouseRight = true;
+    if (buttons == camera_move_key.mouseMiddle) camera_moving_flag.mouseMiddle = true;
     //qDebug()<<
 }
 
 void KeyboardMovementController::moveCamera(
-    float dt, LveCamera& camera, float render_scale, std::vector<LveGameObject>& gameObjects) {
+    float dt, LveCamera& camera, float render_scale, std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow) {
     float scale = 0.0f;
     float rotate_lr = 0.0f;
     float rotate_ud = 0.0f;
+    float rotate_toggle = 0.0f;
+    float rotate_toggle_xy = 0.0f;
     float obj_scale = 2.0f / render_scale;
 
     if (camera_moving_flag.moveForward) scale = 1.0f + 0.01f * obj_scale;
@@ -1727,45 +1866,115 @@ void KeyboardMovementController::moveCamera(
     if (camera_moving_flag.rotateRight) rotate_lr = -0.1f * obj_scale;
     else if (camera_moving_flag.rotateLeft) rotate_lr = 0.1f * obj_scale;
 
-    if (camera_moving_flag.rotateForward) rotate_ud = -0.1f * obj_scale;
+    if (camera_moving_flag.rotateForward ) rotate_ud = -0.1f * obj_scale;
     else if (camera_moving_flag.rotateBackward) rotate_ud = 0.1f * obj_scale;
-    //if (glfwGetMouseButton(window, camera_move_key.mouseLeft) == GLFW_PRESS) scale = 1.0f + 0.0001f * obj_scale;
-    //if (glfwGetMouseButton(window, camera_move_key.mouseRight) == GLFW_PRESS) scale = 1.0f - 0.0001f * obj_scale;
+
+    if (camera_moving_flag.toggleDemension && !camera.isperspective) {
+        camera.setPerspectiveProjection(glm::radians(50.f), dt, 0.1f, 100.f);
+        camera_moving_flag.toggleDemension = false;
+    }
+    else if (camera_moving_flag.toggleDemension)rotate_toggle = -0.1f;
+
+    if (camera_moving_flag.toggleDemensionXY) rotate_toggle_xy = -0.1f;
+
+    //glm::vec3 direction{ camera.viewMatrix[0][2], camera.viewMatrix[1][2], 0 };
+    glm::vec3 right{camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]};
+    glm::vec3 up{camera.viewMatrix[0][1], camera.viewMatrix[1][1], camera.viewMatrix[2][1]};
+    //const glm::vec3 u{ glm::normalize(glm::cross(direction, glm::normalize(glm::cross(direction, glm::vec3{0,1,0})))) };
+    const glm::vec3 v{ glm::normalize(glm::cross(right,glm::vec3{0,0,1})) };
+
+    if (glm::dot(rotate_toggle, rotate_toggle) > std::numeric_limits<float>::epsilon()) {
+
+        glm::mat4 viewModel = inverse(camera.viewMatrix);
+        glm::vec3 value(viewModel[3]);
+        float sqrt_result = sqrt(pow(value.x,2)+pow(value.y,2));
+        float radian = acos(value.x/sqrt_result);
+        float degree = radian *  (180/3.141592653589793238463);
+        float power_sum_tilt =pow(sqrt_result,2)+pow(value.z,2);
+        float sqrt_tilt = sqrt(power_sum_tilt);
+        float radian_tilt = asin(value.z/sqrt_tilt);
+        float degree_tilt =radian_tilt *  (180/3.141592653589793238463);
+        if(value.y<0){
+            degree = 180+(180-degree);
+        }
+        //qDebug() << degree_tilt + rotate_toggle;
+        if(!camera_moving_flag.toggleDemensionXY && camera_moving_flag.toggleDemension){
+            if(degree_tilt  > 89.5 ){
+                camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(degree_tilt-90), right);
+                camera_moving_flag.toggleDemension = false;
+                camera.setOrthographicProjection(-1,1,-1,1,0.1f,100.f);
+            } else {
+                rotate_toggle=rotate_toggle * ((90 - degree_tilt)/2 +1);
+                camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_toggle), right);
+            }
+        }
+
+
+        if (camera_moving_flag.toggleDemensionXY) {
+            if(up.z <0){
+
+                if( abs(degree-90) < 1 ){
+                    camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(degree-90), glm::vec3(0.0f, 0.0f, 1.0f));
+                    camera_moving_flag.toggleDemensionXY = false;
+                } else {
+                    rotate_toggle_xy=rotate_toggle_xy * (abs(90 - degree)/2 +1) *(90 - degree)/(90 - degree);
+                    camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_toggle_xy), glm::vec3(0.0f, 0.0f, 1.0f));
+                }
+            } else{
+                if( abs(degree-270) < 1 ){
+                    camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(degree-270), glm::vec3(0.0f, 0.0f, 1.0f));
+                    camera_moving_flag.toggleDemensionXY = false;
+                } else {
+                    rotate_toggle_xy=rotate_toggle_xy * (abs(270 - degree)/2 +1) *(270 - degree)/(270 - degree);
+                    camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_toggle_xy), glm::vec3(0.0f, 0.0f, 1.0f));
+                }
+            }
+
+
+        }
+
+        glm::mat4 viewMo = inverse(camera.viewMatrix);
+        glm::vec3 cameraPos(viewMo[3]);
+        QString funcName = "camera_position";
+        emit lvewindow->signalInfoText(funcName,cameraPos);
+    }
+
+
 
     if (glm::dot(rotate_lr, rotate_lr) > std::numeric_limits<float>::epsilon()) {
         camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_lr), glm::vec3(0.0f, 0.0f, 1.0f));
-        //std::cout << glm::to_string(camera.rotation_d) << '\n';
+        glm::mat4 viewModel = inverse(camera.viewMatrix);
+        glm::vec3 cameraPos(viewModel[3]);
+        QString funcName = "camera_position";
+        emit lvewindow->signalInfoText(funcName,cameraPos);
     }
 
-    glm::vec3 direction{ camera.viewMatrix[0][2], camera.viewMatrix[1][2], 0 };
-    const glm::vec3 u{ glm::normalize(glm::cross(direction, glm::normalize(glm::cross(direction, glm::vec3{0,1,0})))) };
-    const glm::vec3 v{ glm::normalize(glm::cross(u,glm::vec3{0,0,1})) };
+
 
     if (glm::dot(rotate_ud, rotate_ud) > std::numeric_limits<float>::epsilon()) {
 
-        camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_ud), u);
+        camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_ud), right);
+        glm::mat4 viewModel = inverse(camera.viewMatrix);
+        glm::vec3 cameraPos(viewModel[3]);
+        QString funcName = "camera_position";
+        emit lvewindow->signalInfoText(funcName,cameraPos);
+
     }
 
     if (glm::dot(scale, scale) > std::numeric_limits<float>::epsilon()) {
         camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(scale, scale, scale));
+
     }
 
 
     glm::vec3 moveDir{ 0.f };
     camera.decomposeView(camera.getView());
 
-    if (camera.rotation_d.x * camera.rotation_d.y > 0) {
-        if (camera_moving_flag.moveRight) moveDir -= u;
-        if (camera_moving_flag.moveLeft)  moveDir += u;
-        if (camera_moving_flag.moveUp)  moveDir += v;
-        if (camera_moving_flag.moveDown)  moveDir -= v;
-    }
-    else {
-        if (camera_moving_flag.moveRight) moveDir += u;
-        if (camera_moving_flag.moveLeft)  moveDir -= u;
-        if (camera_moving_flag.moveUp)  moveDir -= v;
-        if (camera_moving_flag.moveDown)  moveDir += v;
-    }
+    if (camera_moving_flag.moveRight) moveDir += right;
+    if (camera_moving_flag.moveLeft)  moveDir -= right;
+    if (camera_moving_flag.moveUp)  moveDir -= v;
+    if (camera_moving_flag.moveDown)  moveDir += v;
+
 
 
     if (glm::dot(moveDir, moveDir) > std::numeric_limits<float>::epsilon()) {
@@ -1773,7 +1982,7 @@ void KeyboardMovementController::moveCamera(
         //std::cout << glm::to_string(camera.rotation_d) << '\n';
         for (auto& gameobject : gameObjects) {
             if (gameobject.model->getModelType() != MODEL_TYPE::MODEL_TYPE_AXIS) {
-                gameobject.transform.translation += obj_scale * moveSpeed * dt * glm::normalize(moveDir);
+                gameobject.transform.translation += obj_scale * moveSpeed  * glm::normalize(moveDir);
                 //camera.viewMatrix = glm::translate(camera.getView(), moveSpeed * dt * moveDir);
             }
         }
@@ -1781,33 +1990,37 @@ void KeyboardMovementController::moveCamera(
     }
 }
 
-void KeyboardMovementController::moveCameraMouse(LveCamera& camera, float render_scale, std::vector<LveGameObject>& gameObjects) {
+void KeyboardMovementController::moveCameraMouse(LveCamera& camera, float render_scale, std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow) {
     if (camera_moving_flag.mouseRight)
     {
-        std::cout << "rotation enable" << std::endl;
+
         float rotate_lr = 0.0f;
         float rotate_ud = 0.0f;
 
         rotate_lr = mouse_position.currentPosition.x() - xpos_prev;
         rotate_ud = mouse_position.currentPosition.y() - ypos_prev;
 
-        glm::vec3 direction{ camera.viewMatrix[0][2], camera.viewMatrix[1][2], 0 };
-        const glm::vec3 u{ glm::normalize(glm::cross(direction,glm::normalize(glm::cross(direction, glm::vec3{0,1,0})))) };
-        const glm::vec3 v{ glm::normalize(glm::cross(u,glm::vec3{0,0,1})) };
+        //glm::vec3 direction{ camera.viewMatrix[0][2], camera.viewMatrix[1][2], 0 };
+        glm::vec3 right{camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]};
+        //const glm::vec3 u{ glm::normalize(glm::cross(direction,glm::normalize(glm::cross(direction, glm::vec3{0,1,0})))) };
+        //const glm::vec3 v{ glm::normalize(glm::cross(u,glm::vec3{0,0,1})) };
 
         if (glm::dot(rotate_ud, rotate_ud) > std::numeric_limits<float>::epsilon()) {
-            if (camera.viewMatrix[1][0] > 0) {
-                camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_ud*0.5f), u);
-            }
-            else {
-                camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(-rotate_ud*0.5f), u);
-            }
+            camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_ud*0.5f),right);
+            glm::mat4 viewModel = inverse(camera.viewMatrix);
+            glm::vec3 cameraPos(viewModel[3]);
+            QString funcName = "camera_position";
+            emit lvewindow->signalInfoText(funcName,cameraPos);
 
         }
 
         if (glm::dot(rotate_lr, rotate_lr) > std::numeric_limits<float>::epsilon()) {
             camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_lr*0.5f), glm::vec3(0.0f, 0.0f, 1.0f));
             //std::cout << glm::to_string(camera.rotation_d) << '\n';
+            glm::mat4 viewModel = inverse(camera.viewMatrix);
+            glm::vec3 cameraPos(viewModel[3]);
+            QString funcName = "camera_position";
+            emit lvewindow->signalInfoText(funcName,cameraPos);
         }
 
         xpos_prev = mouse_position.currentPosition.x();
@@ -1870,239 +2083,29 @@ void KeyboardMovementController::moveCameraMouse(LveCamera& camera, float render
     }
 }
 
+void KeyboardMovementController::setPerspective(LveCamera& camera, float aspect){
+    if (mouse_position.scrollClicked.y() > 0) {
+        if (perspectiveNear + 0.01  > 100.f){
+            perspectiveNear = 100.f;
 
-
-
-
-
-
-
-
-/*
-void KeyboardMovementController::moveCamera(
-        Qt::Key key, float dt, LveCamera& camera,
-        float render_scale) {
-
-    qDebug()<< "Pressed Key @ KeyboardMovementController::moveCamera : " << key;
-
-    float scale = 0.0f;
-    float rotate_lr = 0.0f;
-    float rotate_ud = 0.0f;
-    float obj_scale = 2.0f / render_scale;
-
-    if (key == camera_move_key.moveForward) scale = 1.0f + 0.01f * obj_scale;
-    if (key == camera_move_key.moveBackward) scale = 1.0f - 0.01f * obj_scale;
-    if (key == camera_move_key.rotateRight) rotate_lr = -0.1f * obj_scale;
-    if (key == camera_move_key.rotateLeft) rotate_lr = 0.1f * obj_scale;
-    if (key == camera_move_key.rotateForward) rotate_ud = -0.1f * obj_scale;
-    if (key == camera_move_key.rotateBackward) rotate_ud = 0.1f * obj_scale;
-    //if (glfwGetMouseButton(window, camera_move_key.mouseLeft) == GLFW_PRESS) scale = 1.0f + 0.0001f * obj_scale;
-    //if (glfwGetMouseButton(window, camera_move_key.mouseRight) == GLFW_PRESS) scale = 1.0f - 0.0001f * obj_scale;
-
-    if (glm::dot(rotate_lr, rotate_lr) > std::numeric_limits<float>::epsilon()) {
-        camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_lr), glm::vec3(0.0f, 0.0f, 1.0f));
-        //std::cout << glm::to_string(camera.rotation_d) << '\n';
-    }
-
-    glm::vec3 direction{ camera.viewMatrix[0][2], camera.viewMatrix[1][2], 0 };
-    const glm::vec3 u{ glm::normalize(glm::cross(direction, glm::normalize(glm::cross(direction, glm::vec3{0,1,0})))) };
-    const glm::vec3 v{ glm::normalize(glm::cross(u,glm::vec3{0,0,1})) };
-
-    if (glm::dot(rotate_ud, rotate_ud) > std::numeric_limits<float>::epsilon()) {
-
-        camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_ud), u);
-    }
-
-    if (glm::dot(scale, scale) > std::numeric_limits<float>::epsilon()) {
-        camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(scale, scale, scale));
-    }
-}
-
-
-void KeyboardMovementController::visibleSetting(GLFWwindow* window, std::vector<LveGameObject>& gameObjects) {
-    MODEL_TYPE target_model_type = MODEL_TYPE::MODEL_TYPE_DEFAULT;
-    bool opacity_mode = false;
-    double opacity = 0.0;
-    if (glfwGetKey(window, model_visible_set.layout_key) == GLFW_PRESS) model_visible_set.layout_key_pressed = true;
-    else if (glfwGetKey(window, model_visible_set.resistor_key) == GLFW_PRESS) model_visible_set.resistor_key_pressed = true;
-    else if (glfwGetKey(window, model_visible_set.capacitor_key) == GLFW_PRESS) model_visible_set.capacitor_key_pressed = true;
-    else if (glfwGetKey(window, model_visible_set.axis_key) == GLFW_PRESS) model_visible_set.axis_key_pressed = true;
-    else if (glfwGetKey(window, model_visible_set.opacity_plus_key) == GLFW_PRESS) model_visible_set.opacity_plus_key_pressed = true;
-    else if (glfwGetKey(window, model_visible_set.opacity_minus_key) == GLFW_PRESS) model_visible_set.opacity_minus_key_pressed = true;
-
-    if (glfwGetKey(window, model_visible_set.layout_key) == GLFW_RELEASE && model_visible_set.layout_key_pressed) {
-        model_visible_set.layout_key_pressed = false;
-        target_model_type = MODEL_TYPE::MODEL_TYPE_LAYOUT;
-    }
-    else if (glfwGetKey(window, model_visible_set.resistor_key) == GLFW_RELEASE && model_visible_set.resistor_key_pressed) {
-        model_visible_set.resistor_key_pressed = false;
-        target_model_type = MODEL_TYPE::MODEL_TYPE_PEX_RESISTOR;
-    }
-    else if (glfwGetKey(window, model_visible_set.capacitor_key) == GLFW_RELEASE && model_visible_set.capacitor_key_pressed) {
-        model_visible_set.capacitor_key_pressed = false;
-        target_model_type = MODEL_TYPE::MODEL_TYPE_PEX_CAPACITOR;
-    }
-    else if (glfwGetKey(window, model_visible_set.axis_key) == GLFW_RELEASE && model_visible_set.axis_key_pressed) {
-        model_visible_set.axis_key_pressed = false;
-        target_model_type = MODEL_TYPE::MODEL_TYPE_AXIS;
-    }
-    else if (glfwGetKey(window, model_visible_set.opacity_plus_key) == GLFW_RELEASE && model_visible_set.opacity_plus_key_pressed) {
-        model_visible_set.opacity_plus_key_pressed = false;
-        opacity_mode = true;
-        opacity = 0.1f;
-        target_model_type = MODEL_TYPE::MODEL_TYPE_LAYOUT;
-    }
-    else if (glfwGetKey(window, model_visible_set.opacity_minus_key) == GLFW_RELEASE && model_visible_set.opacity_minus_key_pressed) {
-        model_visible_set.opacity_minus_key_pressed = false;
-        opacity_mode = true;
-        opacity = -0.1f;
-        target_model_type = MODEL_TYPE::MODEL_TYPE_LAYOUT;
-    }
-
-    if (target_model_type != MODEL_TYPE::MODEL_TYPE_DEFAULT) {
-        for (auto& obj : gameObjects) {
-            if (obj.model->getModelType() == target_model_type) {
-                if (opacity_mode) obj.model->updateOpacity(opacity);
-                else obj.model->toggleVisible();
-            }
+        } else {
+            perspectiveNear=perspectiveNear +0.01;
         }
-    }
-}
+    } else if (mouse_position.scrollClicked.y() < 0) {
+        if (perspectiveNear - 0.01  < 0.1f){
+            perspectiveNear = 0.1f;
 
-void KeyboardMovementController::moveCamera(GLFWwindow* window, float dt, LveCamera& camera, std::vector<LveGameObject>& gameObjects) {
-
-    float scale = 0.0f;
-    float rotate_lr = 0.0f;
-    float rotate_ud = 0.0f;
-    float obj_scale = 2.0f / gameObjects.begin()->transform.scale.x;
-
-    if (glfwGetKey(window, camera_move_key.moveForward) == GLFW_PRESS) scale = 1.0f + 0.0001f * obj_scale;
-    if (glfwGetKey(window, camera_move_key.moveBackward) == GLFW_PRESS) scale = 1.0f - 0.0001f * obj_scale;
-    if (glfwGetKey(window, camera_move_key.moveRight) == GLFW_PRESS) rotate_lr = -0.001f * obj_scale;
-    if (glfwGetKey(window, camera_move_key.moveLeft) == GLFW_PRESS) rotate_lr = 0.001f * obj_scale;
-    if (glfwGetKey(window, camera_move_key.moveUp) == GLFW_PRESS) rotate_ud = -0.001f * obj_scale;
-    if (glfwGetKey(window, camera_move_key.moveDown) == GLFW_PRESS) rotate_ud = 0.001f * obj_scale;
-    //if (glfwGetMouseButton(window, camera_move_key.mouseLeft) == GLFW_PRESS) scale = 1.0f + 0.0001f * obj_scale;
-    //if (glfwGetMouseButton(window, camera_move_key.mouseRight) == GLFW_PRESS) scale = 1.0f - 0.0001f * obj_scale;
-
-    if (glm::dot(rotate_lr, rotate_lr) > std::numeric_limits<float>::epsilon()) {
-        camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_lr), glm::vec3(0.0f, 0.0f, 1.0f));
-        //std::cout << glm::to_string(camera.rotation_d) << '\n';
-    }
-
-    glm::vec3 direction{ camera.viewMatrix[0][2], camera.viewMatrix[1][2], 0 };
-    const glm::vec3 u{ glm::normalize(glm::cross(direction, glm::normalize(glm::cross(direction, glm::vec3{0,1,0})))) };
-    const glm::vec3 v{ glm::normalize(glm::cross(u,glm::vec3{0,0,1})) };
-
-    if (glm::dot(rotate_ud, rotate_ud) > std::numeric_limits<float>::epsilon()) {
-
-        camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_ud), u);
-    }
-
-    if (glm::dot(scale, scale) > std::numeric_limits<float>::epsilon()) {
-        camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(scale, scale, scale));
-    }
-
-
-    glm::vec3 moveDir{ 0.f };
-    camera.decomposeView(camera.getView());
-    if (camera.rotation_d.x * camera.rotation_d.y > 0) {
-        if (glfwGetKey(window, keys.lookRight) == GLFW_PRESS) moveDir -= u;
-        if (glfwGetKey(window, keys.lookLeft) == GLFW_PRESS) moveDir += u;
-        if (glfwGetKey(window, keys.lookUp) == GLFW_PRESS) moveDir += v;
-        if (glfwGetKey(window, keys.lookDown) == GLFW_PRESS) moveDir -= v;
-    }
-    else {
-        if (glfwGetKey(window, keys.lookRight) == GLFW_PRESS) moveDir += u;
-        if (glfwGetKey(window, keys.lookLeft) == GLFW_PRESS) moveDir -= u;
-        if (glfwGetKey(window, keys.lookUp) == GLFW_PRESS) moveDir -= v;
-        if (glfwGetKey(window, keys.lookDown) == GLFW_PRESS) moveDir += v;
-    }
-
-
-    if (glm::dot(moveDir, moveDir) > std::numeric_limits<float>::epsilon()) {
-        //camera.decomposeView(camera.getView());
-        //std::cout << glm::to_string(camera.rotation_d) << '\n';
-        for (auto& gameobject : gameObjects) {
-            if (gameobject.model->getModelType() != MODEL_TYPE::MODEL_TYPE_AXIS) {
-                gameobject.transform.translation += obj_scale * moveSpeed * dt * glm::normalize(moveDir);
-                //camera.viewMatrix = glm::translate(camera.getView(), moveSpeed * dt * moveDir);
-            }
+        }else {perspectiveNear=perspectiveNear -0.01;}
         }
+        camera.setPerspectiveProjection(glm::radians(50.f), aspect, perspectiveNear, 100.f);
+        mouse_position.scrollClicked.setY(0);
 
-    }
+
 }
 
-void KeyboardMovementController::moveInPlaneXZ(
-        GLFWwindow* window, float dt, std::vector<LveGameObject>& gameObjects) {
-    glm::vec3 rotate{ 0 };
-
-    //std::cout << "moveInPlaneXZ\n";
-    //if (glfwGetKey(window, keys.lookRight) == GLFW_PRESS) rotate.y += 1.f;
-    //if (glfwGetKey(window, keys.lookLeft) == GLFW_PRESS) rotate.y -= 1.f;
-    //if (glfwGetKey(window, keys.lookUp) == GLFW_PRESS) rotate.x += 1.f;
-    //if (glfwGetKey(window, keys.lookDown) == GLFW_PRESS) rotate.x -= 1.f;
-    //if (glfwGetMouseButton(window, keys.mouseLeft) == GLFW_PRESS) {
-    //    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    //
-    //    int width, height;
-    //    glfwGetWindowSize(window, &width, &height);
-    //
-    //
-    //    oldXPos = mouseX, oldYPos = mouseY;
-    //
-    //    glfwGetCursorPos(window, &mouseX, &mouseY);
-    //
-    //    float xDelta, yDelta;
-    //    xDelta = (mouseX - oldXPos) / width;
-    //    yDelta = (mouseY - oldYPos) / height;
-    //
-    //    rotate.y -= xDelta * 1000;
-    //    rotate.x += yDelta * 1000 * height / width;
-    //
-    //    // std::cout <<"old" << oldXPos << " " << oldYPos << "\n";
-    //    // std::cout << mouseX << " " << mouseY << "\n";
-    //}
-    //if (glfwGetMouseButton(window, keys.mouseLeft) == GLFW_RELEASE) {
-    //    glfwGetCursorPos(window, &mouseX, &mouseY);
-    //    oldXPos = mouseX, oldYPos = mouseY;
-    //};
-
-    //if (glm::dot(rotate, rotate) > std::numeric_limits<float>::epsilon()) {
-    //
-    //    gameObject.transform.rotation += lookSpeed * dt * rotate;
-    //}
-
-    // limit pitch values between about +/- 85ish degrees
-    //gameObject.transform.rotation.x = glm::clamp(gameObject.transform.rotation.x, -1.5f, 1.5f);
-    //gameObject.transform.rotation.y = glm::mod(gameObject.transform.rotation.y, glm::two_pi<float>());
-
-    float yaw = 20.f;
-    const glm::vec3 forwardDir{ 0.f, -1.f, 0.f };
-    const glm::vec3 rightDir{ 1.f, 0.f, 0.f };
-    const glm::vec3 upDir{ 0.f, -1.f, 0.f };
-
-    glm::vec3 moveDir{ 0.f };
-    if (glfwGetKey(window, keys.moveForward) == GLFW_PRESS) moveDir += forwardDir;
-    if (glfwGetKey(window, keys.moveBackward) == GLFW_PRESS) moveDir -= forwardDir;
-    if (glfwGetKey(window, keys.lookRight) == GLFW_PRESS) moveDir += rightDir;
-    if (glfwGetKey(window, keys.lookLeft) == GLFW_PRESS) moveDir -= rightDir;
-    if (glfwGetKey(window, keys.lookUp) == GLFW_PRESS) moveDir += forwardDir;
-    if (glfwGetKey(window, keys.lookDown) == GLFW_PRESS) moveDir -= forwardDir;
-
-    if (glm::dot(moveDir, moveDir) > std::numeric_limits<float>::epsilon()) {
-        for (auto& gameobject : gameObjects) {
-            if (gameobject.model->getModelType() == MODEL_TYPE::MODEL_TYPE_AXIS) {
-                //gameobject.transform.translation += moveSpeed * dt * glm::normalize(moveDir);
-            }
 
 
-        }
-
-    }
-}
-*/
-::::./Rendering/Src/lve_camera.cpp::::#include "lve_camera.hpp"
+!@hash[]!@file[]./Rendering/Src/lve_camera.cpp!@hash[]!@code[]#include "lve_camera.hpp"
 
 // std
 #include <cassert>
@@ -2114,17 +2117,13 @@ void KeyboardMovementController::moveInPlaneXZ(
 
 void LveCamera::setOrthographicProjection(
     float left, float right, float top, float bottom, float near, float far) {
-  projectionMatrix = glm::mat4{1.0f};
-  projectionMatrix[0][0] = 2.f / (right - left);
-  projectionMatrix[1][1] = 2.f / (bottom - top);
-  projectionMatrix[2][2] = 1.f / (far - near);
-  projectionMatrix[3][0] = -(right + left) / (right - left);
-  projectionMatrix[3][1] = -(bottom + top) / (bottom - top);
-  projectionMatrix[3][2] = -near / (far - near);
+  projectionMatrix = glm::ortho(left,right,top,bottom,near,far);
+  isperspective = false;
 }
 
 void LveCamera::setPerspectiveProjection(float fovy, float aspect, float near, float far) {
     projectionMatrix = glm::perspective(fovy, aspect, near, far);
+    isperspective = true;
     //  assert(glm::abs(aspect - std::numeric_limits<float>::epsilon()) > 0.0f);
     //  const float tanHalfFovy = tan(fovy / 2.f);
     //  projectionMatrix = glm::mat4{0.0f};
@@ -2190,7 +2189,7 @@ void LveCamera::decomposeView(glm::mat4 viewMat) {
     rotation_d = glm::conjugate(rotation_d);
 }
 
-::::./Rendering/Src/lve_device.cpp::::
+!@hash[]!@file[]./Rendering/Src/lve_device.cpp!@hash[]!@code[]
 #include <vulkan/vulkan.h>
 #include "lve_device.hpp"
 
@@ -2606,7 +2605,7 @@ void LveDevice::createImageWithInfo(
     }
 }
 
-::::./Rendering/Src/lve_model.cpp::::#include <vulkan/vulkan.h>
+!@hash[]!@file[]./Rendering/Src/lve_model.cpp!@hash[]!@code[]#include <vulkan/vulkan.h>
 
 #include "lve_model.hpp"
 #include "rapidcsv.h"
@@ -2868,19 +2867,41 @@ void LveModel::updateOpacity(float amount) {
     if (this->opacity < 0.0f) this->opacity = 0.0f;
 }
 
-std::map<float, glm::vec3> LveModel::getLayer() {
-    vector<glm::vec3> it = { glm::vec3{0.1,0.5,0.8},glm::vec3{0.8,0.4,0.2},glm::vec3{0.5,0.9,0.9} };
-    int a = 0;
-    for (auto const& [key, val] : layerby_vertices) {
-
-        layerList.insert({ key, it.at(a%3)});
-        a++;
-    }
-
+std::map<float, LveModel::LayerProperty> LveModel::getLayer() {
+    //if(layerList.empty()){
+    //    vector<glm::vec3> it = { glm::vec3{0.1,0.5,0.8},glm::vec3{0.8,0.4,0.2},glm::vec3{0.5,0.9,0.9} };
+    //    int a = 0;
+    //    for (auto ordered_key : drawing_order_layerby) {
+    //
+    //        layerList.insert(pair(ordered_key, LayerProperty{true,it.at(a%3), 0.5}) );
+    //        a++;
+    //    }
+    //}
     return layerList;
 }
 
-::::./Rendering/Src/lve_pipeline.cpp::::#include <vulkan/vulkan.h>
+void LveModel::changeLayerColor(float layernumber, glm::vec3 rgb){
+    if(layerList.count(layernumber) != 0 ){
+        layerList[layernumber].color = rgb;
+    }
+
+}
+
+void LveModel::changeLayerOpacity(float layernumber, float opacity){
+    if(layerList.count(layernumber) != 0 ){
+        layerList[layernumber].opacity = opacity;
+    }
+
+}
+
+void LveModel::changeLayerVisiblity(float layernumber, bool visiblity){
+    if(layerList.count(layernumber) != 0 ){
+        layerList[layernumber].visiblity = visiblity;
+    }
+
+}
+
+!@hash[]!@file[]./Rendering/Src/lve_pipeline.cpp!@hash[]!@code[]#include <vulkan/vulkan.h>
 
 #include "lve_pipeline.hpp"
 #include "lve_model.hpp"
@@ -3086,7 +3107,7 @@ void LvePipeline::defaultPipelineConfigInfo(PipelineConfigInfo& configInfo) {
 }
 
 
-::::./Rendering/Src/lve_window.cpp::::
+!@hash[]!@file[]./Rendering/Src/lve_window.cpp!@hash[]!@code[]
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QDockWidget>
@@ -3131,7 +3152,7 @@ void LveWindow::wheelEvent(QWheelEvent *e)
         //      m_rendere->windowZoom(amount);
         QString funcName = "windowZoom";
         float value = amount;
-        emit signalInfoText(funcName, value);
+        //emit signalInfoText(funcName, value);
         //        qDebug()<<funcName << " : " << value;
     }
     else
@@ -3139,7 +3160,7 @@ void LveWindow::wheelEvent(QWheelEvent *e)
         //      m_renderer->moveZoom(amount);
         QString funcName = "moveZoom";
         float value = amount;
-        emit signalInfoText(funcName, value);
+        //emit signalInfoText(funcName, value);
         //        qDebug()<<funcName << " : " << value;
     }
 }
@@ -3158,6 +3179,12 @@ void LveWindow::mousePressEvent(QMouseEvent *e)
 
 }
 
+void LveWindow::emitStatus(float value){
+    QString funcName = "rotateRenderX";
+    //emit signalInfoText(funcName, value);
+}
+
+
 void LveWindow::mouseReleaseEvent(QMouseEvent *e)
 {
     if( !this->m_renderer->isRenderModelLoaded() ) return;
@@ -3166,7 +3193,7 @@ void LveWindow::mouseReleaseEvent(QMouseEvent *e)
     Qt::MouseButtons cur_button = e->buttons();
     QPoint position = e->pos();
     float value = 0;
-    emit signalInfoText(funcName, cur_button);
+    //emit signalInfoText(funcName, cur_button);
     this->m_renderer->cameraController.moveButtonReleased(cur_button);
     this->m_renderer->cameraController.setMousePosition(position, 2);
 }
@@ -3189,15 +3216,15 @@ void LveWindow::mouseMoveEvent(QMouseEvent *e)
             //            m_renderer->rotateRenderY(dx / 10.0f);
             QString funcName = "rotateRenderX";
             float value = -dx / 10.0f;
-            emit signalInfoText(funcName, value);
-            qDebug()<< "mouseEvent "<<funcName << " : " << value;
+            //emit signalInfoText(funcName, value);
+            //qDebug()<< "mouseEvent "<<funcName << " : " << value;
         }
         else if (m_mouseButton == 4)
         {
             //            m_renderer->moveRenderX(dx / 10.0f);
             QString funcName = "moveRenderX";
-            float value = -dx / 10.0f;
-            emit signalInfoText(funcName, value);
+            //float value = -dx / 10.0f;
+            //emit signalInfoText(funcName, value);
             //            qDebug()<<funcName << " : " << value;
         }
     }
@@ -3208,16 +3235,16 @@ void LveWindow::mouseMoveEvent(QMouseEvent *e)
         {
             //            m_renderer->rotateRenderY(dy / 10.0f);
             QString funcName = "rotateRenderY";
-            float value = dy / 10.0f;
-            emit signalInfoText(funcName, value);
+            //float value = dy / 10.0f;
+            //emit signalInfoText(funcName, value);
             //            qDebug()<<funcName << " : " << value;
         }
         else if (m_mouseButton == 4)
         {
             //            m_renderer->moveRenderY(dy / 10.0f);
             QString funcName = "moveRenderY";
-            float value = dy / 10.0f;
-            emit signalInfoText(funcName, value);
+            //float value = dy / 10.0f;
+            //emit signalInfoText(funcName, value);
             //            qDebug()<<funcName << " : " << value;
         }
     }
@@ -3227,6 +3254,9 @@ void LveWindow::keyPressEvent(QKeyEvent *e)
 {
     if( !this->m_renderer->isRenderModelLoaded() ) return;
     Qt::Key cur_key = (Qt::Key)e->key();
+    //QString funcName = "rotateRenderX";
+    //float value = 10.0f;
+    //emit signalInfoText(funcName, value);
 
     this->m_renderer->cameraController.moveKeyPressed(cur_key);
 
@@ -3238,7 +3268,7 @@ void LveWindow::keyReleaseEvent(QKeyEvent *e)
     this->m_renderer->cameraController.moveKeyReleased(cur_key);
 }
 
-::::./Rendering/Src/simple_render_system.cpp::::#include <vulkan/vulkan.h>
+!@hash[]!@file[]./Rendering/Src/simple_render_system.cpp!@hash[]!@code[]#include <vulkan/vulkan.h>
 #include "simple_render_system.hpp"
 
 // libs
@@ -3375,22 +3405,24 @@ void SimpleRenderSystem::renderGameObjects(
 
     SimplePushConstantData push{};
     for (auto& obj : gameObjects) {
-
         push.transform = projectionView * obj.transform.mat4();
 
         if (obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_LAYOUT && obj.model->getVisible()) {
+            std::map<float, LveModel::LayerProperty> layer_info = obj.model->getLayer();
 
-            for (auto const& [key, val] : obj.model->getLayer() ) {
-                lvePipelineForLayoutFace->bind(commandBuffer);
-                push.alpha = obj.model->getOpacity();
-                push.color = val;
-                vkCmdPushConstants(
-                            commandBuffer, pipelineLayoutForLayoutFace,
-                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                            sizeof(SimplePushConstantData), &push);
-                obj.model->bindDrawVertexIndexBufferForFace_layer(commandBuffer, key);
-                lvePipelineForLayoutEdge->bind(commandBuffer);
-                obj.model->bindDrawIndexBufferForEdge_layer(commandBuffer, key);
+            for (auto ordered_key : obj.model->drawing_order_layerby ) {
+                if(layer_info[ordered_key].visiblity){
+                    lvePipelineForLayoutFace->bind(commandBuffer);
+                    push.alpha = layer_info[ordered_key].opacity;
+                    push.color = layer_info[ordered_key].color;
+                    vkCmdPushConstants(
+                                commandBuffer, pipelineLayoutForLayoutFace,
+                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                                sizeof(SimplePushConstantData), &push);
+                    obj.model->bindDrawVertexIndexBufferForFace_layer(commandBuffer, ordered_key);
+                    lvePipelineForLayoutEdge->bind(commandBuffer);
+                    obj.model->bindDrawIndexBufferForEdge_layer(commandBuffer, ordered_key);
+                }
             }
 
         }
@@ -3423,7 +3455,7 @@ void SimpleRenderSystem::renderGameObjects(
         }
 
         if (obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_PEX_CAPACITOR && obj.model->getVisible()) {
-            //*
+            /*
             lvePipelineForPEXCapacitor->bind(commandBuffer);
             vkCmdPushConstants(
                         commandBuffer, pipelineLayoutForPEXCapacitor,
@@ -3438,7 +3470,7 @@ void SimpleRenderSystem::renderGameObjects(
 }
 
 
-::::./T2D.cpp::::#include "T2D.h"
+!@hash[]!@file[]./T2D.cpp!@hash[]!@code[]#include "T2D.h"
 
 using namespace std;
 
@@ -3467,6 +3499,7 @@ bool T2D::text2data(std::string file_name){
         int row = atoi(split[9].c_str());
         int col = atoi(split[10].c_str());
 
+        buf_ldata10by10.checking = false;
         buf_ldata10by10.layername = split[0];
         buf_ldata10by10.layernum = atoi(split[1].c_str());
         buf_ldata10by10.datatype = atoi(split[2].c_str());
@@ -3492,7 +3525,7 @@ bool T2D::text2data(std::string file_name){
             for(int i = 0 ; i < nsize ; i++){
                 getline(readfile, line);
                 split = T2D::string_split(line, ' ');
-                bBox buf;
+                B_BOX buf;
                 buf.minx = atof(split[0].c_str());
                 buf.miny = atof(split[1].c_str());
                 buf.maxx = atof(split[2].c_str());
@@ -3519,7 +3552,7 @@ vector<string> T2D::string_split(string input, char delimiter) {
 
     return answer;
 }
-::::./all_data.cpp::::#include "all_data.h"
+!@hash[]!@file[]./all_data.cpp!@hash[]!@code[]#include "all_data.h"
 #include <QString>
 #include <QTextStream>
 #include <QFileDialog>
@@ -3571,7 +3604,7 @@ void all_data::receiveSelectFileName(QString file_name)
     emit sendSplitData(row, column, inputDataVector);
     return;
 }
-::::./filedb.cpp::::#include "filedb.h"
+!@hash[]!@file[]./filedb.cpp!@hash[]!@code[]#include "filedb.h"
 #include <QFile>
 #include <QVector>
 #include <QTextStream>
@@ -3620,7 +3653,7 @@ void FileDb::openFile(QString fileNameInfo,QVector<QList<float>> &vecList,
     return;
 
 }
-::::./formhier.cpp::::#include "formhier.h"
+!@hash[]!@file[]./formhier.cpp!@hash[]!@code[]#include "formhier.h"
 #include "ui_formhier.h"
 #include "mainwindow.h"
 #include <QTableWidget>
@@ -3632,7 +3665,7 @@ FormHier::FormHier(QWidget *parent) :
     ui(new Ui::FormHier)
 {
     ui->setupUi(this);
-    // QTableWidget defalut �赴 �爼
+    // QTableWidget defalut ¬ê¸° ¤ì 
     QStringList defalutTableHeader;
     defalutTableHeader << "LayerName" << "LayerNum" << "LayerType" << "Red" << "Green" << "Blue";
 
@@ -3673,11 +3706,11 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
 //    qDebug() << "3rd" << inputDataVector.value(2);
 //    qDebug() << "1st_1st" << inputDataVector.value(0).value(0);
 
-// QTableWidget �� QStringList �滊氚涥赴岆�愲�曤
+// QTableWidget ì QStringList ë¡ë§ ë°ê¸°ë¬¸ë£ë
     QStringList vectorTOqstringlist;
     QStringList vectorTOqstringlistHoriLabels;
 
-// QTableWidget �赴 �爼
+// QTableWidget ¬ê¸° ¤ì 
     ui->tableWidget->setColumnCount(column);
     ui->tableWidget->setRowCount(row);
 
@@ -3687,7 +3720,7 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
     font.setPointSize(10);
     ui->tableWidget->horizontalHeader()->setFont(font);
 
-// Table 毂勳毎旮
+// Table ì±ì°ê¸
     for (int i=0; i<row ; i++)
     {
         for (int j=0; j<column ; j++)
@@ -3710,7 +3743,7 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
 
 
 }
-::::./forminfo.cpp::::#include "forminfo.h"
+!@hash[]!@file[]./forminfo.cpp!@hash[]!@code[]#include "forminfo.h"
 #include "ui_forminfo.h"
 #include <QDebug>
 #include "cmath"
@@ -3720,100 +3753,62 @@ FormInfo::FormInfo(QWidget *parent) :
     ui(new Ui::FormInfo)
 {
     ui->setupUi(this);
-    ui->pointX->setText(QString::number(round(pointX*10000)/10000));
-    ui->pointY->setText(QString::number(round(pointY*10000)/10000));
-    ui->pointZ->setText(QString::number(round(pointZ*10000)/10000));
-    ui->infoRot->setText(QString::number(round(infoRot*10000)/10000));
-    ui->infoTilt->setText(QString::number(round(infoTilt*10000)/10000));
-    ui->infoZoom->setText(QString::number(round(1/infoZoom*1000)/10)+"%");
+
+    QString init_x = "";
+    QString init_y = "";
+    QString init_z = "";
+    QString init_t = "";
+    QString init_r = "";
+    QString init_m = "";
+
+    ui->pos_x->setText(init_x);
+    ui->pos_y->setText(init_y);
+    ui->pos_z->setText(init_z);
+    ui->ang_tilt->setText(init_t);
+    ui->ang_rotation->setText(init_r);
+    ui->zoom->setText(init_m);
 }
 
-void FormInfo::slotInfoText(QString funcName, float value)
+FormInfo::~FormInfo()
 {
+    delete ui;
+}
+
+void FormInfo::slotInfoText(QString funcName, glm::vec3 value){
+
+    if (funcName == "camera_position")
+    {
+        float power_sum =pow(value.x,2)+pow(value.y,2);
+        float sqrt_result = sqrt(power_sum);
+        float radian = acos(value.x/sqrt_result);
+        float degree =radian *  (180/3.141592653589793238463);
+
+        float power_sum_tilt =pow(sqrt_result,2)+pow(value.z,2);
+        float sqrt_tilt = sqrt(power_sum_tilt);
+        float radian_tilt = asin(value.z/sqrt_tilt);
+        float degree_tilt =radian_tilt *  (180/3.141592653589793238463);
 
 
-    if (funcName == "moveGdsX")
-    {
-        pointX = pointX + value;
-        ui->pointX->setText(QString::number(round(pointX*10000)/10000));
-        initPointX = pointX;
+        if(value.y<0){
+            degree = 180+(180-degree);
+        }
+        _pos->rotation = round(degree);
+        _pos->tilt = round(degree_tilt);
+        ui->ang_rotation->setText(QString::number(round(degree)));
+        ui->ang_tilt->setText(QString::number(round(degree_tilt)));        
     }
-    if (funcName == "moveGdsY")
-    {
-        pointY = pointY + value;
-        ui->pointY->setText(QString::number(round(pointY*10000)/10000));
-        initPointY = pointY;
-    }
-    if (funcName == "moveGdsZ")
-    {
-        pointZ = pointZ + value;
-        ui->pointZ->setText(QString::number(round(pointZ*10000)/10000));
-        initPointZ = pointZ;
-    }
-    if (funcName == "rotateRenderX")
-    {
-        infoRot = initRot + value;
-        if (infoRot>360)
-            infoRot = infoRot - 360;
-        if (infoRot<0)
-            infoRot = infoRot + 360;
-        ui->infoRot->setText(QString::number(round(infoRot*10000)/10000));
-    }
-    if (funcName == "rotateRenderY")
-    {
-        qDebug()<<"rotateRenderY";
-        infoTilt = initTilt + value;
-        if (infoTilt>90)
-            infoTilt = 90;
-        if (infoTilt<-90)
-            infoTilt = -90;
-        ui->infoTilt->setText(QString::number(round(infoTilt*10000)/10000));
-    }
-    if (funcName == "moveZoom")
-    {
-        qDebug()<<"moveZoom";
-        infoZoom = infoZoom + infoZoom*value/1500;        //检�澊�00% �れ�勳殨潓, �瓣�齑堦赴臧GDS Size �澕 氚旊�堨�
-        if (infoZoom < 0.01)
-            infoZoom = 0.01;
-        if (infoZoom > 100)
-            infoZoom = 100;
-        ui->infoZoom->setText(QString::number(round(1/infoZoom*1000)/10)+"%");
-    }
-    if (funcName == "moveRenderX")
-    {
-        qDebug()<< "moveRenderX";
-        x = value;
-        moveRender(x,y);
-//        pointX = initPointX+value*cos(infoRot*pi/180)*infoZoom;
-//        pointY = initPointY+value*sin(infoRot*pi/180)*infoZoom;
-//        qDebug() << pointX << " : " << pointY;
-//        ui->pointX->setText(QString::number(round(pointX*10000)/10000));
-//        ui->pointY->setText(QString::number(round(pointY*10000)/10000));
-    }
-    if (funcName == "moveRenderY")
-    {
-        qDebug()<< "moveRenderY";
-        y = value;
-        moveRender(x,y);
-//        pointX = initPointX+value*sin(infoRot*pi/180)*sin(infoTilt*pi/180)*infoZoom;
-//        pointY = initPointY+value*cos(infoRot*pi/180)*sin(infoTilt*pi/180)*infoZoom;
-//        pointZ = initPointZ+value*cos(infoTilt*pi/180)*infoZoom;
-//        qDebug() << pointX << " : " << pointY;
-//        ui->pointX->setText(QString::number(round(pointX*10000)/10000));
-//        ui->pointY->setText(QString::number(round(pointY*10000)/10000));
-//        ui->pointZ->setText(QString::number(round(pointZ*10000)/10000));
-    }
-    if (funcName == "mouseRelease")
-    {
-        qDebug()<< "mouseRelease";
-        initTilt = infoTilt;
-        initRot = infoRot;
-        initPointX = pointX;
-        initPointY = pointY;
-        initPointZ = pointZ;
+}
 
-    }
-
+void FormInfo::slotPos(POS_MONITORING *pos)
+{
+    this->_pos = pos;
+    temp_pos.x = this->_pos->x;
+    temp_pos.y = this->_pos->y;
+    temp_pos.z = this->_pos->z;
+    temp_pos.tilt = this->_pos->tilt;
+    temp_pos.rotation = this->_pos->rotation;
+    temp_pos.zoom = this->_pos->zoom;
+    temp_pos.window_zoom = 1;
 }
 
 void FormInfo::moveRender(float x, float y)
@@ -3825,23 +3820,187 @@ void FormInfo::moveRender(float x, float y)
     pointY = initPointY+x*sin(infoRot*pi/180)*infoZoom + y*cos(infoRot*pi/180)*sin(infoTilt*pi/180)*infoZoom;
     pointZ = initPointZ+y*cos(infoTilt*pi/180)*infoZoom;
 
-    ui->pointX->setText(QString::number(round(pointX*10000)/10000));
-    ui->pointY->setText(QString::number(round(pointY*10000)/10000));
-    ui->pointZ->setText(QString::number(round(pointZ*10000)/10000));
+    ui->pos_x->setText(QString::number(round(pointX*10000)/10000));
+    ui->pos_y->setText(QString::number(round(pointY*10000)/10000));
+    ui->pos_z->setText(QString::number(round(pointZ*10000)/10000));
 
 }
 
-FormInfo::~FormInfo()
+bool FormInfo::checkNum(const QString &str)
 {
-    delete ui;
+    if(str.toDouble() == 0 && str != "0")
+    // «ìë¡ë°ê¿¨ë 0ìë° string  0 ë ê²½ì°ë ë¬¸ì
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
 }
-::::./formlayer.cpp::::#include "formlayer.h"
+
+void FormInfo::expressionText(double *point, const QString &arg1, QLineEdit *line_edit,int type)
+{
+    double double_arg = arg1.toDouble();
+    if(arg1.isEmpty() || arg1 == "-")
+    {
+
+    }
+    else if(checkNum(arg1)) // «ì¸ì ì
+    {
+        if(type == 1) //pos
+        {
+            *point = double_arg;
+        }
+        else if(type == 2 && double_arg >= -90 && double_arg <= 90) //tilt
+        {
+            *point = double_arg;
+        }
+        else if(type == 3 && double_arg >= 0 && double_arg < 360) //rotation
+        {
+            *point = double_arg;
+        }
+        else if(type == 4 && double_arg > 0) //zoom
+        {
+            *point = 100/double_arg;
+            //zoom  ê±°ë¦¬ê°ì´ê¸ë¬¸ëê°ì´ ´ìë¡ê±°ë¦¬ê° ê°ê¹ìì§
+        }
+    }
+    else // ê¸°ì¡´ ê°ì¼ë¡ ì
+    {
+        if(type >=1 && type <=3)
+        {
+            line_edit->setText(QString::number(round(*point*10000)/10000));
+        }
+        else if(type == 4)
+        {
+            line_edit->setText(QString::number(round(1/temp_pos.zoom*1000)/10)+"%");
+        }
+    }
+}
+
+void FormInfo::on_pos_x_textEdited(const QString &arg1)
+{
+    int type = 1; //pos
+    expressionText(&temp_pos.x,arg1,ui->pos_x,type);
+}
+
+void FormInfo::on_pos_y_textEdited(const QString &arg1)
+{
+    int type = 1; //pos
+    expressionText(&temp_pos.y,arg1,ui->pos_y,type);
+}
+
+void FormInfo::on_pos_z_textEdited(const QString &arg1)
+{
+    int type = 1; //pos
+    expressionText(&temp_pos.z,arg1,ui->pos_z,type);
+}
+
+void FormInfo::on_ang_tilt_textEdited(const QString &arg1)
+{
+    int type = 2; //tilt
+    expressionText(&temp_pos.tilt,arg1,ui->ang_tilt,type);
+}
+
+void FormInfo::on_ang_rotation_textEdited(const QString &arg1)
+{
+    int type = 3; //rotation
+    expressionText(&temp_pos.rotation,arg1,ui->ang_rotation,type);
+}
+
+void FormInfo::on_zoom_textEdited(const QString &arg1)
+{
+    int type = 4; //zoom
+    expressionText(&temp_pos.zoom,arg1,ui->zoom,type);
+}
+
+void FormInfo::inputPos()
+{
+    _pos->x = temp_pos.x;
+    _pos->y = temp_pos.y;
+    _pos->z = temp_pos.z;
+    _pos->tilt = temp_pos.tilt;
+    _pos->rotation = temp_pos.rotation;
+    _pos->zoom = temp_pos.zoom;
+    qDebug()<< "inputPos : " << _pos->x << ","
+                             << _pos->y << ","
+                             << _pos->z << ","
+                             << _pos->tilt << ","
+                             << _pos->rotation << ","
+                             << _pos->zoom;
+    emit signalPos();
+}
+
+void FormInfo::on_pos_x_returnPressed()
+{
+    inputPos();
+}
+
+void FormInfo::on_pos_y_returnPressed()
+{
+    inputPos();
+}
+
+void FormInfo::on_pos_z_returnPressed()
+{
+    inputPos();
+}
+
+void FormInfo::on_ang_tilt_returnPressed()
+{
+    inputPos();
+}
+
+void FormInfo::on_ang_rotation_returnPressed()
+{
+    inputPos();
+}
+
+void FormInfo::on_zoom_returnPressed()
+{
+    inputPos();
+}
+
+void FormInfo::on_pos_x_editingFinished()
+{    
+    ui->pos_x->setText(QString::number(round(temp_pos.x*10000)/10000));
+}
+
+void FormInfo::on_pos_y_editingFinished()
+{
+    ui->pos_y->setText(QString::number(round(temp_pos.y*10000)/10000));
+}
+
+void FormInfo::on_pos_z_editingFinished()
+{
+    ui->pos_z->setText(QString::number(round(temp_pos.z*10000)/10000));
+}
+
+void FormInfo::on_ang_tilt_editingFinished()
+{
+    ui->ang_tilt->setText(QString::number(round(temp_pos.tilt*10000)/10000));
+}
+
+void FormInfo::on_ang_rotation_editingFinished()
+{
+    ui->ang_rotation->setText(QString::number(round(temp_pos.rotation*10000)/10000));
+}
+
+void FormInfo::on_zoom_editingFinished()
+{
+    ui->zoom->setText(QString::number(round(1/temp_pos.zoom*1000)/10)+"%");
+}
+!@hash[]!@file[]./formlayer.cpp!@hash[]!@code[]#include "formlayer.h"
 #include "ui_formlayer.h"
+#include "Rendering/Src/dtaorendersystem.h"
+#include "Rendering/Src/lve_model.hpp"
+#include <string>
 
 
 
-FormLayer::FormLayer(QWidget *parent) :
-    QDialog(parent),
+FormLayer::FormLayer(LveWindow *w, QWidget *parent) :
+    QDialog(parent), m_window(w),
     ui(new Ui::FormLayer)
 {
     ui->setupUi(this);
@@ -3857,18 +4016,18 @@ FormLayer::FormLayer(QWidget *parent) :
     ui->tableWidget->setColumnWidth(4,60);
     ui->tableWidget->setColumnWidth(5,100);
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// TableWidget Title Format �爼
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /// TableWidget Title Format ¤ì 
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     QBrush brush(QColor(255, 255, 255, 255));
     brush.setStyle(Qt::SolidPattern);
     QFont font;
     font.setBold(true);
     font.setWeight(75);
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// TableWidget Title �牓 氚氚橃榿
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /// TableWidget Title ë ¥ ë°ë°ì
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     for (int i=1; i<6; i++){
         QTableWidgetItem *TableHeaderItem = new QTableWidgetItem;
         TableHeaderItem->setText(TalbeHeader[i]);
@@ -3895,7 +4054,7 @@ FormLayer::~FormLayer()
 
 void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QString>> &inputDataVector)
 {
-// QTableWidget �� QStringList �滊氚涥赴岆�愲�曤
+    // QTableWidget ì QStringList ë¡ë§ ë°ê¸°ë¬¸ë£ë
     QStringList vectorTOqstringlist;
     QStringList vectorTOqstringlistHoriLabels;
     QStringList vectorTOqstringcolorlist;
@@ -3905,43 +4064,43 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
     QString LayerColorText;
     vectorTOqstringlistHoriLabels << " ";
 
-// QTableWidget �赴 �爼
+    // QTableWidget ¬ê¸° ¤ì 
     ui->tableWidget->setColumnCount(6);
     ui->tableWidget->setRowCount(row);
-//    ui->tableWidget->setItemDelegateForColumn(5,new SliderDelegate);
+    //    ui->tableWidget->setItemDelegateForColumn(5,new SliderDelegate);
     ui->tableWidget->setColumnWidth(5,150);
 
-// Table 毂勳毎旮
-    int TalbeColumnCount = 3;       //input data �� ��column �垬
+    // Table ì±ì°ê¸
+    int TalbeColumnCount = 3;       //input data ì ê°column ê°
     for (int i=0; i<row ; i++)
     {
-       // table value 毂勳毎旮
+        // table value ì±ì°ê¸
         for (int j=0; j < TalbeColumnCount ; j++)
         {
             vectorTOqstringlist << inputDataVector.value(i+1).value(j);
-//            vectorTOqstringlistHoriLabels << inputDataVector.value(0).value(j+1);
+            //            vectorTOqstringlistHoriLabels << inputDataVector.value(0).value(j+1);
             QTableWidgetItem *tableitem = new QTableWidgetItem;
             tableitem->setText(vectorTOqstringlist[i*TalbeColumnCount+j]);
             tableitem->setTextAlignment(Qt::AlignCenter);
             ui->tableWidget->setItem((i+1),j+2,tableitem);
         }
 
-        //Opacity 毂勳毎旮
+        //Opacity ì±ì°ê¸
         QSlider *OpacitySlider = new QSlider(Qt::Horizontal);
         QWidget *OpacitySliderWidget = new QWidget();
         OpacitySlider->setRange(0,100);
-        OpacitySlider->setValue(100);
+        OpacitySlider->setValue(50);
         OpacitySlider->setFocusPolicy(Qt::StrongFocus);
         QHBoxLayout *OpacityLayout = new QHBoxLayout(OpacitySliderWidget);
         OpacityLayout->addWidget(OpacitySlider);
         OpacitySliderWidget->setLayout(OpacityLayout);
 
-//        OpacitySlider->setTickPosition(QSlider::TicksBothSides);
-//        OpacitySlider->setTickInterval(10);
+        //        OpacitySlider->setTickPosition(QSlider::TicksBothSides);
+        //        OpacitySlider->setTickInterval(10);
         ui->tableWidget->setCellWidget(i+1, 5, OpacitySliderWidget);
         QObject::connect(OpacitySlider, SIGNAL(valueChanged(int)), this, SLOT(handleOpacitySlider(int)));
 
-        // checkbox 毂勳毎旮
+        // checkbox ì±ì°ê¸
         QCheckBox *checkBoxItem = new QCheckBox();
         checkBoxItem->setCheckState(Qt::Checked);
         QWidget *checkboxWidget = new QWidget();
@@ -3964,43 +4123,43 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
         LayerColorText = "background-color: rgb(" + LayerColorRed;
         LayerColorText = LayerColorText + "," + LayerColorGreen + "," + LayerColorBlue + ")";
 
-        // color pushbutton 毂勳毎旮
+        // color pushbutton ì±ì°ê¸
         QPushButton *colorbutton = new QPushButton();
         colorbutton->setStyleSheet(LayerColorText);
         ui->tableWidget->setCellWidget(i+1,1,colorbutton);
         QObject::connect(colorbutton, SIGNAL(clicked()), this, SLOT(on_colorbutton_clicked()));
     }
 
-///////////////////////////////tableWidget title checkbox ///////////////////////////////
-        QCheckBox *checkBoxItem = new QCheckBox();
-        checkBoxItem->setCheckState(Qt::Checked);
-        QWidget *checkboxWidget = new QWidget();
-        QHBoxLayout *checkboxLayout = new QHBoxLayout(checkboxWidget);
-        checkboxLayout->addWidget(checkBoxItem);
-        checkboxLayout->setAlignment(Qt::AlignCenter);
-        checkboxLayout->setContentsMargins(0,0,0,0);
-        checkboxWidget->setLayout(checkboxLayout);
-        ui->tableWidget->setCellWidget(0,0,checkboxWidget);
+    ///////////////////////////////tableWidget title checkbox ///////////////////////////////
+    QCheckBox *checkBoxItem = new QCheckBox();
+    checkBoxItem->setCheckState(Qt::Checked);
+    QWidget *checkboxWidget = new QWidget();
+    QHBoxLayout *checkboxLayout = new QHBoxLayout(checkboxWidget);
+    checkboxLayout->addWidget(checkBoxItem);
+    checkboxLayout->setAlignment(Qt::AlignCenter);
+    checkboxLayout->setContentsMargins(0,0,0,0);
+    checkboxWidget->setLayout(checkboxLayout);
+    ui->tableWidget->setCellWidget(0,0,checkboxWidget);
 
-        QWidget *findwidget = ui->tableWidget->cellWidget(0, 0);
-        QCheckBox *checkboxInTable = findwidget->findChild<QCheckBox *>();
-        QObject::connect(checkboxInTable, SIGNAL(stateChanged(int)), this, SLOT(tableWidget_checkBoxChanged()));
+    QWidget *findwidget = ui->tableWidget->cellWidget(0, 0);
+    QCheckBox *checkboxInTable = findwidget->findChild<QCheckBox *>();
+    QObject::connect(checkboxInTable, SIGNAL(stateChanged(int)), this, SLOT(tableWidget_checkBoxChanged()));
 
-///////////////////////////////tableWidget title slider ///////////////////////////////
+    ///////////////////////////////tableWidget title slider ///////////////////////////////
 
-        QSpacerItem *HeaderVerticalSpacer = new QSpacerItem(0,20,QSizePolicy::Fixed, QSizePolicy::Fixed);
-        QSlider *HeaderOpacitySlider = new QSlider();
-        HeaderOpacitySlider->setOrientation(Qt::Horizontal);
-        HeaderOpacitySlider->setValue(100);
-        HeaderOpacitySlider->setRange(0,100);
-        QWidget *HeaderSliderWidget = new QWidget();
-        QVBoxLayout *HeaderSliderLayout = new QVBoxLayout(HeaderSliderWidget);
-        HeaderSliderLayout->addItem(HeaderVerticalSpacer);
-        HeaderSliderLayout->addWidget(HeaderOpacitySlider);
-        HeaderSliderWidget->setLayout(HeaderSliderLayout);
-        ui->tableWidget->setCellWidget(0,5,HeaderSliderWidget);
+    QSpacerItem *HeaderVerticalSpacer = new QSpacerItem(0,20,QSizePolicy::Fixed, QSizePolicy::Fixed);
+    QSlider *HeaderOpacitySlider = new QSlider();
+    HeaderOpacitySlider->setOrientation(Qt::Horizontal);
+    HeaderOpacitySlider->setValue(200);
+    HeaderOpacitySlider->setRange(0,255);
+    QWidget *HeaderSliderWidget = new QWidget();
+    QVBoxLayout *HeaderSliderLayout = new QVBoxLayout(HeaderSliderWidget);
+    HeaderSliderLayout->addItem(HeaderVerticalSpacer);
+    HeaderSliderLayout->addWidget(HeaderOpacitySlider);
+    HeaderSliderWidget->setLayout(HeaderSliderLayout);
+    ui->tableWidget->setCellWidget(0,5,HeaderSliderWidget);
 
-        QObject::connect(HeaderOpacitySlider, SIGNAL(valueChanged(int)), this, SLOT(handleOpacitySlider(int)));
+    QObject::connect(HeaderOpacitySlider, SIGNAL(valueChanged(int)), this, SLOT(handleOpacitySlider(int)));
 
 
 }
@@ -4008,13 +4167,14 @@ void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// \brief FormLayer::on_tableWidget_itemChanged
 /// \param checkBoxItem
-/// description : checkbox �儩�澕 Layer On/Off mainwindow status 彀届棎 �滊
+/// description : checkbox  í°ë¼ Layer On/Off mainwindow status ì°½ì ì¶ë ¥
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void FormLayer::tableWidget_checkBoxChanged()
+void FormLayer::on_checkboxInTable_stateChanged()
 {
     QCheckBox *checkboxInTable = qobject_cast<QCheckBox*>(sender());
     if (!checkboxInTable)
         return;
+
 
     int checkboxrow = -1;
     for (int i = 0; i < ui->tableWidget->rowCount(); i++) {
@@ -4035,19 +4195,23 @@ void FormLayer::tableWidget_checkBoxChanged()
                 QWidget *widget = ui->tableWidget->cellWidget(i, 0);
                 QCheckBox *checkbox = widget->findChild<QCheckBox*>();
                 checkbox->setCheckState(Qt::Checked);
+                t2d_layer_information->LayoutData10by10[i].checking = true;
+                qDebug() << t2d_layer_information->LayoutData10by10[i].layername.c_str();
+                qDebug() << t2d_layer_information->LayoutData10by10[i].checking;
             }
             qDebug() << "All Layer Checkbox Checked.";
             emit outputLayerStatus(CommentAllCheckedCheckBox);
 
         } else {
-                for (int i = 1; i < ui->tableWidget->rowCount(); i++) {
-                    QWidget *widget = ui->tableWidget->cellWidget(i, 0);
-                    QCheckBox *checkbox = widget->findChild<QCheckBox*>();
-                    checkbox->setCheckState(Qt::Unchecked);
-                }
-                qDebug() << "All Layer Checkbox Unchecked.";
-                emit outputLayerStatus(CommentAllUncheckedCheckBox);
+            for (int i = 1; i < ui->tableWidget->rowCount(); i++) {
+                QWidget *widget = ui->tableWidget->cellWidget(i, 0);
+                QCheckBox *checkbox = widget->findChild<QCheckBox*>();
+                checkbox->setCheckState(Qt::Unchecked);
+                t2d_layer_information->LayoutData10by10[i].checking = false;
             }
+            qDebug() << "All Layer Checkbox Unchecked.";
+            emit outputLayerStatus(CommentAllUncheckedCheckBox);
+        }
         return;
     }
 
@@ -4055,15 +4219,29 @@ void FormLayer::tableWidget_checkBoxChanged()
     QString selectedLayer = readcheckbox->text();
     QString printLayer = "selectedLayer = " + selectedLayer;
 
+    QTableWidgetItem *ReadLayerNumber = ui->tableWidget->item(checkboxrow,3);
+    float LayerNumber = stof(ReadLayerNumber->text().toStdString());
+
     if (checkboxInTable->isChecked()) {
+        DtaoRenderSystem *renderer = this->m_window->getRenderer();
+        renderer->getCustomVisiblity(LayerNumber, true);
+        t2d_layer_information->LayoutData10by10[checkboxrow-1].checking = true;
+        qDebug() << t2d_layer_information->LayoutData10by10[checkboxrow-1].layername.c_str();
+        qDebug() << t2d_layer_information->LayoutData10by10[checkboxrow-1].checking;
         printLayer = printLayer + "  Layer  On";
         emit outputLayerStatus(printLayer);
         qDebug() << "Checkbox at row" << checkboxrow << "is checked.";
     } else {
+        DtaoRenderSystem *renderer = this->m_window->getRenderer();
+        renderer->getCustomVisiblity(LayerNumber, false);
         printLayer = printLayer + "  Layer  Off";
+        t2d_layer_information->LayoutData10by10[checkboxrow-1].checking = false;
+        qDebug() << t2d_layer_information->LayoutData10by10[checkboxrow-1].layername.c_str();
+        qDebug() << t2d_layer_information->LayoutData10by10[checkboxrow-1].checking;
         emit outputLayerStatus(printLayer);
         qDebug() << "Checkbox at row" << checkboxrow << "is unchecked.";
     }
+    qDebug() << " cheking confirm : "<<t2d_layer_information->LayoutData10by10[checkboxrow-1].checking;
 }
 
 void FormLayer::on_colorbutton_clicked()
@@ -4072,95 +4250,344 @@ void FormLayer::on_colorbutton_clicked()
     QString LayerColorText;
     QPushButton *ColorCheckButton = qobject_cast<QPushButton*>(sender());
 
+
     int colorbuttonRow = ui->tableWidget->currentRow();
+    int button_row_for_t2d = colorbuttonRow-1;
+
+    float LayerNumber = stof(ui->tableWidget->item(colorbuttonRow,3)->text().toStdString());
 
     QString OldColorStyleSheet = ColorCheckButton->styleSheet();
-
     QStringList splittext = OldColorStyleSheet.split("(");
     QString splitrgbtemp = splittext[1].remove(")");
     QStringList splitrgb = splitrgbtemp.split(",");
 
-    qDebug() << "OldColor = " << OldColorStyleSheet;
-    qDebug() << "OldColorsplit = " << splitrgb;
-
-//    int LayerColorRed = splitrgb[0].toInt();
-//    int LayerColorGreen = splitrgb[1].toInt();
-//    int LayerColorBlue = splitrgb[2].toInt();
-
     QString OldLayerColorRed = splitrgb[0];
     QString OldLayerColorGreen = splitrgb[1];
     QString OldLayerColorBlue = splitrgb[2];
+    QString OldLayerColorAlpha = splitrgb[3];
     QString PrintOldLayerColor = "Red Num = " + OldLayerColorRed;
-    PrintOldLayerColor = PrintOldLayerColor + "     Green Num = " + OldLayerColorGreen + "      Blue Num = " + OldLayerColorBlue;
+    PrintOldLayerColor = PrintOldLayerColor + "     Green Num = " + OldLayerColorGreen + "      Blue Num = " + OldLayerColorBlue + + "      Alpha Num = " + OldLayerColorAlpha;
 
-//    QRgb LayerColorDefault = qRgb(LayerColorRed, LayerColorGreen, LayerColorBlue);
+    int OldLayerColorRedNum = OldLayerColorRed.toInt();
+    int OldLayerColorGreenNum = OldLayerColorGreen.toInt();
+    int OldLayerColorBlueNum = OldLayerColorBlue.toInt();
+    int OldLayerColorAlphaNum = OldLayerColorAlpha.toInt();
 
-    QColor color = QColorDialog::getColor(Qt::yellow, this);
+    QRgb orc = qRgba(OldLayerColorRedNum, OldLayerColorGreenNum, OldLayerColorBlueNum, OldLayerColorAlphaNum);
+    QRgb chc = QColorDialog::getRgba(orc);
+    int NewColorRed = qRed(chc);
+    int NewColorGreen = qGreen(chc);
+    int NewColorBlue = qBlue(chc);
+    int NewColorAlpha = qAlpha(chc);
 
-    if (color.isValid()){
-        LayerColorname = color.name();
+    LayerColorText = "background-color: rgba(" + QString::number(NewColorRed);
+    LayerColorText = LayerColorText + "," + QString::number(NewColorGreen) + "," + QString::number(NewColorBlue) + "," + QString::number(NewColorAlpha) + ")";
+    ui->tableWidget->cellWidget(colorbuttonRow,1)->setStyleSheet(LayerColorText);
 
-        QColor HexColor(LayerColorname);
-        int NewColorRed = HexColor.red();
-        int NewColorGreen = HexColor.green();
-        int NewColorBlue = HexColor.blue();
+    t2d_layer_information->LayoutData10by10[button_row_for_t2d].color.r = NewColorRed;
+    t2d_layer_information->LayoutData10by10[button_row_for_t2d].color.g = NewColorGreen;
+    t2d_layer_information->LayoutData10by10[button_row_for_t2d].color.b = NewColorBlue;
+    t2d_layer_information->LayoutData10by10[button_row_for_t2d].color.a = NewColorAlpha;
 
-        LayerColorText = "background-color: rgb(" + QString::number(NewColorRed);
-        LayerColorText = LayerColorText + "," + QString::number(NewColorGreen) + "," + QString::number(NewColorBlue) + ")";
+    DtaoRenderSystem *renderer = this->m_window->getRenderer();
+    renderer->getCustomColor(LayerNumber, glm::vec3 {NewColorRed/(float)255,NewColorGreen/(float)255,NewColorBlue/(float)255});
 
-//        QStringList newcolorsplittemp = LayerColorText.split(":");
-//        QString newcolorsplitrgb = newcolorsplittemp[1].remove(" ");
-//        qDebug() << newcolorsplitrgb;
+    emit outputLayerStatus(empty_for_emit);
+
+//    on_opacityslider_valueChanged(NewColorAlpha);
+
+    QWidget *SliderChangeWidget = ui->tableWidget->cellWidget(colorbuttonRow, 5);
+    QSlider *SliderChange = SliderChangeWidget->findChild<QSlider*>();
+    SliderChange->setValue(NewColorAlpha);
 
 
 
-//        qDebug() << "Red = " << NewColorRed << "Green = " << NewColorGreen << "Blue = " << NewColorBlue;
-        qDebug() << "NewColor = " <<LayerColorText;
+//    if (color.isValid()){
+//        LayerColorname = color.name();
 
-        ui->tableWidget->cellWidget(colorbuttonRow,1)->setStyleSheet(LayerColorText);
+//        QColor HexColor(LayerColorname);
+//        int NewColorRed = HexColor.red();
+//        int NewColorGreen = HexColor.green();
+//        int NewColorBlue = HexColor.blue();
 
-    } else {
-        ui->tableWidget->cellWidget(colorbuttonRow,1)->setStyleSheet(OldColorStyleSheet);
-        emit outputLayerStatus(PrintOldLayerColor);
-        qDebug() << "Color is not selected";
-    }
+//        LayerColorText = "background-color: rgb(" + QString::number(NewColorRed);
+//        LayerColorText = LayerColorText + "," + QString::number(NewColorGreen) + "," + QString::number(NewColorBlue) + ")";
 
-//    QRgb test = QColorDialog::getRgba(orc);
+//        //        QStringList newcolorsplittemp = LayerColorText.split(":");
+//        //        QString newcolorsplitrgb = newcolorsplittemp[1].remove(" ");
+//        //        qDebug() << newcolorsplitrgb;
+
+
+
+//        //        qDebug() << "Red = " << NewColorRed << "Green = " << NewColorGreen << "Blue = " << NewColorBlue;
+//        qDebug() << "NewColor = " <<LayerColorText;
+//        qDebug() << LayerNumber;
+//        DtaoRenderSystem *renderer = this->m_window->getRenderer();
+//        renderer->getCustomColor(LayerNumber, glm::vec3 {NewColorRed/(float)255,NewColorGreen/(float)255,NewColorBlue/(float)255});
+
+
+//        ui->tableWidget->cellWidget(colorbuttonRow,1)->setStyleSheet(LayerColorText);
+
+//    } else {
+//        ui->tableWidget->cellWidget(colorbuttonRow,1)->setStyleSheet(OldColorStyleSheet);
+//        emit outputLayerStatus(PrintOldLayerColor);
+//        qDebug() << "Color is not selected";
+//    }
+
+//    //    QRgb test = QColorDialog::getRgba(orc);
 
 
 }
 
-void FormLayer::handleOpacitySlider(int Opacity)
+void FormLayer::on_opacityslider_valueChanged(int Opacity)
 {
-    int sliderrow=-1;
+    // ui->tableWidget->currentRow() ë¡ì°¾ì¼¤ê³  ë©´, current row ê° -1 ë¡ì´
+    int sliderrow = -1;
+    int sliderrow_for_t2d = -1;
+    QString LayerColorname;
+    QString LayerColorText;
     QSlider *OpacityInTalbe = qobject_cast<QSlider*>(sender());
+
     for (int i = 0; i < ui->tableWidget->rowCount(); i++) {
         QWidget *widget = ui->tableWidget->cellWidget(i, 5);
         QSlider *slider = widget->findChild<QSlider*>();
 
         if (slider == OpacityInTalbe) {
             sliderrow = i;
+            sliderrow_for_t2d = sliderrow-1;
+
+            qDebug() << "init sliderrow =============" << sliderrow;
+            qDebug() << "init sliderrow_for_t2d =============" << sliderrow_for_t2d;
 
             if (sliderrow == 0){
-
                 for (int k=1; k < ui->tableWidget->rowCount(); k++) {
                     QWidget *SliderChangeWidget = ui->tableWidget->cellWidget(k, 5);
                     QSlider *SliderChange = SliderChangeWidget->findChild<QSlider*>();
                     SliderChange->setValue(Opacity);
+                    t2d_layer_information->LayoutData10by10[sliderrow_for_t2d].color.a = Opacity;
+                    emit outputLayerStatus(empty_for_emit);
+                    qDebug() << "init sliderrow_for_t2d =============" << sliderrow_for_t2d;
                 }
             } else {
                 QTableWidgetItem *ReadLayer = ui->tableWidget->item(sliderrow,2);
                 QString selectedLayer = ReadLayer->text();
                 QString printLayer = "selectedLayer = " + selectedLayer;
                 printLayer = printLayer + "  Layer  Opacity = " + QString::number(Opacity);
-                emit outputLayerStatus(printLayer);
                 qDebug() << printLayer;
+
+                QString OldColorStyleSheet = ui->tableWidget->cellWidget(sliderrow,1)->styleSheet();
+                qDebug() << OldColorStyleSheet;
+                QStringList splittext = OldColorStyleSheet.split("(");
+                QString splitrgbtemp = splittext[1].remove(")");
+                QStringList splitrgb = splitrgbtemp.split(",");
+
+                QString OldLayerColorRed = splitrgb[0];
+                QString OldLayerColorGreen = splitrgb[1];
+                QString OldLayerColorBlue = splitrgb[2];
+                QString OldLayerColorAlpha = QString::number(Opacity);
+
+                LayerColorText = "background-color: rgba(" + OldLayerColorRed;
+                LayerColorText = LayerColorText + "," + OldLayerColorGreen + "," + OldLayerColorBlue + "," + OldLayerColorAlpha + ")";
+                ui->tableWidget->cellWidget(sliderrow,1)->setStyleSheet(LayerColorText);
+                t2d_layer_information->LayoutData10by10[sliderrow_for_t2d].color.a = Opacity;
+                emit outputLayerStatus(printLayer);
+
+                QTableWidgetItem *ReadLayerNumber = ui->tableWidget->item(sliderrow,3);
+                float LayerNumber = stof(ReadLayerNumber->text().toStdString());
+                DtaoRenderSystem *renderer = this->m_window->getRenderer();
+                renderer->getCustomOpacity(LayerNumber,Opacity/(float)255);
+//                OpacitySliderValueChange(Opacity, sliderrow_for_t2d);
+
+                qDebug() << "Before sliderrow_for_t2d =============" << sliderrow_for_t2d;
             }
             break;
         }
     }
 }
-::::./formmap.cpp::::#include "formmap.h"
+
+void FormLayer::OpacitySliderValueChange(int OpacityValue){
+
+    qDebug() << "test number ======================================= " << OpacityValue;
+    emit outputLayerStatus(empty_for_emit);
+}
+
+
+
+
+void FormLayer::ReceiveLayerInformation(T2D &t2d)
+{
+    t2d_layer_information = &t2d;
+    for(int i = 0 ; i < t2d_layer_information->LayoutData10by10.size(); i++){
+        printf("\n%-9s %-9d %-9d %-9d %-9d %-9d %-9d %-9f %-9f ",
+               t2d_layer_information->LayoutData10by10[i].layername.c_str(),
+               t2d_layer_information->LayoutData10by10[i].layernum,
+               t2d_layer_information->LayoutData10by10[i].datatype,
+               t2d_layer_information->LayoutData10by10[i].color.r,
+               t2d_layer_information->LayoutData10by10[i].color.g,
+               t2d_layer_information->LayoutData10by10[i].color.b,
+               t2d_layer_information->LayoutData10by10[i].color.a,
+               t2d_layer_information->LayoutData10by10[i].bot,
+               t2d_layer_information->LayoutData10by10[i].top);
+    }
+
+
+    MakeLayerInformationTalbe();
+}
+
+void FormLayer::MakeLayerInformationTalbe()
+{
+    // QTableWidget ¬ê¸° ¤ì 
+    ui->tableWidget->setColumnCount(6);
+    ui->tableWidget->setRowCount(t2d_layer_information->LayoutData10by10.size());
+    ui->tableWidget->setColumnWidth(5,150);
+
+    // Table ì±ì°ê¸
+    for (int i=0; i < t2d_layer_information->LayoutData10by10.size() ; i++)
+    {
+        QString LayerColorRed;
+        QString LayerColorGreen;
+        QString LayerColorBlue;
+        QString LayerColorAlpha;
+        QString LayerColorText;
+
+        QTableWidgetItem *tableitem_name = new QTableWidgetItem;
+        QTableWidgetItem *tableitem_num = new QTableWidgetItem;
+        QTableWidgetItem *tableitem_type = new QTableWidgetItem;
+        tableitem_name->setText(t2d_layer_information->LayoutData10by10[i].layername.c_str());
+        tableitem_num->setText(QString::number(t2d_layer_information->LayoutData10by10[i].layernum));
+        tableitem_type->setText(QString::number(t2d_layer_information->LayoutData10by10[i].datatype));
+
+        tableitem_name->setTextAlignment(Qt::AlignCenter);
+        tableitem_num->setTextAlignment(Qt::AlignCenter);
+        tableitem_type->setTextAlignment(Qt::AlignCenter);
+
+        ui->tableWidget->setItem((i+1),2,tableitem_name);
+        ui->tableWidget->setItem((i+1),3,tableitem_num);
+        ui->tableWidget->setItem((i+1),4,tableitem_type);
+
+        //Opacity ì±ì°ê¸
+        QSlider *OpacitySlider = new QSlider(Qt::Horizontal);
+        QWidget *OpacitySliderWidget = new QWidget();
+        OpacitySlider->setRange(0,255);
+        OpacitySlider->setValue(t2d_layer_information->LayoutData10by10[i].color.a);
+        OpacitySlider->setFocusPolicy(Qt::StrongFocus);
+        QHBoxLayout *OpacityLayout = new QHBoxLayout(OpacitySliderWidget);
+        OpacityLayout->addWidget(OpacitySlider);
+        OpacitySliderWidget->setLayout(OpacityLayout);
+        ui->tableWidget->setCellWidget(i+1, 5, OpacitySliderWidget);
+        QObject::connect(OpacitySlider, SIGNAL(valueChanged(int)), this, SLOT(on_opacityslider_valueChanged(int)));
+//        QObject::connect(OpacitySlider, SIGNAL(sliderReleased(int)), this, SLOT(OpacitySliderValueChange(int)));
+
+        // checkbox ì±ì°ê¸
+        QCheckBox *checkBoxItem = new QCheckBox();
+        checkBoxItem->setCheckState(Qt::Unchecked);
+        QWidget *checkboxWidget = new QWidget();
+        QHBoxLayout *checkboxLayout = new QHBoxLayout(checkboxWidget);
+        checkboxLayout->addWidget(checkBoxItem);
+        checkboxLayout->setAlignment(Qt::AlignCenter);
+        checkboxLayout->setContentsMargins(0,0,0,0);
+        checkboxWidget->setLayout(checkboxLayout);
+        ui->tableWidget->setCellWidget(i+1,0,checkboxWidget);
+        QWidget *widget = ui->tableWidget->cellWidget(i+1, 0);
+        QCheckBox *checkboxInTable = widget->findChild<QCheckBox *>();
+        QObject::connect(checkboxInTable, SIGNAL(stateChanged(int)), this, SLOT(on_checkboxInTable_stateChanged()));
+
+        // Layer color rgb defalut value
+        int DefaultRedColor = t2d_layer_information->LayoutData10by10[i].color.r;
+        int DefaultGreenColor = t2d_layer_information->LayoutData10by10[i].color.g;
+        int DefaultBlueColor = t2d_layer_information->LayoutData10by10[i].color.b;
+        int DefaultAlpha = t2d_layer_information->LayoutData10by10[i].color.a;
+        QColor DefaultColor = QColor(DefaultRedColor, DefaultGreenColor, DefaultBlueColor, DefaultAlpha);
+
+        // Layer color rgb defalut value
+        LayerColorRed = QString::number(t2d_layer_information->LayoutData10by10[i].color.r);
+        LayerColorGreen = QString::number(t2d_layer_information->LayoutData10by10[i].color.g);
+        LayerColorBlue = QString::number(t2d_layer_information->LayoutData10by10[i].color.b);
+        LayerColorAlpha = QString::number(t2d_layer_information->LayoutData10by10[i].color.a);
+
+        LayerColorText = "background-color: rgba(" + LayerColorRed;
+        LayerColorText = LayerColorText + "," + LayerColorGreen + "," + LayerColorBlue + "," + LayerColorAlpha + ")";
+
+        // color pushbutton ì±ì°ê¸
+        QPushButton *colorbutton = new QPushButton();
+        colorbutton->setStyleSheet(LayerColorText);
+        ui->tableWidget->setCellWidget(i+1,1,colorbutton);
+        QObject::connect(colorbutton, SIGNAL(clicked()), this, SLOT(on_colorbutton_clicked()));
+
+    }
+
+    ///////////////////////////////tableWidget title checkbox ///////////////////////////////
+    QCheckBox *checkBoxItem = new QCheckBox();
+    checkBoxItem->setCheckState(Qt::Unchecked);
+    QWidget *checkboxWidget = new QWidget();
+    QHBoxLayout *checkboxLayout = new QHBoxLayout(checkboxWidget);
+    checkboxLayout->addWidget(checkBoxItem);
+    checkboxLayout->setAlignment(Qt::AlignCenter);
+    checkboxLayout->setContentsMargins(0,0,0,0);
+    checkboxWidget->setLayout(checkboxLayout);
+    ui->tableWidget->setCellWidget(0,0,checkboxWidget);
+
+    QWidget *findwidget = ui->tableWidget->cellWidget(0, 0);
+    QCheckBox *checkboxInTable = findwidget->findChild<QCheckBox *>();
+    QObject::connect(checkboxInTable, SIGNAL(stateChanged(int)), this, SLOT(on_checkboxInTable_stateChanged()));
+
+    ///////////////////////////////tableWidget title slider ///////////////////////////////
+
+    QSpacerItem *HeaderVerticalSpacer = new QSpacerItem(0,20,QSizePolicy::Fixed, QSizePolicy::Fixed);
+    QSlider *HeaderOpacitySlider = new QSlider();
+    HeaderOpacitySlider->setOrientation(Qt::Horizontal);
+    HeaderOpacitySlider->setRange(0,255);
+    HeaderOpacitySlider->setValue(200);
+    QWidget *HeaderSliderWidget = new QWidget();
+    QVBoxLayout *HeaderSliderLayout = new QVBoxLayout(HeaderSliderWidget);
+    HeaderSliderLayout->addItem(HeaderVerticalSpacer);
+    HeaderSliderLayout->addWidget(HeaderOpacitySlider);
+    HeaderSliderWidget->setLayout(HeaderSliderLayout);
+    ui->tableWidget->setCellWidget(0,5,HeaderSliderWidget);
+
+    QObject::connect(HeaderOpacitySlider, SIGNAL(valueChanged(int)), this, SLOT(on_opacityslider_valueChanged(int)));
+
+
+    ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
+//    ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+
+}
+
+void FormLayer::on_tableWidget_doubleClicked(const QModelIndex &index)
+{
+    (void)index;
+    int row = ui->tableWidget->currentRow();
+    int row_data = ui->tableWidget->currentRow()-1;
+    int col = ui->tableWidget->currentColumn();
+
+    if(col == 1){
+        int oldred = ui->tableWidget->item(row,col)->QTableWidgetItem::background().color().red();
+        int oldgreen = ui->tableWidget->item(row,col)->QTableWidgetItem::background().color().green();
+        int oldblue = ui->tableWidget->item(row,col)->QTableWidgetItem::background().color().blue();
+        int oldalpha = ui->tableWidget->item(row,col)->QTableWidgetItem::background().color().alpha();
+        QRgb orc = qRgba(oldred, oldgreen, oldblue, oldalpha);
+        QRgb chc = QColorDialog::getRgba(orc);
+        int newred = qRed(chc);
+        int newgreen = qGreen(chc);
+        int newblue = qBlue(chc);
+        int newalpha = qAlpha(chc);
+        ui->tableWidget->item(row, col)->setBackground(QColor(newred, newgreen, newblue, newalpha));
+
+        t2d_layer_information->LayoutData10by10[row_data].color.r = newred;
+        t2d_layer_information->LayoutData10by10[row_data].color.g = newgreen;
+        t2d_layer_information->LayoutData10by10[row_data].color.b = newblue;
+        t2d_layer_information->LayoutData10by10[row_data].color.a = newalpha;
+        emit outputLayerStatus(empty_for_emit);
+    }
+}
+
+
+
+
+
+
+
+!@hash[]!@file[]./formmap.cpp!@hash[]!@code[]#include "formmap.h"
 #include "ui_formmap.h"
 #include <QGraphicsItem>
 #include <QGraphicsRectItem>
@@ -4188,7 +4615,7 @@ void FormMap::receiveSize(float &xMinSize,float &yMinSize,float &xMaxSize,float 
     scale = 178/std::max(width,height);
     width = scale * width;
     height = scale * height;
-//    float rectScale = 176*zoomScale; �旐�氤�
+//    float rectScale = 176*zoomScale; ì¶í ë³ê²
 
     qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
 
@@ -4206,64 +4633,94 @@ void FormMap::receiveSize(float &xMinSize,float &yMinSize,float &xMaxSize,float 
 
 }
 
-void FormMap::slotInfoText(QString funcName, float value)
+
+void FormMap::receiveSize_t2d(double &xMinSize,double &yMinSize,double &xMaxSize,double &yMaxSize, double &zoomScale)
+{
+    float scale=1;
+
+    width = xMaxSize-xMinSize;
+    height = yMaxSize-yMinSize;
+    qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
+    scale = 178/std::max(width,height);
+    width = scale * width;
+    height = scale * height;
+//    float rectScale = 176*zoomScale; ì¶í ë³ê²
+
+    qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
+
+    QGraphicsRectItem *rectItem = new QGraphicsRectItem;
+    QGraphicsScene *scene = new QGraphicsScene(this);
+    rectItem->setRect(-(width/2),-(height/2),width,height);
+    rectItem->setBrush(QBrush(QColor(Qt::gray)));
+    scene->addItem(rectItem);
+
+    SuperItem *super = new SuperItem;
+    scene->addItem(super);
+    QObject::connect(this,&FormMap::signalMove,super,&SuperItem::slotMove);
+
+    ui->graphicsView->setScene(scene);
+
+}
+
+void FormMap::slotInfoText(QString funcName, glm::vec3 value)
+
 {
 
-    if (funcName == "moveGdsX")
-    {
-        pointX = pointX + value;
-        initPointX = pointX;
-        emit signalMove(value,0,0,999,999);
-    }
-    if (funcName == "moveGdsY")
-    {
-        pointY = pointY + value;
-        initPointY = pointY;
-        emit signalMove(0, value,0,999,999);
-    }
-    if (funcName == "rotateRenderX")
-    {
-        infoRot = initRot + value;
-        if (infoRot>360)
-            infoRot = infoRot - 360;
-        if (infoRot<0)
-            infoRot = infoRot + 360;
-        emit signalMove(0, 0 ,0,infoRot,999);
-    }
-    if (funcName == "rotateRenderY")
-    {
-        infoTilt = initTilt + value;
-        if (infoTilt>90)
-            infoTilt = 90;
-        if (infoTilt<-90)
-            infoTilt = -90;
-        emit signalMove(0, 0 ,0,999,infoTilt);
-    }
-    if (funcName == "moveZoom")
-    {
-        infoZoom = infoZoom + infoZoom*value/1500;        //检�澊�00% �れ�勳殨潓, �瓣�齑堦赴臧GDS Size �澕 氚旊�堨�
-        if (infoZoom < 0.01)
-            infoZoom = 0.01;
-        if (infoZoom > 100)
-            infoZoom = 100;
-        emit signalMove(0, 0, infoZoom, 999, 999);
-    }
-    if (funcName == "moveRenderX")
-    {
-        x = value;
-    }
-    if (funcName == "moveRenderY")
-    {
-        y = value;
-    }
-    if (funcName == "mouseRelease")
-    {
-        initTilt = infoTilt;
-        initRot = infoRot;
-        initPointX = pointX;
-        initPointY = pointY;
-        initPointZ = pointZ;
-    }
+    //if (funcName == "moveGdsX")
+    //{
+    //    pointX = pointX + value;
+    //    initPointX = pointX;
+    //    emit signalMove(value,0,0,999,999);
+    //}
+    //if (funcName == "moveGdsY")
+    //{
+    //    pointY = pointY + value;
+    //    initPointY = pointY;
+    //    emit signalMove(0, value,0,999,999);
+    //}
+    //if (funcName == "rotateRenderX")
+    //{
+    //    infoRot = initRot + value;
+    //    if (infoRot>360)
+    //        infoRot = infoRot - 360;
+    //    if (infoRot<0)
+    //        infoRot = infoRot + 360;
+    //    emit signalMove(0, 0 ,0,infoRot,999);
+    //}
+    //if (funcName == "rotateRenderY")
+    //{
+    //    infoTilt = initTilt + value;
+    //    if (infoTilt>90)
+    //        infoTilt = 90;
+    //    if (infoTilt<-90)
+    //        infoTilt = -90;
+    //    emit signalMove(0, 0 ,0,999,infoTilt);
+    //}
+    //if (funcName == "moveZoom")
+    //{
+    //    infoZoom = infoZoom + infoZoom*value/1500;        //¼ì  ì´ë¥100% ë¡¤ì ì ì, ê²°êµ­ ì´ê¸°ê°ì GDS Size °ë¼ ë°ëì.
+    //    if (infoZoom < 0.01)
+    //        infoZoom = 0.01;
+    //    if (infoZoom > 100)
+    //        infoZoom = 100;
+    //    emit signalMove(0, 0, infoZoom, 999, 999);
+    //}
+    //if (funcName == "moveRenderX")
+    //{
+    //    x = value;
+    //}
+    //if (funcName == "moveRenderY")
+    //{
+    //    y = value;
+    //}
+    //if (funcName == "mouseRelease")
+    //{
+    //    initTilt = infoTilt;
+    //    initRot = infoRot;
+    //    initPointX = pointX;
+    //    initPointY = pointY;
+    //    initPointZ = pointZ;
+    //}
 }
 
 FormMap::~FormMap()
@@ -4346,7 +4803,7 @@ void SuperItem::slotMove(float x, float y, float zoom, float rot, float tilt)
 //    update();
 
 //}
-::::./formtop.cpp::::#include "formtop.h"
+!@hash[]!@file[]./formtop.cpp!@hash[]!@code[]#include "formtop.h"
 #include "ui_formtop.h"
 #include <QGraphicsItem>
 #include <QScrollBar>
@@ -4355,130 +4812,464 @@ void SuperItem::slotMove(float x, float y, float zoom, float rot, float tilt)
 #include <iostream>
 #include <QDebug>
 
+
 FormTop::FormTop(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::FormTop)
 {
+    int slider_init_value = 50;
+
     ui->setupUi(this);
-}
-
-//void FormTop::receiveFile(QVector<QList<float>> **mapFile)
-void FormTop::receiveFile(QVector<QVector<QVector<QList<float>>>>& mapFile)
-{
-//    QString temp;
-//    temp = strVector[1][3];
-//    float fTemp = temp.toFloat()*1000000;
-//    int iTemp = int(fTemp);
-    float minX=0, maxX=0, minY=0, maxY=0;
-    float posX = 0, posY =0;
-    int areaX = 10, areaY = 10;
-    int beginX = 0, beginY = 0, endX = mapFile.size(), endY = mapFile[0].size();
-    if (posX - areaX > 0){beginX=posX - areaX;}
-    if (posY - areaY > 0){beginY=posY - areaY;}
-    if (posX + areaX < mapFile.size()){endX = posX + areaX;}
-    if (posY + areaY < mapFile[0].size()){endY = posY + areaY;}
-
-
-
-    QMap<int, QColor> mapColor;
-    mapColor.insert(0,Qt::white);
-    mapColor.insert(15,Qt::red);
-    mapColor.insert(16,Qt::yellow);
-    mapColor.insert(17,Qt::green);
-    mapColor.insert(18,Qt::blue);
-    mapColor.insert(19,Qt::magenta);
-    mapColor.insert(714,Qt::red);
-    mapColor.insert(177,Qt::red);
-
-    qDebug() << "mapColor" <<mapColor;
-
-    QGraphicsScene *scene = new QGraphicsScene(this);
-    scene->setBackgroundBrush(QBrush(QColor(Qt::white)));
-    //scene->setSceneRect(0,0,200,200);
-    QPen mPen;
-    mPen.setWidth(5);
-    mPen.setColor(Qt::red);
-// ���堧�vector 毳波旍: delete 毳勴
-    //            for(auto cur_item : rectItemList){
-    //                delete cur_item;
-    //            }
-    //            rectItemList.clear();
-
-
-    QVector<QGraphicsRectItem*> rectItemList;
-
-    QGraphicsLineItem *zeroX = new QGraphicsLineItem;
-    QGraphicsLineItem *zeroY = new QGraphicsLineItem;
-    QTransform trans;
+    this->m_scene = new QGraphicsScene(this);
     trans.scale(1,-1);
-
-    QVector<QList<float>> vecList;
-    for (int i = beginX ; i < endX ; i++)
-    {
-        for (int j = beginY ; j < endY ; j++)
-        {
-            vecList.append(mapFile[i][j]);
-        }
-    }
-
-    for (auto &data : vecList)
-    {
-
-        if (data.size() == 8)
-        {
-            QGraphicsRectItem *rectItem = new QGraphicsRectItem;
-            rectItemList.push_back(rectItem);
-
-
-            float x = 500*(data[2]);
-            float y = 500*(data[3]);
-            float w = 500*(data[4] - data[2]);
-            float h = 500*(data[5] - data[3]);
-
-            if (x<minX){minX = x;}
-            if (x>maxX){maxX = x;}
-            if (y<minY){minY = y;}
-            if (y>maxY){maxY = y;}
-            rectItem->setRect(x,y,w,h);
-            rectItem->setBrush(QBrush(QColor(mapColor[int(data[0])])));
-            rectItem->setOpacity(0.5);
-            rectItem->setZValue(data[6]);
-
-            rectItem->setTransform(trans);
-            scene->addItem(rectItem);
-        }
-    }
-    zeroX->setLine(0,0,maxX,0);
-    zeroY->setLine(0,0,0,maxY);
-    zeroX->setPen(QPen(QColor(Qt::red)));
-    zeroY->setPen(QPen(QColor(Qt::red)));
-    zeroX->setZValue(400);
-    zeroY->setZValue(400);
-    zeroY->setTransform(trans);
-    scene->addItem(zeroX);
-    scene->addItem(zeroY);
-    ui->graphicsView->setScene(scene);
-//    float dx = 100-(maxX-minX)/2;
-//    float dy = 100-(maxY-minY)/2;
-
-
-
-//    ui->graphicsView->horizontalScrollBar()->setValue(ui->graphicsView->horizontalScrollBar()->value()+dx);
-//    ui->graphicsView->verticalScrollBar()->setValue(ui->graphicsView->verticalScrollBar()->value()+dy);
-//    ui->graphicsView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-//    ui->graphicsView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
+    ui->horizontalSlider->setValue(slider_init_value);
 
 }
-
-
-
 
 FormTop::~FormTop()
 {
     delete ui;
 }
-::::./main.cpp::::#include "mainwindow.h"
+
+void FormTop::receiveFile(T2D &t2d, vector<FILTER_RENDER> *t2d_filter)
+{
+    drawingClear();
+    m_scene->clear();
+
+    rendering_full = &t2d;
+    rendering_filter = t2d_filter;
+    rendering_filter->resize((int)rendering_full->LayoutData10by10.size());
+    for(int layer = 0 ; layer < (int)rendering_filter->size() ; layer++)
+    {
+//        (*rendering_filter[layer]).checking
+//        (*t2d_filter[layer]).checking
+
+
+    }
+
+    //    QGraphicsScene *m_scene = new QGraphicsScene(this);
+    m_scene->setBackgroundBrush(QBrush(QColor(Qt::white)));
+
+//    QPen mPen;
+//    mPen.setWidth(5);
+//    mPen.setColor(Qt::red);
+//    QGraphicsLineItem *zeroX = new QGraphicsLineItem;
+//    QGraphicsLineItem *zeroY = new QGraphicsLineItem;
+//    zeroX->setLine(0,0,m_scale*rendering_full->LayoutMinMax.maxx,0);
+//    zeroY->setLine(0,0,0,m_scale*rendering_full->LayoutMinMax.maxy);
+//    zeroX->setPen(QPen(QColor(Qt::red)));
+//    zeroY->setPen(QPen(QColor(Qt::red)));
+//    zeroX->setZValue(400);
+//    zeroY->setZValue(400);
+//    zeroY->setTransform(trans);
+//    m_scene->addItem(zeroX);
+//    m_scene->addItem(zeroY);
+//    drawingClear();
+    drawing();
+}
+
+void FormTop::drawing()
+{
+    float pos_x = 0, pos_y =0;
+
+    int area_x = 10, area_y = 10, area_max_x = rendering_full->LayoutMinMax.maxx/area_x +1, area_max_y = rendering_full->LayoutMinMax.maxy/area_y +1;
+    int begin_x = 0, begin_y = 0, end_x = area_max_x, end_y = area_max_y;
+    if (pos_x - area_x > 0){begin_x=pos_x - area_x;}
+    if (pos_y - area_y > 0){begin_y=pos_y - area_y;}
+    if (pos_x + area_x < area_max_x){end_x = pos_x + area_x;}
+    if (pos_y + area_y < area_max_y){end_y = pos_y + area_y;}
+
+
+    //layer
+    for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
+    {
+        //layer_enviroment  ë¹êµì¬ for skip
+        if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
+
+        //row
+        for(int row = 0 ; row<(int)(rendering_full->LayoutData10by10[layer].xy).size() ; row++)
+        {
+            //col
+            for(int col = 0 ; col < (int)(rendering_full->LayoutData10by10[layer].xy[row]).size(); col++)
+            {
+                //rect ë
+                for(int n = 0 ; n < (int)(rendering_full->LayoutData10by10[layer].xy[row][col]).size(); n++)
+                {
+                    addRectItem(layer,row,col,n,trans);
+                }
+            }
+        }
+    }
+
+    ui->graphicsView->setScene(m_scene);
+}
+
+void FormTop::drawingClear()
+{
+    // ê¸°ì¡´ë vector ë¥¨ê²¨ì¼ : delete ë¥í´
+    for(auto cur_item : rectItemList)
+    {
+        delete cur_item;
+    }
+    rectItemList.clear();
+
+}
+
+void FormTop::slotPos(POS_MONITORING &pos)
+{
+    this->pos = &pos;
+}
+
+void FormTop::changePos()
+{
+    qDebug()<< "FromTop::changePos : "  << pos->x << ","
+                                        << pos->y << ","
+                                        << pos->z << ","
+                                        << pos->tilt << ","
+                                        << pos->rotation << ","
+                                        << pos->zoom;
+    m_min_x_size = pos->x - m_area/m_area_scale;
+    m_max_x_size = pos->x + m_area/m_area_scale;
+    m_min_y_size = pos->y - m_area/m_area_scale;
+    m_max_y_size = pos->y + m_area/m_area_scale;
+}
+
+void FormTop::on_horizontalSlider_valueChanged(int value)
+{
+    m_area = value;
+    m_min_x_size = pos->x - m_area/m_area_scale;
+    m_max_x_size = pos->x + m_area/m_area_scale;
+    m_min_y_size = pos->y - m_area/m_area_scale;
+    m_max_y_size = pos->y + m_area/m_area_scale;
+
+    qDebug() << "area : " << m_area;
+}
+
+void FormTop::addRectItem(int layer, int row, int col, int n, QTransform trans)
+{
+
+    QGraphicsRectItem *rectItem = new QGraphicsRectItem;
+    rectItemList.push_back(rectItem);
+
+    float opacity = rendering_full->LayoutData10by10[layer].color.a;
+    opacity = opacity/255;
+
+    float x = m_scale*(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx);
+    float y = m_scale*(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny);
+    float w = m_scale*(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx-rendering_full->LayoutData10by10[layer].xy[row][col][n].minx);
+    float h = m_scale*(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy-rendering_full->LayoutData10by10[layer].xy[row][col][n].miny);
+
+    rectItem->setRect(x,y,w,h);    
+    rectItem->setBrush(QBrush(QColor(rendering_full->LayoutData10by10[layer].color.r,rendering_full->LayoutData10by10[layer].color.g,rendering_full->LayoutData10by10[layer].color.b,rendering_full->LayoutData10by10[layer].color.a)));
+    rectItem->setOpacity(opacity);
+    qDebug()<< " rect    : " << rectItem->rect() << ":: row/col : " << row << "/" << col << " " << n;
+    qDebug()<< " opacity : " << rendering_full->LayoutData10by10[layer].color.a << " : " << opacity;
+    rectItem->setZValue(rendering_full->LayoutData10by10[layer].bot);
+
+    rectItem->setTransform(trans);
+    m_scene->addItem(rectItem);
+}
+
+int FormTop::extPos(double *pos, double *max)
+{
+    double area = m_area / m_area_scale; // 0.05 = 50/1000
+    int pos_col_row = (*pos)/m_block_size; // 30.0413/10 = 3
+    int max_col_row = *max/m_block_size;
+
+
+    //block ¼ë¡ ë¥¸ ê²½ê³ë©ê·¼ì²ì ê²½ì° external ì¶ê
+    if ((*pos - pos_col_row*m_block_size)<area && pos_col_row > 0) // 30.0413 - 3*10 = 0.0413 < 0.05
+    {
+        return pos_col_row - 1;
+    }
+    else if (((pos_col_row+1)*m_block_size - *pos)<area && pos_col_row < max_col_row) // 39.9811 col 3 : (3+1)*10 - 39.9811 = 0.0189 < 0.05
+    {
+        return pos_col_row + 1;
+    }
+
+    return pos_col_row;
+}
+
+void FormTop::filterRenderingData(int layer, int row, int col, int n)
+{
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx > m_max_x_size){return;}
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx < m_min_x_size){return;}
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny > m_max_y_size){return;}
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_min_y_size){return;}
+
+    //rendering_filter->pushback(rendering_full->LayoutData10by10[layer].xy[row][col][n])
+
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size)
+    {
+
+    }
+
+}
+
+void FormTop::areaFilterRect()
+{
+    int pos_col = (pos->x)/m_block_size;
+    int ext_col = extPos(&pos->x, &rendering_full->LayoutMinMax.maxx);
+    int begin_col = qMin(pos_col,ext_col);
+    int end_col = qMax(pos_col,ext_col)+1;
+
+    int pos_row = (pos->y)/m_block_size;
+    int ext_row = extPos(&pos->y, &rendering_full->LayoutMinMax.maxy);
+    int begin_row = qMin(pos_row,ext_row);
+    int end_row = qMax(pos_col,ext_row)+1;
+
+
+    //layer
+    for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
+    {
+        //layer_enviroment  ë¹êµì¬ for skip
+
+        if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
+
+        for(int row = begin_row ; row < end_row ; row++)
+        {
+            for(int col = begin_col ; col < end_col ; col++)
+            {
+                for(int n = 0 ; n < (int)(rendering_full->LayoutData10by10[layer].xy[row][col]).size(); n++)
+                {
+                    filterRenderingData(layer,row,col,n);
+                }
+            }
+        }
+    }
+
+}
+
+
+
+
+
+
+
+
+
+!@hash[]!@file[]./gitmerge.cpp!@hash[]!@code[]#include "gitmerge.h"
+
+#include <QFile>
+#include <QTextStream>
+#include <QDebug>
+
+//git test
+
+GitMerge::GitMerge()
+{
+    split1 = hash;
+    split2 = hash;
+    split1.append(file);
+    split2.append(code);
+
+    QString totalMerge;
+    QString preMergeFile;
+    QString updateMergeFile;
+    this->mergeFiles(totalMerge);
+    this->openPreMergeFile(preMergeFile);
+    this->openUpdateMergeFile(updateMergeFile);
+    this->writeMergeFile("./gitMerge.txt", totalMerge);
+    //    if (compareFiles(preMergeFile, updateMergeFile))
+    //    {
+    //        if(compareFiles(preMergeFile, totalMerge))
+    //        {
+    //            qDebug() << "gitMerge file and code files are not changed " ;
+    //            return;
+    //        }
+    //        else
+    //        {
+    //            this->writeMergeFile("./gitMerge.txt", totalMerge);
+    ////            this->writeMergeFile("./gitMerge.back", totalMerge);
+    //        }
+    //    }
+    //    else
+    //    {
+    //        this->writeMergeFile("./gitMerge.back", updateMergeFile);
+    //        this->makeCodeFiles(totalMerge, updateMergeFile);
+    //    }
+}
+
+void GitMerge::mergeFiles(QString &totalMerge)
+{
+    QFile file("./IInterface.pro");
+
+
+    if(!file.open(QFile::ReadOnly | QFile::Text))
+    {
+        qDebug() << " Could not open the file for reading ";
+        return;
+    }
+
+    QTextStream in(&file);
+    QString merge = in.readAll();
+    QStringList mergeList = merge.split("\n");
+    qDebug()<< "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
+    for (auto &itemMerge : mergeList)
+    {
+
+        itemMerge = itemMerge.remove("\\");
+        itemMerge = itemMerge.trimmed();
+        //ì£¼ìì²ë¦¬´ì¼ ë¤.
+        if (itemMerge.contains(".cpp", Qt::CaseInsensitive) || itemMerge.contains(".h", Qt::CaseInsensitive) || itemMerge.contains(".ui", Qt::CaseInsensitive))
+        {
+            QFile codeFile(itemMerge.prepend("./"));
+            if(!codeFile.open(QFile::ReadOnly | QFile::Text))
+            {
+                qDebug() << " Could not open the code file for reading " ;
+                return;
+            }
+            QTextStream codeIn(&codeFile);
+            QString codeText = codeIn.readAll();
+
+            totalMerge.append(split1);
+            totalMerge.append(itemMerge);
+            totalMerge.append(split2);
+            totalMerge.append(codeText);
+            codeFile.close();
+
+        }
+
+    }
+    totalMerge.append(split1);
+    totalMerge.append("./IInterface.pro");
+    totalMerge.append(split2);
+    totalMerge.append(merge);
+
+    file.close();
+}
+
+void GitMerge::openPreMergeFile(QString &preMergeFile)
+{
+    QString fileName = "./gitMerge.back";
+    QFile file(fileName);
+    if(!file.open(QFile::ReadOnly | QFile::Text))
+    {
+        qDebug() << " Could not open the file for reading ";
+        preMergeFile = "";
+        if(!file.open(QFile::WriteOnly | QFile::Text))
+        {
+            return;
+        }
+        QTextStream out(&file);
+        out << "";
+        file.close();
+        return;
+    }
+    QTextStream in(&file);
+    preMergeFile = in.readAll();
+    file.close();
+}
+void GitMerge::openUpdateMergeFile(QString &updateMergeFile)
+{
+    QString fileName = "./gitMerge.txt";
+    QFile file(fileName);
+    if(!file.open(QFile::ReadOnly | QFile::Text))
+    {
+        qDebug() << " Could not open the file for reading ";
+        updateMergeFile = "";
+        if(!file.open(QFile::WriteOnly | QFile::Text))
+        {
+            return;
+        }
+        QTextStream out(&file);
+        out << "";
+        file.close();
+        return;
+    }
+    QTextStream in(&file);
+    updateMergeFile = in.readAll();
+    file.close();
+}
+
+bool GitMerge::compareFiles(QString &A, QString &B)
+{
+    if (A==B)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+
+}
+
+void GitMerge::writeMergeFile(QString fileName, QString &originFile)
+{
+    QFile file(fileName);
+    if(!file.open(QFile::WriteOnly | QFile::Text))
+    {
+        qDebug() << " Could not open the file for writing ";
+        return;
+    }
+    QTextStream out(&file);
+    out << originFile;
+    file.flush();
+    file.close();
+
+}
+
+void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
+{
+    QStringList codeList = codeFile.split(split1);
+    QStringList fileList = gitMergeFile.split(split1);
+    QStringList codeListDivide;
+    QStringList fileListDivide;
+    for (int i = 1; i < fileList.size(); i+=2)
+    {
+        fileListDivide = fileList[i].split(split2);
+        for (int j = 1; j < codeList.size(); j+=2)
+        {
+            codeListDivide = codeList[j].split(split2);
+            if (codeListDivide[0] == fileListDivide[0])
+            {
+                if (codeListDivide[1] != fileListDivide[1])
+                {
+                    QFile file_gitback(codeListDivide[0].append("_back"));
+                    if(!file_gitback.open(QFile::WriteOnly | QFile::Text))
+                    {
+                        qDebug() << " Could not open the file for writing ";
+                        return;
+                    }
+                    QTextStream out_gitback(&file_gitback);
+                    out_gitback << codeListDivide[1];
+                    file_gitback.flush();
+                    file_gitback.close();
+
+                    QFile file(fileListDivide[0]);
+                    if(!file.open(QFile::WriteOnly | QFile::Text))
+                    {
+                        qDebug() << " Could not open the file for writing ";
+                        return;
+                    }
+                    QTextStream out(&file);
+                    out << fileListDivide[1];
+                    file.flush();
+                    file.close();
+                }
+                break;
+            }
+            if (j == codeList.size()-1) // ì°¾ìë´¤ëê¸°ì¡´ ì¼ë¤.
+            {
+                QFile file(fileListDivide[0]);
+                if(!file.open(QFile::WriteOnly | QFile::Text))
+                {
+                    qDebug() << " Could not open the file for writing ";
+                    return;
+                }
+                QTextStream out(&file);
+                out << fileListDivide[1];
+                file.flush();
+                file.close();
+            }
+
+
+        }
+    }
+
+}
+!@hash[]!@file[]./main.cpp!@hash[]!@code[]#include "mainwindow.h"
 #include "gitmerge.h"
 
 #include <QApplication>
@@ -4518,6 +5309,8 @@ int main(int argc, char *argv[])
     MainWindow mainWindow(vulkanWindow);
     QObject::connect(vulkanWindow, &LveWindow::signalInfoText, &mainWindow, &MainWindow::slotInfoText);
 
+
+
     QRect size = mainWindow.geometry();
     mainWindow.shareGeo(size);
     qDebug() << "Main geo : " << mainWindow.geometry();
@@ -4531,11 +5324,13 @@ int main(int argc, char *argv[])
 
 
 
-::::./mainwindow.cpp::::#include "mainwindow.h"
+!@hash[]!@file[]./mainwindow.cpp!@hash[]!@code[]#include "mainwindow.h"
 #include "ui_mainwindow.h"
 
 #include "Rendering/Src/dtaorendersystem.h"
 #include "Rendering/Src/lve_model.hpp"
+
+#include "defineParam.h"
 
 #include <QMouseEvent>
 #include <QKeyEvent>
@@ -4560,6 +5355,16 @@ MainWindow::MainWindow(LveWindow *w)
     QWidget *wrapper = QWidget::createWindowContainer(w);
     ui->graphicsView->setViewport(wrapper);
 
+    pos.x = 0;
+    pos.y = 0;
+    pos.z = 0;
+    pos.tilt = 90;
+    pos.rotation = 0;
+    pos.zoom = 1;
+    pos.window_zoom = 1;
+    formInfo->slotPos(&pos);
+    formTop->slotPos(pos);
+
     QDockWidget *dockHier = new QDockWidget(tr("Hierarchy"), this);
     dockHier->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockHier->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -4571,7 +5376,7 @@ MainWindow::MainWindow(LveWindow *w)
     dockLayer->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockLayer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     addDockWidget(Qt::RightDockWidgetArea, dockLayer);
-    formLayer = new FormLayer;
+    formLayer = new FormLayer(this->m_window);
     dockLayer->setWidget(formLayer);
 
     QDockWidget *dockMap = new QDockWidget(tr("Map"), this);
@@ -4588,19 +5393,19 @@ MainWindow::MainWindow(LveWindow *w)
     formTop = new FormTop;    
     dockTop->setWidget(formTop);
 
-//    QDockWidget *dockInfo = new QDockWidget(tr("Info"), this);
-    dockInfo = new QDockWidget(tr("Info"), this);
+    QDockWidget *dockInfo = new QDockWidget(tr("Info"), this);
     dockInfo->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockInfo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     addDockWidget(Qt::LeftDockWidgetArea, dockInfo);
     formInfo = new FormInfo;
     dockInfo->setWidget(formInfo);
 
-
     resizeDocks({dockInfo, dockTop, dockMap, dockLayer, dockHier}, {200,200}, Qt::Horizontal);
     resizeDocks({dockTop, dockMap}, {200,200}, Qt::Vertical);
 
     input_dataS = new all_data;
+
+    // test //
 
 
     /// connect ////////////////////
@@ -4609,7 +5414,7 @@ MainWindow::MainWindow(LveWindow *w)
     QObject::connect(input_dataS, SIGNAL(sendSplitData(int, int, const QVector <QVector <QString>> &)), formHier, SLOT(ReceiveSplitData(int, int, const QVector <QVector <QString>> &)));
     QObject::connect(input_dataS, SIGNAL(sendSplitData(int, int, const QVector <QVector <QString>> &)), formLayer, SLOT(ReceiveSplitData(int, int, const QVector <QVector <QString>> &)));
     QObject::connect(formLayer, SIGNAL(outputLayerStatus(QString)), this, SLOT(inputLayerStatus(QString)));
-
+    QObject::connect(formInfo, SIGNAL(signalPos()), this, SLOT(slotPos()));
 }
 
 void MainWindow::shareGeo(QRect size)
@@ -4624,13 +5429,13 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::slotInfoText(QString funcName, float value)
+void MainWindow::slotInfoText(QString funcName, glm::vec3 value)
 {
     formInfo->slotInfoText(funcName,value);
     formMap->slotInfoText(funcName,value);
-    qDebug() << "slotInfoText" << value;
+    //qDebug() << "slotInfoText" << funcName << value.x << " "<< value.y << " "<< value.z << " ";
 ///// temp //////
-    QString text = funcName + " : " + QString::number(value);
+    QString text = funcName + " : " ;
     for (int i = text.size() ; i < 30 ; i++)
     {
         text.append(" ");
@@ -4644,71 +5449,10 @@ void MainWindow::slotInfoText(QString funcName, float value)
 
 }
 
-void MainWindow::on_actionOpen_Map_File_triggered()
-{
-    QString fileNameInfo = QFileDialog::getOpenFileName(this,
-                                                        tr("Open map file"),
-                                                        ".",
-                                                        tr("text (*.txt)")
-                                                        );
-    FileDb *fileDb = new FileDb;
-    QVector<QList<float>> vecList;
-    float xMinSize = 0, yMinSize = 0, xMaxSize = 0, yMaxSize = 0;
-    fileDb->openFile(fileNameInfo, vecList , xMinSize, yMinSize, xMaxSize, yMaxSize);
-
-    int posScale = 1000, splitSize = 10; //posScale 1�┐ um �渼, posScale 1000�┐ nm �渼
-    int n = (int(xMaxSize *posScale)-int(xMinSize *posScale))/splitSize +1;
-    int m = (int(yMaxSize *posScale)-int(yMinSize *posScale))/splitSize +1;
-    qDebug() << "int n / int m : " << n << " , " <<m;
-
-    ////////////////////////////////////////////////
-    QVector<QVector<QVector<QList<float>>>> mapFile(n, QVector<QVector<QList<float>>>(m, {{}}));
-//    QVector<QList<float>> mapFile[n][m];
-    // �氤��届���濌�勳殨潓
-    // 欤柬槑: struct(layer, r, g, b, z, thk, opacity, vector())
-
-    mapFile[0][0][0].append({0, 0, xMinSize, yMinSize, xMaxSize, yMaxSize, 0, 0});
-
-    for (auto & data : vecList)
-    {
-        if(data.size() == 8)
-        {
-            qDebug() << " " << data[2] << " "<< int(data[2]*100) << " "<< data[3] << " "<< int(data[3]*100);
-            int in_n = 0, in_m = 0;
-            if(data[2]<0)
-            {in_n = n + int(data[2]*100)-1;}
-            else
-            {in_n = int(data[2]*100);}
-            if(data[3]<0)
-            {in_m = m + int(data[3]*100)-1;}
-            else
-            {in_m = int(data[3]*100);}
-            mapFile[in_n][in_m].append(data);
-        }
-    }
-
-
-
-    for(int i = 0 ; i < (int(mapFile[0][0][0][2]*1000)-int(mapFile[0][0][0][0]*1000))/10+1 ; i++)
-    {
-        QDebug oneLine = qDebug();
-        for(int j = 0 ; j < (int(mapFile[0][0][0][3]*1000)-int(mapFile[0][0][0][1]*1000))/10+1 ; j++)
-        {
-            oneLine << "["<<i<<"]["<<j<<"] "<<mapFile[i][j];
-        }
-        qDebug() << "";
-    }
-
-    float zoomScale = std::max(xMaxSize-xMinSize,yMaxSize-yMinSize)/10;
-    formMap->receiveSize(xMinSize,yMinSize,xMaxSize,yMaxSize,zoomScale);
-    formTop->receiveFile(mapFile);
-
-}
-
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 �儩",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "ì¼  í",".","Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
@@ -4718,87 +5462,105 @@ void MainWindow::on_actionOpen_file_triggered()
 void MainWindow::inputLayerStatus(QString text)
 {
     ui->statusbar->showMessage(text);
+    formTop->drawingClear();
+    formTop->drawing();
 }
 
-
+void MainWindow::inputPosInformation()
+{
+    //execute (pos)
+}
 
 void MainWindow::on_actionOpen_Layout_triggered()
 {
-    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 �儩",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "ì¼  í",".","Files(*.*)");
     DtaoRenderSystem * renderer = this->m_window->getRenderer();
 
-    renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
+    //renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
 
 
 }
 
 void MainWindow::on_actionOpen_DB_triggered(){
     std::cout << "callv" << std::endl;
-    QString file_name = QFileDialog::getOpenFileName(this, "OpenDB", "C:\\", "Text (*.txt) ;; Files (*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "OpenDB", ".", "Text (*.txt) ;; Files (*.*)");
     if(file_name != ""){
         std::cout << file_name.toStdString() << std::endl;
         this->t2d.text2data(file_name.toStdString());
 
-        printf("%-9f %-9f %-9f %-9f %-9f %-9f", t2d.LayoutMinMax.minx, t2d.LayoutMinMax.miny, t2d.LayoutMinMax.maxx, t2d.LayoutMinMax.maxy, t2d.LayoutMinMax.minz, t2d.LayoutMinMax.maxz);
-        for(int i = 0 ; i < t2d.LayoutData10by10.size() ; i++){
-            printf("\n%-9s %-9d %-9d %-9d %-9d %-9d %-9d %-9f %-9f ",
-                   t2d.LayoutData10by10[i].layername.c_str(),
-                   t2d.LayoutData10by10[i].layernum,
-                   t2d.LayoutData10by10[i].datatype,
-                   t2d.LayoutData10by10[i].color.r,
-                   t2d.LayoutData10by10[i].color.g,
-                   t2d.LayoutData10by10[i].color.b,
-                   t2d.LayoutData10by10[i].color.a,
-                   t2d.LayoutData10by10[i].bot,
-                   t2d.LayoutData10by10[i].top);
-            for(int j = 0 ; j < (t2d.LayoutData10by10[i].xy).size() ; j++){
-                for(int x = 0 ; x < (t2d.LayoutData10by10[i].xy[j]).size() ; x++){
-                    printf("\n%d %d %d", j, x, (t2d.LayoutData10by10[i].xy[j][x]).size());
-                    for(int y = 0 ; y < (t2d.LayoutData10by10[i].xy[j][x]).size() ; y++){
-                        printf("\n%-9f %-9f %-9f %-9f",
-                               t2d.LayoutData10by10[i].xy[j][x][y].minx,
-                               t2d.LayoutData10by10[i].xy[j][x][y].miny,
-                               t2d.LayoutData10by10[i].xy[j][x][y].maxx,
-                               t2d.LayoutData10by10[i].xy[j][x][y].maxy);
-                    }
-                }
-            }
-        }
+//        printf("%-9f %-9f %-9f %-9f %-9f %-9f", t2d.LayoutMinMax.minx, t2d.LayoutMinMax.miny, t2d.LayoutMinMax.maxx, t2d.LayoutMinMax.maxy, t2d.LayoutMinMax.minz, t2d.LayoutMinMax.maxz);
+//        for(int i = 0 ; i < t2d.LayoutData10by10.size() ; i++){
+//            printf("\n%-9s %-9d %-9d %-9d %-9d %-9d %-9d %-9f %-9f ",
+//                   t2d.LayoutData10by10[i].layername.c_str(),
+//                   t2d.LayoutData10by10[i].layernum,
+//                   t2d.LayoutData10by10[i].datatype,
+//                   t2d.LayoutData10by10[i].color.r,
+//                   t2d.LayoutData10by10[i].color.g,
+//                   t2d.LayoutData10by10[i].color.b,
+//                   t2d.LayoutData10by10[i].color.a,
+//                   t2d.LayoutData10by10[i].bot,
+//                   t2d.LayoutData10by10[i].top);
+//            for(int j = 0 ; j < (t2d.LayoutData10by10[i].xy).size() ; j++){
+//                for(int x = 0 ; x < (t2d.LayoutData10by10[i].xy[j]).size() ; x++){
+//                    printf("\n%d %d %d", j, x, (t2d.LayoutData10by10[i].xy[j][x]).size());
+//                    for(int y = 0 ; y < (t2d.LayoutData10by10[i].xy[j][x]).size() ; y++){
+//                        printf("\n%-9f %-9f %-9f %-9f",
+//                               t2d.LayoutData10by10[i].xy[j][x][y].minx,
+//                               t2d.LayoutData10by10[i].xy[j][x][y].miny,
+//                               t2d.LayoutData10by10[i].xy[j][x][y].maxx,
+//                               t2d.LayoutData10by10[i].xy[j][x][y].maxy);
+//                    }
+//                }
+//            }
+//        }
+        //to map data
+
+
+
+        double zoomScale = std::max(t2d.LayoutMinMax.maxx-t2d.LayoutMinMax.minx ,t2d.LayoutMinMax.maxy-t2d.LayoutMinMax.miny)/10;
+        formMap->receiveSize_t2d(t2d.LayoutMinMax.minx,t2d.LayoutMinMax.miny,t2d.LayoutMinMax.maxx,t2d.LayoutMinMax.maxy,zoomScale);
+
+        //to top data
+
+
+        DtaoRenderSystem * renderer = this->m_window->getRenderer();
+
+        renderer->createT2DObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, t2d);
+
+        formTop->receiveFile(t2d, &t2d_filter);
+        formLayer->ReceiveLayerInformation(t2d);
+        //test
+
+
+
     }
     fflush(stdout);
     cout << "test end" << endl;
+
 }
 
-
-
-
-
-
-
-
-
-
-
-
-void MainWindow::on_actionLayer_information_triggered()
+void MainWindow::slotPos()
 {
-    qDebug()<< "feature : " << dockInfo->toggleViewAction();
-    if(dockInfo->toggleViewAction()->isVisible())
-    {
-        qDebug() << "dockInfo visiable true";
-        dockInfo->hide();
-        dockInfo->toggleViewAction()->setVisible(false);
-    }
-    else
-    {
-        qDebug() << "dockInfo visiable false";
-        dockInfo->show();
-        dockInfo->toggleViewAction()->setVisible(true);
-    }
-
+    formTop->changePos();
 }
 
-::::./trianglerenderer.cpp::::/****************************************************************************
+
+
+
+
+
+
+
+
+
+
+
+void MainWindow::on_actionTop_triggered()
+{
+    qDebug() << "go?";
+    //cocococo
+}
+!@hash[]!@file[]./trianglerenderer.cpp!@hash[]!@code[]/****************************************************************************
 **
 ** Copyright (C) 2017 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
@@ -5312,15 +6074,15 @@ void TriangleRenderer::startNextFrame()
     m_window->requestUpdate(); // render continuously, throttled by the presentation rate
 }
 
-::::./Rendering/Src/LayoutModel.h::::#pragma once
+!@hash[]!@file[]./Rendering/Src/LayoutModel.h!@hash[]!@code[]#pragma once
 
 #include "lve_model.hpp"
-
+#include "T2D.h"
 
 class LayoutModel : public LveModel
 {
 public:
-    LayoutModel(LveDevice& device, MODEL_TYPE model_type, const std::string& data_file);
+    LayoutModel(LveDevice& device, MODEL_TYPE model_type, T2D &t2d);
     ~LayoutModel();
 
     LayoutModel() = delete;
@@ -5331,8 +6093,8 @@ private:
     LayoutDataManager layout_data;
 
 public:
-    virtual void makeRenderingData(const std::string& file_path = "");
-    virtual void loadData(const std::string& file_path = "");
+    virtual void makeRenderingData(T2D &t2d);
+    virtual void loadData(T2D &t2d);
     virtual void makeVertices();
     virtual void makeIndices();
 
@@ -5344,17 +6106,18 @@ public:
     void makeIndicesForFace_map();
     void makeIndicesForEdge_map();
 
+
     LayoutDataManager* getLayoutDataManager() {return &this->layout_data;}
 
 };
 
 
 
-::::./Rendering/Src/LayoutPEXData.h::::#pragma once
+!@hash[]!@file[]./Rendering/Src/LayoutPEXData.h!@hash[]!@code[]#pragma once
 #include <iostream>
 #include <string>
 #include <vector>
-
+#include "T2D.h"
 
 
 void testPEXData();
@@ -5465,6 +6228,8 @@ public:
 private:
     std::string file_path;
     std::vector<LayoutItem> patterns;
+    T2D *t2d_ptr;
+
 
     double scale;
 
@@ -5478,11 +6243,13 @@ private:
 
 
 public:
-    std::vector<LayoutItem>& getPatterns() { return this->patterns; }
+    std::vector<LayoutItem> &getPatterns() { return this->patterns; }
+    std::vector<LDATA10BY10> &getPatterns_t2d() { return this->t2d_ptr->LayoutData10by10; }
 
-    void loadLayoutData(const std::string file_path);
+    void loadLayoutData(T2D &t2d);
     void clear() { this->patterns.clear(); };
     void printLayoutData() {};
+    static bool compareByLength( const LDATA10BY10 &a, const LDATA10BY10 &b);
 
     double getMinX() { return this->layout_min_x; }
     double getMaxX() { return this->layout_max_x; }
@@ -5615,7 +6382,7 @@ private:
     void updateMinMaxCap(const double& value);
 };
 
-::::./Rendering/Src/PEXCapacitorModel.h::::#pragma once
+!@hash[]!@file[]./Rendering/Src/PEXCapacitorModel.h!@hash[]!@code[]#pragma once
 #include "lve_model.hpp"
 #include "LayoutPEXData.h"
 
@@ -5734,7 +6501,7 @@ private:
 };
 
 
-::::./Rendering/Src/PEXResistorModel.h::::#pragma once
+!@hash[]!@file[]./Rendering/Src/PEXResistorModel.h!@hash[]!@code[]#pragma once
 
 #include "lve_model.hpp"
 
@@ -5773,7 +6540,7 @@ private:
 
 
 
-::::./Rendering/Src/dtaorendersystem.h::::#ifndef DTAORENDERSYSTEM_H
+!@hash[]!@file[]./Rendering/Src/dtaorendersystem.h!@hash[]!@code[]#ifndef DTAORENDERSYSTEM_H
 #define DTAORENDERSYSTEM_H
 
 #include <QVulkanWindow>
@@ -5787,7 +6554,7 @@ private:
 #include "simple_render_system.hpp"
 #include "lve_camera.hpp"
 #include "keyboard_movement_controller.hpp"
-
+#include "T2D.h"
 
 #include <iostream>
 #include <vector>
@@ -5843,11 +6610,17 @@ private:
     TRANS_INFORMATION trans_info;
     std::shared_ptr<LayoutModel> layout_model = {nullptr};
 
+
 public:
     void createNewObject(MODEL_TYPE model_type, const std::string & file_path);
+    void createT2DObject(MODEL_TYPE model_type, T2D t2d);
+    void getCustomColor(float layernumber, glm::vec3 rgb);
+    void getCustomOpacity(float layernumber, float opacity);
+    void getCustomVisiblity(float layernumber, bool visibility);
 
 private:
     void createNewLayoutObject(const std::string & file_path);
+    void createT2DLayoutObject(T2D & t2d);
     void createNewPEXCapObject(const std::string & file_path);
     void createNewPEXResObject(const std::string & file_path);
     void createNewAxisObject(const std::string & file_path);
@@ -5859,17 +6632,19 @@ private:
     void createSimpleRenderSystem();
     void deleteSimpleRenderSystem();
     void beginRenderPass(VkCommandBuffer command_buffer);
+    float aspect;
 
 };
 
 #endif // DTAORENDERSYSTEM_H
-::::./Rendering/Src/keyboard_movement_controller.hpp::::#pragma once
+!@hash[]!@file[]./Rendering/Src/keyboard_movement_controller.hpp!@hash[]!@code[]#pragma once
 
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include "lve_game_object.hpp"
 #include "lve_window.hpp"
 #include "lve_camera.hpp"
+
 
 
 class KeyboardMovementController {
@@ -5885,8 +6660,10 @@ public:
         int moveDown= Qt::Key_Down;
         int moveLeft= Qt::Key_Left;
         int moveRight= Qt::Key_Right;
+        int toggleDemension= Qt::Key_T;
         Qt::MouseButtons mouseLeft = Qt::LeftButton;
         Qt::MouseButtons mouseRight = Qt::RightButton;
+        Qt::MouseButtons mouseMiddle = Qt::MiddleButton;
     };
 
     struct CameraMovingContinousFlags {
@@ -5900,8 +6677,11 @@ public:
         bool moveDown= false;
         bool moveLeft= false;
         bool moveRight= false;
+        bool toggleDemension = false;
+        bool toggleDemensionXY = false;
         bool mouseLeft= false;
         bool mouseRight= false;
+        bool mouseMiddle= false;
     };
 
     struct MousePosition {
@@ -5909,14 +6689,16 @@ public:
         QPoint releasePosition;
         QPoint currentPosition;
         QPoint scroll;
+        QPoint scrollClicked;
     };
 
     void moveCamera(Qt::Key key, float dt, LveCamera& camera, float render_scale);
     CameraMoveKeyMappings camera_move_key;
     MousePosition mouse_position;
 
-    void moveCamera(float dt, LveCamera& camera, float render_scale,std::vector<LveGameObject>& gameObjects);
-    void moveCameraMouse(LveCamera& camera, float render_scale,std::vector<LveGameObject>& gameObjects);
+    void moveCamera(float dt, LveCamera& camera, float render_scale,std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow);
+    void moveCameraMouse(LveCamera& camera, float render_scale,std::vector<LveGameObject>& gameObjects,LveWindow* lvewindow);
+    void setPerspective(LveCamera& camera, float aspect);
     void moveKeyPressed(Qt::Key key);
     void moveKeyReleased(Qt::Key key);
     void moveButtonPressed(Qt::MouseButtons buttons);
@@ -5928,74 +6710,16 @@ public:
     CameraMovingContinousFlags camera_moving_flag;
 
 
-    /*
-    struct KeyMappings {
-        int moveLeft = Qt::Key_A;//'GLFW_KEY_A;
-        int moveRight = Qt::Key_D;
-        int moveForward = Qt::Key_W;
-        int moveBackward = Qt::Key_S;
-        int moveUp = Qt::Key_E;
-        int moveDown = Qt::Key_Q;
-        int lookLeft = Qt::Key_Left;
-        int lookRight = Qt::Key_Right;
-        int lookUp = Qt::Key_Up;
-        int lookDown = Qt::Key_Down;
-        //int mouseLeft = GLFW_MOUSE_BUTTON_LEFT;
-        //int mouseRight = GLFW_MOUSE_BUTTON_RIGHT;
-    };
-
-    struct ModelVisibleSet {
-
-        int edge_key = GLFW_KEY_E;
-        int layout_key = GLFW_KEY_L;
-        int resistor_key = GLFW_KEY_R;
-        int capacitor_key = GLFW_KEY_C;
-        int axis_key = GLFW_KEY_X;
-        int vertical_resistor_key = GLFW_KEY_V;
-        int horizontal_resistor_key = GLFW_KEY_H;
-        int opacity_plus_key = GLFW_KEY_O;
-        int opacity_minus_key = GLFW_KEY_P;
-
-        bool edge_key_pressed = false;
-        bool layout_key_pressed = false;
-        bool resistor_key_pressed = false;
-        bool capacitor_key_pressed = false;
-        bool axis_key_pressed = false;
-        bool vertical_resistor_key_pressed = false;
-        bool horizontal_resistor_key_pressed = false;
-        bool opacity_plus_key_pressed = false;
-        bool opacity_minus_key_pressed = false;
-
-    };
-
-    void moveInPlaneXZ(GLFWwindow* window, float dt, std::vector<LveGameObject>& gameObjects);
-
-    void moveCamera(GLFWwindow* window, float dt, LveCamera& camera, std::vector<LveGameObject>& gameObjects);
-    CameraMoveKeyMappings camera_move_key;
-
-    void visibleSetting(GLFWwindow* window, std::vector<LveGameObject>& gameObjects);
-    ModelVisibleSet model_visible_set;
-
-    void initMouse(GLFWwindow* window);
-    static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-
-    KeyMappings keys{};
-    double mouseX;
-    double mouseY;
-    double oldXPos;
-    double oldYPos;
-    float moveSpeed{ 3.f };
-    float lookSpeed{ 1.5f };
-
-    //KeyMappings keys{};
-*/
     float moveSpeed{ 0.05f };
     float lookSpeed{ 1.5f };
     int xpos_prev;
     int ypos_prev;
+    float perspectiveNear{ 0.1f };
+
+
 };
 
-::::./Rendering/Src/lve_camera.hpp::::#pragma once
+!@hash[]!@file[]./Rendering/Src/lve_camera.hpp!@hash[]!@code[]#pragma once
 
 // libs
 #define GLM_FORCE_RADIANS
@@ -6030,10 +6754,11 @@ public:
     glm::vec3 translation_d;
     glm::vec3 skew_d;
     glm::vec4 perspective_d;
+    bool isperspective = true;
 
 };
 
-::::./Rendering/Src/lve_device.hpp::::#pragma once
+!@hash[]!@file[]./Rendering/Src/lve_device.hpp!@hash[]!@code[]#pragma once
 
 #include <QVulkanInstance>
 #include <vulkan/vulkan.h>
@@ -6144,7 +6869,7 @@ private:
     const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 };
 
-::::./Rendering/Src/lve_game_object.hpp::::#pragma once
+!@hash[]!@file[]./Rendering/Src/lve_game_object.hpp!@hash[]!@code[]#pragma once
 
 #include "lve_model.hpp"
 
@@ -6249,7 +6974,7 @@ private:
     bool edge_line_enabled = { true };
     bool axis_line_enabled = { true };
 };
-::::./Rendering/Src/lve_model.hpp::::#pragma once
+!@hash[]!@file[]./Rendering/Src/lve_model.hpp!@hash[]!@code[]#pragma once
 
 #include "lve_device.hpp"
 
@@ -6263,6 +6988,7 @@ private:
 
 #include <string>
 #include <iostream>
+
 #include <map>
 //#include <ranges>
 #include "LayoutPEXData.h"
@@ -6287,6 +7013,12 @@ public:
 
         static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
         static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
+    };
+
+    struct LayerProperty {
+        bool visiblity;
+        glm::vec3 color{};
+        float opacity;
     };
 
     LveModel(LveDevice& device, MODEL_TYPE model_type);
@@ -6341,12 +7073,16 @@ public:
     std::vector<Vertex> vertices{};
     std::vector<uint32_t> indices_face{};
     std::vector<uint32_t> indices_edge{};
+    std::vector<float> drawing_order_layerby{};
 
     std::map<float, std::vector<Vertex>> layerby_vertices;
     std::map<float, std::vector<uint32_t>> layerby_face;
     std::map<float, std::vector<uint32_t>> layerby_edge;
-    std::map<float, glm::vec3> layerList;
-
+    std::map<float, LayerProperty> layerList;
+    std::map<float, glm::vec3> init_layerby_color;
+    void changeLayerColor(float layernumber, glm::vec3 rgb);
+    void changeLayerOpacity(float layernumber, float opacity);
+    void changeLayerVisiblity(float layernumber, bool visiblity);
     bool visible{true};
     float opacity{ 1.0f };
 
@@ -6366,10 +7102,10 @@ public:
     void toggleVisible() { this->visible = !this->visible; }
     void updateOpacity(float amount);
     float getOpacity() { return this->opacity; }
-    std::map<float, glm::vec3> getLayer();
+    std::map<float, LayerProperty> getLayer();
 };
 
-::::./Rendering/Src/lve_pipeline.hpp::::#pragma once
+!@hash[]!@file[]./Rendering/Src/lve_pipeline.hpp!@hash[]!@code[]#pragma once
 
 #include "lve_device.hpp"
 
@@ -6430,9 +7166,11 @@ private:
     VkShaderModule fragShaderModule;
 };
 
-::::./Rendering/Src/lve_window.hpp::::#ifndef LVEWINDOW_H
+!@hash[]!@file[]./Rendering/Src/lve_window.hpp!@hash[]!@code[]#ifndef LVEWINDOW_H
 #define LVEWINDOW_H
 #include <vulkan/vulkan.h>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
 
 #include <QVulkanWindow>
 //#include <QVulkanWindowRenderer>
@@ -6457,6 +7195,7 @@ public:
     QVulkanWindowRenderer *createRenderer() override;
     //QVulkanWindowRenderer * getRenderer(){ return this->m_renderer;}
     //LveCamera* camera;
+    void emitStatus(float value);
 
 public:
     DtaoRenderSystem * getRenderer(){return this->m_renderer;}
@@ -6482,11 +7221,11 @@ private:
     QPoint m_lastPos;
 
 signals:
-    void signalInfoText(QString funcName, float value);
+    void signalInfoText(QString funcName, glm::vec3 value);
 };
 
 #endif // LVEWINDOW_H
-::::./Rendering/Src/rapidcsv.h::::/*
+!@hash[]!@file[]./Rendering/Src/rapidcsv.h!@hash[]!@code[]/*
  * rapidcsv.h
  *
  * URL:      https://github.com/d99kris/rapidcsv
@@ -8307,7 +9046,7 @@ namespace rapidcsv
 #endif
     };
 }
-::::./Rendering/Src/simple_render_system.hpp::::#pragma once
+!@hash[]!@file[]./Rendering/Src/simple_render_system.hpp!@hash[]!@code[]#pragma once
 #include <vulkan/vulkan.h>
 
 #include "lve_camera.hpp"
@@ -8358,8 +9097,10 @@ private:
     VkPipelineLayout pipelineLayoutForPEXCapacitor;
 };
 
-::::./T2D.h::::#ifndef T2D_H
+!@hash[]!@file[]./T2D.h!@hash[]!@code[]#ifndef T2D_H
 #define T2D_H
+
+#include "defineParam.h"
 
 #include <iostream>
 #include <vector>
@@ -8368,54 +9109,21 @@ private:
 
 using namespace std;
 
-struct bBox{
-    double minx;
-    double miny;
-    double maxx;
-    double maxy;
-};
-
-struct Color_rgba{
-    int r;
-    int g;
-    int b;
-    int a;
-};
-
-struct LDATA10by10{
-    std::string layername;
-    int layernum;
-    int datatype;
-    Color_rgba color;
-    double bot;
-    double top;
-    std::vector<std::vector<std::vector<bBox>>> xy;
-};
-
-struct MinMaxXYZ{
-    double minx;
-    double maxx;
-    double miny;
-    double maxy;
-    double minz;
-    double maxz;
-};
-
 class T2D{
     public:
         bool text2data(std::string file_name);
 
-        std::vector<LDATA10by10> LayoutData10by10;
-        MinMaxXYZ LayoutMinMax;
+        std::vector<LDATA10BY10> LayoutData10by10;
+        MIN_MAX_XYZ LayoutMinMax;
 
-        LDATA10by10 buf_ldata10by10;
-        vector<vector<vector<bBox>>> buf_xy10by10;
-        vector<bBox> buf_xy;
+        LDATA10BY10 buf_ldata10by10;
+        vector<vector<vector<B_BOX>>> buf_xy10by10;
+        vector<B_BOX> buf_xy;
         static std::vector<std::string> string_split(std::string input, char delimiter);
 };
 
 #endif // T2D_H
-::::./all_data.h::::#ifndef ALL_DATA_H
+!@hash[]!@file[]./all_data.h!@hash[]!@code[]#ifndef ALL_DATA_H
 #define ALL_DATA_H
 
 #include <QObject>
@@ -8445,7 +9153,73 @@ signals:
 };
 
 #endif // ALL_DATA_H
-::::./filedb.h::::#ifndef FILEDB_H
+!@hash[]!@file[]./defineParam.h!@hash[]!@code[]#ifndef DEFINETYPE_H
+#define DEFINETYPE_H
+
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+struct POS_MONITORING{
+    double x;
+    double y;
+    double z;
+    double tilt;
+    double rotation;
+    double zoom;
+    double window_zoom;
+};
+
+struct B_BOX{
+    double minx;
+    double miny;
+    double maxx;
+    double maxy;
+};
+
+struct COLOR_RGBA{
+    int r;
+    int g;
+    int b;
+    int a;
+};
+
+struct LDATA10BY10{
+    bool checking;
+    std::string layername;
+    int layernum;
+    int datatype;
+    COLOR_RGBA color;
+    double bot;
+    double top;
+    std::vector<std::vector<std::vector<B_BOX>>> xy;
+};
+
+struct MIN_MAX_XYZ{
+    double minx;
+    double maxx;
+    double miny;
+    double maxy;
+    double minz;
+    double maxz;
+};
+
+struct FILTER_RENDER{
+    bool checking;
+    std::string layername;
+    int layernum;
+    int datatype;
+    COLOR_RGBA color;
+    double bot;
+    double top;
+    std::vector<B_BOX> xy;
+};
+
+#endif // DEFINETYPE_H
+
+
+!@hash[]!@file[]./filedb.h!@hash[]!@code[]#ifndef FILEDB_H
 #define FILEDB_H
 
 #include <QVector>
@@ -8460,7 +9234,7 @@ public:
 };
 
 #endif // FILEDB_H
-::::./formhier.h::::#ifndef FORMHIER_H
+!@hash[]!@file[]./formhier.h!@hash[]!@code[]#ifndef FORMHIER_H
 #define FORMHIER_H
 
 #include <QDialog>
@@ -8496,10 +9270,13 @@ public:
 #endif // FORMHIER_H
 
 /////
-::::./forminfo.h::::#ifndef FORMINFO_H
+!@hash[]!@file[]./forminfo.h!@hash[]!@code[]#ifndef FORMINFO_H
 #define FORMINFO_H
 
 #include <QDialog>
+#include <QLineEdit>
+#include <glm/gtx/string_cast.hpp>
+#include "defineParam.h"
 
 namespace Ui {
 class FormInfo;
@@ -8514,17 +9291,22 @@ public:
     ~FormInfo();
 
 public slots:
-    void slotInfoText(QString funcName, float value);
+    void slotInfoText(QString funcName, glm::vec3 value);
+    void slotPos(POS_MONITORING *pos);
     void moveRender(float x, float y);
 
 private:
+    bool checkNum(const QString &str);
+    void expressionText(double *point, const QString &str, QLineEdit *name, int type);
     Ui::FormInfo *ui;
+    POS_MONITORING *_pos;
+    POS_MONITORING temp_pos;
     float pointX = 0;
     float pointY = 0;
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom 齑堦赴臧�棎 �GDS size 毳臧���橃爼 ��
+    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
 
     float initRot = 0;
     float initTilt = 90;
@@ -8534,10 +9316,42 @@ private:
 
     float x = 0;
     float y = 0;
+
+    double m_temp_x = 0;
+    double m_temp_y = 0;
+    double m_temp_z = 0;
+    double m_temp_tilt = 0;
+    double m_temp_rot = 0;
+    double m_temp_zoom = 0;
+
+
+signals:
+    void signalPos();
+private slots:
+    void on_pos_x_textEdited(const QString &arg1);
+    void on_pos_y_textEdited(const QString &arg1);
+    void on_pos_z_textEdited(const QString &arg1);
+    void on_ang_tilt_textEdited(const QString &arg1);
+    void on_ang_rotation_textEdited(const QString &arg1);
+    void on_zoom_textEdited(const QString &arg1);
+    void inputPos();
+    void on_pos_x_returnPressed();
+    void on_pos_y_returnPressed();
+    void on_pos_z_returnPressed();
+    void on_ang_tilt_returnPressed();
+    void on_ang_rotation_returnPressed();
+    void on_zoom_returnPressed();
+    void on_pos_x_editingFinished();
+    void on_pos_y_editingFinished();
+    void on_pos_z_editingFinished();
+    void on_ang_tilt_editingFinished();
+    void on_ang_rotation_editingFinished();
+    void on_zoom_editingFinished();    
+
 };
 
 #endif // FORMINFO_H
-::::./formlayer.h::::#ifndef FORMLAYER_H
+!@hash[]!@file[]./formlayer.h!@hash[]!@code[]#ifndef FORMLAYER_H
 #define FORMLAYER_H
 
 #include <QDialog>
@@ -8551,6 +9365,9 @@ private:
 #include <QtWidgets/QSlider>
 #include <QRgba64>
 #include <QDebug>
+#include "Rendering/Src/lve_window.hpp"
+#include "Rendering/Src/dtaorendersystem.h"
+#include "T2D.h"
 
 
 namespace Ui {
@@ -8563,24 +9380,34 @@ class FormLayer : public QDialog
 
 public slots:
     void ReceiveSplitData(int row, int column, const QVector <QVector <QString>> &inputDataVector);
+    void on_opacityslider_valueChanged(int);
+    void OpacitySliderValueChange(int);
 
 public:
-    explicit FormLayer(QWidget *parent = nullptr);
+    explicit FormLayer(LveWindow *w, QWidget *parent = nullptr);
     ~FormLayer();
     int i;
     int row;
     int column;
+    void MakeLayerInformationTalbe();
+    void ReceiveLayerInformation(T2D &t2d);
 
 //    QTableWidgetItem *checkBoxItem[3];
 
 
 private slots:
-    void tableWidget_checkBoxChanged();
+//    void tableWidget_checkBoxChanged();
     void on_colorbutton_clicked();
-    void handleOpacitySlider(int);
+
+    void on_tableWidget_doubleClicked(const QModelIndex &index);
+
+    void on_checkboxInTable_stateChanged();
 
 private:
+    LveWindow *m_window;
     Ui::FormLayer *ui;
+    T2D *t2d_layer_information;
+    QString empty_for_emit = "";
 
 signals:
     void outputLayerStatus(QString printLayer);
@@ -8624,9 +9451,9 @@ signals:
 
 
 #endif // FORMLAYER_H
-::::./formmap.h::::#ifndef FORMMAP_H
+!@hash[]!@file[]./formmap.h!@hash[]!@code[]#ifndef FORMMAP_H
 #define FORMMAP_H
-
+#include <glm/gtx/string_cast.hpp>
 #include <QDialog>
 #include <QGraphicsRectItem>
 
@@ -8640,7 +9467,7 @@ class SuperItem : public QObject, public QGraphicsItem
 public:
     SuperItem(QGraphicsItem* parent = NULL);
 public slots:
-    void slotMove(float x, float y, float zoom, float rot, float tilt);
+    void slotMove(float x, float y, float zoom, float rot, float tilt);    
 
 protected:
     void paint(QPainter *painter,
@@ -8663,9 +9490,10 @@ public:
     explicit FormMap(QWidget *parent = nullptr);
     ~FormMap();
     void receiveSize(float &xMinSize,float &yMinSize,float &xMaxSize,float &yMaxSize, float &zoomScale);
+    void receiveSize_t2d(double &xMinSize,double &yMinSize,double &xMaxSize,double &yMaxSize, double &zoomScale);
 
 public slots:
-    void slotInfoText(QString funcName, float value);
+    void slotInfoText(QString funcName, glm::vec3 value);
 
 signals:
     void signalMove(float x, float y, float zoom, float rot, float tilt);
@@ -8684,7 +9512,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom 齑堦赴臧�棎 �GDS size 毳臧���橃爼 ��
+    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
 
     float initRot = 0;
     float initTilt = 90;
@@ -8699,10 +9527,15 @@ private:
 
 
 #endif // FORMMAP_H
-::::./formtop.h::::#ifndef FORMTOP_H
+!@hash[]!@file[]./formtop.h!@hash[]!@code[]#ifndef FORMTOP_H
 #define FORMTOP_H
 
+#include "T2D.h"
+#include "defineParam.h"
 #include <QDialog>
+#include <QGraphicsItem>
+#include <QVector>
+#include <QGraphicsRectItem>
 
 namespace Ui {
 class FormTop;
@@ -8715,15 +9548,39 @@ class FormTop : public QDialog
 public:
     explicit FormTop(QWidget *parent = nullptr);
     ~FormTop();
-    void receiveFile(QVector<QVector<QVector<QList<float>>>>& mapFile);
+//    void receiveFile(QVector<QVector<QVector<QList<float>>>>& mapFile);
+    void receiveFile(T2D &t2d, vector<FILTER_RENDER> *t2d_filter);
+    void drawing();
+    void drawingClear();
+    void slotPos(POS_MONITORING &pos);
+    void changePos();
 //    void receiveFile(QVector<QList<float>> **mapFile);
 
+private slots:
+    void on_horizontalSlider_valueChanged(int value);
+
 private:
+
+    void addRectItem(int layer, int row, int col, int n, QTransform trans);
+    int extPos(double *pos, double *max);
+    void filterRenderingData(int layer, int row, int col, int n);
+    void areaFilterRect();
     Ui::FormTop *ui;
+    T2D *rendering_full;
+    vector<FILTER_RENDER> *rendering_filter;
+    POS_MONITORING *pos;
+    QGraphicsScene *m_scene;
+    QVector<QGraphicsRectItem*> rectItemList;
+    QTransform trans;
+    int m_begin_x = 0, m_begin_y = 0, m_end_x = 1, m_end_y = 1, m_scale = 500;
+    float m_min_x = 0, m_min_y =0, m_max_x =0, m_max_y=0;
+    double m_min_x_size = 0, m_max_x_size = 0, m_min_y_size = 0, m_max_y_size = 0;
+    int m_block_size = 10; //10um
+    double m_area = 50, m_area_scale = 1000 ; // 50/1000 = 0.05um(0.001~0.099)
 };
 
 #endif // FORMTOP_H
-::::./gitmerge.h::::#ifndef GITMERGE_H
+!@hash[]!@file[]./gitmerge.h!@hash[]!@code[]#ifndef GITMERGE_H
 #define GITMERGE_H
 
 #include <QString>
@@ -8739,10 +9596,16 @@ private:
     bool compareFiles(QString &A, QString &B);
     void writeMergeFile(QString fileName, QString &originFile);
     void makeCodeFiles(QString &codeFile, QString &gitMergeFile);
+
+    QString split1;
+    QString split2;
+    QString hash = "!@hash[]";
+    QString file = "!@file[]";
+    QString code = "!@code[]";
 };
 
 #endif // GITMERGE_H
-::::./mainwindow.h::::#ifndef MAINWINDOW_H
+!@hash[]!@file[]./mainwindow.h!@hash[]!@code[]#ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
 #include "Rendering/Src/lve_window.hpp"
@@ -8778,12 +9641,14 @@ public:
     void shareGeo(QRect size);
 
     T2D t2d;
+    vector<FILTER_RENDER> t2d_filter;
 
 public slots:
 
-    void slotInfoText(QString funcName, float value);
+    void slotInfoText(QString funcName, glm::vec3 value);
     void inputLayerStatus(QString text);
     void on_actionOpen_file_triggered();
+    void inputPosInformation();
 
 signals:
     void signalInfoText(QString funcName, float value);
@@ -8791,13 +9656,11 @@ signals:
 
 
 private slots:
-    void on_actionOpen_Map_File_triggered();
-
     void on_actionOpen_Layout_triggered();
+    void on_actionOpen_DB_triggered();    
+    void slotPos();
 
-    void on_actionOpen_DB_triggered();
-
-    void on_actionLayer_information_triggered();
+    void on_actionTop_triggered();
 
 private:
     LveWindow *m_window;
@@ -8808,16 +9671,16 @@ private:
     FormTop *formTop;
     FormInfo *formInfo;
     FormMap *formMap;
-    QDockWidget *dockInfo;
     SuperItem *superItem;
     QRect *windowSize;
     FileDb *fileDb;
     all_data *input_dataS;
     QStringList split_data;
+    POS_MONITORING pos;
 };
 
 #endif // MAINWINDOW_H
-::::./trianglerenderer.h::::/****************************************************************************
+!@hash[]!@file[]./trianglerenderer.h!@hash[]!@code[]/****************************************************************************
 **
 ** Copyright (C) 2017 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
@@ -8905,7 +9768,7 @@ protected:
     float m_rotation = 0.0f;
     float m_rotation_ver = 0.0f;
 };
-::::./formhier.ui::::<?xml version="1.0" encoding="UTF-8"?>
+!@hash[]!@file[]./formhier.ui!@hash[]!@code[]<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>FormHier</class>
  <widget class="QDialog" name="FormHier">
@@ -8985,7 +9848,7 @@ protected:
  <resources/>
  <connections/>
 </ui>
-::::./forminfo.ui::::<?xml version="1.0" encoding="UTF-8"?>
+!@hash[]!@file[]./forminfo.ui!@hash[]!@code[]<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>FormInfo</class>
  <widget class="QDialog" name="FormInfo">
@@ -9009,172 +9872,6 @@ protected:
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="0">
-      <widget class="QLabel" name="label">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>20</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>16777215</width>
-         <height>20</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>X</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="2">
-      <widget class="QLabel" name="infoZoom">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>20</height>
-        </size>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="2">
-      <widget class="QLabel" name="pointZ">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>20</height>
-        </size>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="infoTilt">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>20</height>
-        </size>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="1">
-      <widget class="QLabel" name="infoRot">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>20</height>
-        </size>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLabel" name="pointY">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>20</height>
-        </size>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QLabel" name="label_2">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>20</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>16777215</width>
-         <height>20</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>Y</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
      <item row="0" column="2">
       <widget class="QLabel" name="label_4">
        <property name="sizePolicy">
@@ -9197,56 +9894,6 @@ protected:
        </property>
        <property name="text">
         <string>Z</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="pointX">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>20</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>16777215</width>
-         <height>20</height>
-        </size>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_10">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>20</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>Tilt</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>
@@ -9297,6 +9944,129 @@ protected:
        </property>
       </widget>
      </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="label_2">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Y</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="pos_y">
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="2">
+      <widget class="QLineEdit" name="zoom">
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>X</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLineEdit" name="ang_tilt">
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_10">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Tilt</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLineEdit" name="pos_x">
+       <property name="inputMask">
+        <string/>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLineEdit" name="ang_rotation">
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QLineEdit" name="pos_z">
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>
@@ -9304,10 +10074,19 @@ protected:
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>pos_x</tabstop>
+  <tabstop>pos_y</tabstop>
+  <tabstop>pos_z</tabstop>
+  <tabstop>ang_tilt</tabstop>
+  <tabstop>ang_rotation</tabstop>
+  <tabstop>zoom</tabstop>
+  <tabstop>listWidget</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>
-::::./formlayer.ui::::<?xml version="1.0" encoding="UTF-8"?>
+!@hash[]!@file[]./formlayer.ui!@hash[]!@code[]<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>FormLayer</class>
  <widget class="QDialog" name="FormLayer">
@@ -9348,6 +10127,9 @@ protected:
        <property name="focusPolicy">
         <enum>Qt::ClickFocus</enum>
        </property>
+       <property name="tabKeyNavigation">
+        <bool>true</bool>
+       </property>
        <property name="alternatingRowColors">
         <bool>true</bool>
        </property>
@@ -9369,7 +10151,7 @@ protected:
  <resources/>
  <connections/>
 </ui>
-::::./formmap.ui::::<?xml version="1.0" encoding="UTF-8"?>
+!@hash[]!@file[]./formmap.ui!@hash[]!@code[]<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>FormMap</class>
  <widget class="QDialog" name="FormMap">
@@ -9418,7 +10200,7 @@ protected:
  <resources/>
  <connections/>
 </ui>
-::::./formtop.ui::::<?xml version="1.0" encoding="UTF-8"?>
+!@hash[]!@file[]./formtop.ui!@hash[]!@code[]<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>FormTop</class>
  <widget class="QDialog" name="FormTop">
@@ -9443,12 +10225,19 @@ protected:
    <item>
     <widget class="QGraphicsView" name="graphicsView"/>
    </item>
+   <item>
+    <widget class="QSlider" name="horizontalSlider">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <resources/>
  <connections/>
 </ui>
-::::./mainwindow.ui::::<?xml version="1.0" encoding="UTF-8"?>
+!@hash[]!@file[]./mainwindow.ui!@hash[]!@code[]<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -9476,7 +10265,7 @@ protected:
      <x>0</x>
      <y>0</y>
      <width>1024</width>
-     <height>21</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -9485,7 +10274,6 @@ protected:
     </property>
     <addaction name="actionOpen_file"/>
     <addaction name="separator"/>
-    <addaction name="actionOpen_Map_File"/>
     <addaction name="actionOpen_Layout"/>
     <addaction name="separator"/>
     <addaction name="actionOpen_DB"/>
@@ -9496,8 +10284,15 @@ protected:
     </property>
     <addaction name="actionLayer_information"/>
    </widget>
+   <widget class="QMenu" name="menuCamera">
+    <property name="title">
+     <string>Camera</string>
+    </property>
+    <addaction name="actionTop"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
+   <addaction name="menuCamera"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
@@ -9510,6 +10305,7 @@ protected:
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionTop"/>
   </widget>
   <action name="actionOpen_file">
    <property name="text">
@@ -9519,11 +10315,6 @@ protected:
   <action name="actionLayer_information">
    <property name="text">
     <string>Layer information</string>
-   </property>
-  </action>
-  <action name="actionOpen_Map_File">
-   <property name="text">
-    <string>Open Map File</string>
    </property>
   </action>
   <action name="actionOpen_Layout">
@@ -9536,11 +10327,16 @@ protected:
     <string>Open DB</string>
    </property>
   </action>
+  <action name="actionTop">
+   <property name="text">
+    <string>Top</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>
 </ui>
-::::./IInterface.pro::::QT       += core gui
+!@hash[]!@file[]./IInterface.pro!@hash[]!@code[]QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -9595,6 +10391,7 @@ HEADERS += \
     Rendering/Src/simple_render_system.hpp \
     T2D.h \
     all_data.h \
+    defineParam.h \
     filedb.h \
     formhier.h \
     forminfo.h \
