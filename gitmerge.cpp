@@ -8,30 +8,36 @@
 
 GitMerge::GitMerge()
 {
+    split1 = hash;
+    split2 = hash;
+    split1.append(file);
+    split2.append(code);
+
     QString totalMerge;
     QString preMergeFile;
     QString updateMergeFile;
     this->mergeFiles(totalMerge);
     this->openPreMergeFile(preMergeFile);
     this->openUpdateMergeFile(updateMergeFile);
-    if (compareFiles(preMergeFile, updateMergeFile))
-    {
-        if(compareFiles(preMergeFile, totalMerge))
-        {
-            qDebug() << "gitMerge file and code files are not changed " ;
-            return;
-        }
-        else
-        {
-            this->writeMergeFile("./gitMerge.txt", totalMerge);
-            this->writeMergeFile("./gitMerge.back", totalMerge);
-        }
-    }
-    else
-    {
-        this->writeMergeFile("./gitMerge.back", updateMergeFile);
-        this->makeCodeFiles(totalMerge, updateMergeFile);
-    }
+    this->writeMergeFile("./gitMerge.txt", totalMerge);
+    //    if (compareFiles(preMergeFile, updateMergeFile))
+    //    {
+    //        if(compareFiles(preMergeFile, totalMerge))
+    //        {
+    //            qDebug() << "gitMerge file and code files are not changed " ;
+    //            return;
+    //        }
+    //        else
+    //        {
+    //            this->writeMergeFile("./gitMerge.txt", totalMerge);
+    ////            this->writeMergeFile("./gitMerge.back", totalMerge);
+    //        }
+    //    }
+    //    else
+    //    {
+    //        this->writeMergeFile("./gitMerge.back", updateMergeFile);
+    //        this->makeCodeFiles(totalMerge, updateMergeFile);
+    //    }
 }
 
 void GitMerge::mergeFiles(QString &totalMerge)
@@ -54,30 +60,30 @@ void GitMerge::mergeFiles(QString &totalMerge)
 
         itemMerge = itemMerge.remove("\\");
         itemMerge = itemMerge.trimmed();
+        //주석을 처리해야 한다.
         if (itemMerge.contains(".cpp", Qt::CaseInsensitive) || itemMerge.contains(".h", Qt::CaseInsensitive) || itemMerge.contains(".ui", Qt::CaseInsensitive))
         {
-            if (!itemMerge.contains("gitmerge.cpp", Qt::CaseInsensitive))
+            QFile codeFile(itemMerge.prepend("./"));
+            if(!codeFile.open(QFile::ReadOnly | QFile::Text))
             {
-                QFile codeFile(itemMerge.prepend("./"));
-                if(!codeFile.open(QFile::ReadOnly | QFile::Text))
-                {
-                    qDebug() << " Could not open the code file for reading " ;
-                    return;
-                }
-                QTextStream codeIn(&codeFile);
-                QString codeText = codeIn.readAll();
-                totalMerge.append("::::");
-                totalMerge.append(itemMerge);
-                totalMerge.append("::::");
-                totalMerge.append(codeText);
-                codeFile.close();
+                qDebug() << " Could not open the code file for reading " ;
+                return;
             }
+            QTextStream codeIn(&codeFile);
+            QString codeText = codeIn.readAll();
+
+            totalMerge.append(split1);
+            totalMerge.append(itemMerge);
+            totalMerge.append(split2);
+            totalMerge.append(codeText);
+            codeFile.close();
+
         }
 
     }
-    totalMerge.append("::::");
+    totalMerge.append(split1);
     totalMerge.append("./IInterface.pro");
-    totalMerge.append("::::");
+    totalMerge.append(split2);
     totalMerge.append(merge);
 
     file.close();
@@ -156,50 +162,54 @@ void GitMerge::writeMergeFile(QString fileName, QString &originFile)
 
 void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
 {
-    QStringList codeList = codeFile.split("::::");
-    QStringList fileList = gitMergeFile.split("::::");
+    QStringList codeList = codeFile.split(split1);
+    QStringList fileList = gitMergeFile.split(split1);
+    QStringList codeListDivide;
+    QStringList fileListDivide;
     for (int i = 1; i < fileList.size(); i+=2)
     {
+        fileListDivide = fileList[i].split(split2);
         for (int j = 1; j < codeList.size(); j+=2)
         {
-            if (codeList[j] == fileList[i])
+            codeListDivide = codeList[j].split(split2);
+            if (codeListDivide[0] == fileListDivide[0])
             {
-                if (codeList[j+1] != fileList[i+1])
+                if (codeListDivide[1] != fileListDivide[1])
                 {
-                    QFile file_gitback(codeList[j].append("_back"));
+                    QFile file_gitback(codeListDivide[0].append("_back"));
                     if(!file_gitback.open(QFile::WriteOnly | QFile::Text))
                     {
                         qDebug() << " Could not open the file for writing ";
                         return;
                     }
                     QTextStream out_gitback(&file_gitback);
-                    out_gitback << codeList[j+1];
+                    out_gitback << codeListDivide[1];
                     file_gitback.flush();
                     file_gitback.close();
 
-                    QFile file(fileList[i]);
+                    QFile file(fileListDivide[0]);
                     if(!file.open(QFile::WriteOnly | QFile::Text))
                     {
                         qDebug() << " Could not open the file for writing ";
                         return;
                     }
                     QTextStream out(&file);
-                    out << fileList[i+1];
+                    out << fileListDivide[1];
                     file.flush();
                     file.close();
                 }
                 break;
             }
-            if (j == codeList.size()-2)
+            if (j == codeList.size()-1) // 찾아봤는데 기존 파일이 없다.
             {
-                QFile file(fileList[i]);
+                QFile file(fileListDivide[0]);
                 if(!file.open(QFile::WriteOnly | QFile::Text))
                 {
                     qDebug() << " Could not open the file for writing ";
                     return;
                 }
                 QTextStream out(&file);
-                out << fileList[i+1];
+                out << fileListDivide[1];
                 file.flush();
                 file.close();
             }
