@@ -2,7 +2,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-
+#include "T2D.h"
 
 
 void testPEXData();
@@ -113,6 +113,8 @@ public:
 private:
     std::string file_path;
     std::vector<LayoutItem> patterns;
+    T2D *t2d_ptr;
+
 
     double scale;
 
@@ -122,15 +124,20 @@ private:
     double layout_max_y;
     double layout_min_z;
     double layout_max_z;
+    double x_diff;
+    double y_diff;
+    double z_diff;
 
 
 
 public:
-    std::vector<LayoutItem>& getPatterns() { return this->patterns; }
+    std::vector<LayoutItem> &getPatterns() { return this->patterns; }
+    std::vector<LDATA10BY10> &getPatterns_t2d() { return this->t2d_ptr->LayoutData10by10; }
 
-    void loadLayoutData(const std::string file_path);
+    void loadLayoutData(T2D &t2d);
     void clear() { this->patterns.clear(); };
     void printLayoutData() {};
+    static bool compareByLength( const LDATA10BY10 &a, const LDATA10BY10 &b);
 
     double getMinX() { return this->layout_min_x; }
     double getMaxX() { return this->layout_max_x; }
@@ -138,6 +145,9 @@ public:
     double getMaxY() { return this->layout_max_y; }
     double getMinZ() { return this->layout_min_z; }
     double getMaxZ() { return this->layout_max_z; }
+    double getDiffX() { return this->x_diff; }
+    double getDiffY() { return this->y_diff; }
+    double getDiffZ() { return this->z_diff; }
     double getScale() { return this->scale; }
 
 private:

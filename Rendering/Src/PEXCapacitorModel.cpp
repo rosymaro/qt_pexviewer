@@ -117,7 +117,7 @@ void PEXCapacitorModel::attachCapToPattern() {
     makeLayerToPatternCapMap();
 
     /*
-        //�纺贸府�版秅� �
+        //º´·ÄÃ³¸®·Î º¯°æÇØ¾ß ÇÔ
         //matchCapWithPattern(this->cap_layer_map, this->pattern_layer_map, 17, 0);
         for (auto& cur_layer : this->layers) {
             string layer = getLayerString(cur_layer.first, cur_layer.second);

@@ -260,15 +260,37 @@ void LveModel::updateOpacity(float amount) {
     if (this->opacity < 0.0f) this->opacity = 0.0f;
 }
 
-std::map<float, glm::vec3> LveModel::getLayer() {
-    vector<glm::vec3> it = { glm::vec3{0.1,0.5,0.8},glm::vec3{0.8,0.4,0.2},glm::vec3{0.5,0.9,0.9} };
-    int a = 0;
-    for (auto const& [key, val] : layerby_vertices) {
+std::map<float, LveModel::LayerProperty> LveModel::getLayer() {
+    //if(layerList.empty()){
+    //    vector<glm::vec3> it = { glm::vec3{0.1,0.5,0.8},glm::vec3{0.8,0.4,0.2},glm::vec3{0.5,0.9,0.9} };
+    //    int a = 0;
+    //    for (auto ordered_key : drawing_order_layerby) {
+    //
+    //        layerList.insert(pair(ordered_key, LayerProperty{true,it.at(a%3), 0.5}) );
+    //        a++;
+    //    }
+    //}
+    return layerList;
+}
 
-        layerList.insert({ key, it.at(a%3)});
-        a++;
+void LveModel::changeLayerColor(float layernumber, glm::vec3 rgb){
+    if(layerList.count(layernumber) != 0 ){
+        layerList[layernumber].color = rgb;
     }
 
-    return layerList;
+}
+
+void LveModel::changeLayerOpacity(float layernumber, float opacity){
+    if(layerList.count(layernumber) != 0 ){
+        layerList[layernumber].opacity = opacity;
+    }
+
+}
+
+void LveModel::changeLayerVisiblity(float layernumber, bool visiblity){
+    if(layerList.count(layernumber) != 0 ){
+        layerList[layernumber].visiblity = visiblity;
+    }
+
 }
 

@@ -33,8 +33,7 @@ SOURCES += \
     formtop.cpp \
     gitmerge.cpp \
     main.cpp \
-    mainwindow.cpp \
-    trianglerenderer.cpp
+    mainwindow.cpp
 
 HEADERS += \
     Rendering/Src/LayoutModel.h \
@@ -49,10 +48,10 @@ HEADERS += \
     Rendering/Src/lve_model.hpp \
     Rendering/Src/lve_pipeline.hpp \
     Rendering/Src/lve_window.hpp \
-    Rendering/Src/rapidcsv.h \
     Rendering/Src/simple_render_system.hpp \
     T2D.h \
     all_data.h \
+    defineParam.h \
     filedb.h \
     formhier.h \
     forminfo.h \
@@ -60,8 +59,7 @@ HEADERS += \
     formmap.h \
     formtop.h \
     gitmerge.h \
-    mainwindow.h \
-    trianglerenderer.h
+    mainwindow.h
 
 FORMS += \
     formhier.ui \
@@ -117,5 +115,4 @@ INCLUDEPATH += $$PWD/../../Library/VulkanSDK/1.3.239.0/Lib
 DEPENDPATH += $$PWD/../../Library/VulkanSDK/1.3.239.0/Lib
 
 INCLUDEPATH += $$PWD/../../Library/glm-0.9.9.8/glm
-
 

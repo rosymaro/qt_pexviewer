@@ -4,6 +4,7 @@
 #include "Rendering/Src/dtaorendersystem.h"
 #include "Rendering/Src/lve_model.hpp"
 
+
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QDockWidget>
@@ -38,36 +39,45 @@ MainWindow::MainWindow(LveWindow *w)
     dockLayer->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockLayer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     addDockWidget(Qt::RightDockWidgetArea, dockLayer);
-    formLayer = new FormLayer;
+    formLayer = new FormLayer(this->m_window);
     dockLayer->setWidget(formLayer);
 
     QDockWidget *dockMap = new QDockWidget(tr("Map"), this);
     dockMap->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockMap->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     addDockWidget(Qt::LeftDockWidgetArea, dockMap);
-    formMap = new FormMap;    
+    formMap = new FormMap;
     dockMap->setWidget(formMap);
 
     QDockWidget *dockTop = new QDockWidget(tr("Topview"), this);
     dockTop->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     addDockWidget(Qt::LeftDockWidgetArea, dockTop);
-    formTop = new FormTop;    
+    formTop = new FormTop;
     dockTop->setWidget(formTop);
 
-//    QDockWidget *dockInfo = new QDockWidget(tr("Info"), this);
-    dockInfo = new QDockWidget(tr("Info"), this);
+    QDockWidget *dockInfo = new QDockWidget(tr("Info"), this);
     dockInfo->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockInfo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     addDockWidget(Qt::LeftDockWidgetArea, dockInfo);
     formInfo = new FormInfo;
     dockInfo->setWidget(formInfo);
 
-
     resizeDocks({dockInfo, dockTop, dockMap, dockLayer, dockHier}, {200,200}, Qt::Horizontal);
     resizeDocks({dockTop, dockMap}, {200,200}, Qt::Vertical);
 
     input_dataS = new all_data;
+
+    // test //
+    pos.x = 0;
+    pos.y = 0;
+    pos.z = 0;
+    pos.tilt = 90;
+    pos.rotation = 0;
+    pos.zoom = 1;
+    pos.window_zoom = 1;
+    formInfo->slotPos(pos);
+    formTop->slotPos(pos);
 
 
     /// connect ////////////////////
@@ -76,7 +86,7 @@ MainWindow::MainWindow(LveWindow *w)
     QObject::connect(input_dataS, SIGNAL(sendSplitData(int, int, const QVector <QVector <QString>> &)), formHier, SLOT(ReceiveSplitData(int, int, const QVector <QVector <QString>> &)));
     QObject::connect(input_dataS, SIGNAL(sendSplitData(int, int, const QVector <QVector <QString>> &)), formLayer, SLOT(ReceiveSplitData(int, int, const QVector <QVector <QString>> &)));
     QObject::connect(formLayer, SIGNAL(outputLayerStatus(QString)), this, SLOT(inputLayerStatus(QString)));
-
+    QObject::connect(formInfo, SIGNAL(signalPos()), this, SLOT(slotPos()));
 }
 
 void MainWindow::shareGeo(QRect size)
@@ -91,13 +101,13 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::slotInfoText(QString funcName, float value)
+void MainWindow::slotInfoText(QString funcName, POS_MONITORING value)
 {
     formInfo->slotInfoText(funcName,value);
     formMap->slotInfoText(funcName,value);
-    qDebug() << "slotInfoText" << value;
+    //qDebug() << "slotInfoText" << funcName << value.x << " "<< value.y << " "<< value.z << " ";
 ///// temp //////
-    QString text = funcName + " : " + QString::number(value);
+    QString text = funcName + " : " ;
     for (int i = text.size() ; i < 30 ; i++)
     {
         text.append(" ");
@@ -111,71 +121,10 @@ void MainWindow::slotInfoText(QString funcName, float value)
 
 }
 
-void MainWindow::on_actionOpen_Map_File_triggered()
-{
-    QString fileNameInfo = QFileDialog::getOpenFileName(this,
-                                                        tr("Open map file"),
-                                                        ".",
-                                                        tr("text (*.txt)")
-                                                        );
-    FileDb *fileDb = new FileDb;
-    QVector<QList<float>> vecList;
-    float xMinSize = 0, yMinSize = 0, xMaxSize = 0, yMaxSize = 0;
-    fileDb->openFile(fileNameInfo, vecList , xMinSize, yMinSize, xMaxSize, yMaxSize);
-
-    int posScale = 1000, splitSize = 10; //posScale 1�┐ um �渼, posScale 1000�┐ nm �渼
-    int n = (int(xMaxSize *posScale)-int(xMinSize *posScale))/splitSize +1;
-    int m = (int(yMaxSize *posScale)-int(yMinSize *posScale))/splitSize +1;
-    qDebug() << "int n / int m : " << n << " , " <<m;
-
-    ////////////////////////////////////////////////
-    QVector<QVector<QVector<QList<float>>>> mapFile(n, QVector<QVector<QList<float>>>(m, {{}}));
-//    QVector<QList<float>> mapFile[n][m];
-    // �氤��届���濌�勳殨潓
-    // 欤柬槑: struct(layer, r, g, b, z, thk, opacity, vector())
-
-    mapFile[0][0][0].append({0, 0, xMinSize, yMinSize, xMaxSize, yMaxSize, 0, 0});
-
-    for (auto & data : vecList)
-    {
-        if(data.size() == 8)
-        {
-            qDebug() << " " << data[2] << " "<< int(data[2]*100) << " "<< data[3] << " "<< int(data[3]*100);
-            int in_n = 0, in_m = 0;
-            if(data[2]<0)
-            {in_n = n + int(data[2]*100)-1;}
-            else
-            {in_n = int(data[2]*100);}
-            if(data[3]<0)
-            {in_m = m + int(data[3]*100)-1;}
-            else
-            {in_m = int(data[3]*100);}
-            mapFile[in_n][in_m].append(data);
-        }
-    }
-
-
-
-    for(int i = 0 ; i < (int(mapFile[0][0][0][2]*1000)-int(mapFile[0][0][0][0]*1000))/10+1 ; i++)
-    {
-        QDebug oneLine = qDebug();
-        for(int j = 0 ; j < (int(mapFile[0][0][0][3]*1000)-int(mapFile[0][0][0][1]*1000))/10+1 ; j++)
-        {
-            oneLine << "["<<i<<"]["<<j<<"] "<<mapFile[i][j];
-        }
-        qDebug() << "";
-    }
-
-    float zoomScale = std::max(xMaxSize-xMinSize,yMaxSize-yMinSize)/10;
-    formMap->receiveSize(xMinSize,yMinSize,xMaxSize,yMaxSize,zoomScale);
-    formTop->receiveFile(mapFile);
-
-}
-
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 �儩",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "ì¼  í",".","Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
@@ -185,83 +134,111 @@ void MainWindow::on_actionOpen_file_triggered()
 void MainWindow::inputLayerStatus(QString text)
 {
     ui->statusbar->showMessage(text);
+    formTop->drawingClear();
+    formTop->drawing();
 }
 
+void MainWindow::inputPosInformation()
+{
 
+    //execute (pos)
+}
 
 void MainWindow::on_actionOpen_Layout_triggered()
 {
-    QString file_name = QFileDialog::getOpenFileName(this, "岇澕 �儩",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "ì¼  í",".","Files(*.*)");
     DtaoRenderSystem * renderer = this->m_window->getRenderer();
 
-    renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
+    //renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
 
 
 }
 
 void MainWindow::on_actionOpen_DB_triggered(){
     std::cout << "callv" << std::endl;
-    QString file_name = QFileDialog::getOpenFileName(this, "OpenDB", "C:\\", "Text (*.txt) ;; Files (*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "OpenDB", ".", "Text (*.txt) ;; Files (*.*)");
     if(file_name != ""){
         std::cout << file_name.toStdString() << std::endl;
         this->t2d.text2data(file_name.toStdString());
 
-        printf("%-9f %-9f %-9f %-9f %-9f %-9f", t2d.LayoutMinMax.minx, t2d.LayoutMinMax.miny, t2d.LayoutMinMax.maxx, t2d.LayoutMinMax.maxy, t2d.LayoutMinMax.minz, t2d.LayoutMinMax.maxz);
-        for(int i = 0 ; i < t2d.LayoutData10by10.size() ; i++){
-            printf("\n%-9s %-9d %-9d %-9d %-9d %-9d %-9d %-9f %-9f ",
-                   t2d.LayoutData10by10[i].layername.c_str(),
-                   t2d.LayoutData10by10[i].layernum,
-                   t2d.LayoutData10by10[i].datatype,
-                   t2d.LayoutData10by10[i].color.r,
-                   t2d.LayoutData10by10[i].color.g,
-                   t2d.LayoutData10by10[i].color.b,
-                   t2d.LayoutData10by10[i].color.a,
-                   t2d.LayoutData10by10[i].bot,
-                   t2d.LayoutData10by10[i].top);
-            for(int j = 0 ; j < (t2d.LayoutData10by10[i].xy).size() ; j++){
-                for(int x = 0 ; x < (t2d.LayoutData10by10[i].xy[j]).size() ; x++){
-                    printf("\n%d %d %d", j, x, (t2d.LayoutData10by10[i].xy[j][x]).size());
-                    for(int y = 0 ; y < (t2d.LayoutData10by10[i].xy[j][x]).size() ; y++){
-                        printf("\n%-9f %-9f %-9f %-9f",
-                               t2d.LayoutData10by10[i].xy[j][x][y].minx,
-                               t2d.LayoutData10by10[i].xy[j][x][y].miny,
-                               t2d.LayoutData10by10[i].xy[j][x][y].maxx,
-                               t2d.LayoutData10by10[i].xy[j][x][y].maxy);
-                    }
-                }
-            }
-        }
+//        printf("%-9f %-9f %-9f %-9f %-9f %-9f", t2d.LayoutMinMax.minx, t2d.LayoutMinMax.miny, t2d.LayoutMinMax.maxx, t2d.LayoutMinMax.maxy, t2d.LayoutMinMax.minz, t2d.LayoutMinMax.maxz);
+//        for(int i = 0 ; i < t2d.LayoutData10by10.size() ; i++){
+//            printf("\n%-9s %-9d %-9d %-9d %-9d %-9d %-9d %-9f %-9f ",
+//                   t2d.LayoutData10by10[i].layername.c_str(),
+//                   t2d.LayoutData10by10[i].layernum,
+//                   t2d.LayoutData10by10[i].datatype,
+//                   t2d.LayoutData10by10[i].color.r,
+//                   t2d.LayoutData10by10[i].color.g,
+//                   t2d.LayoutData10by10[i].color.b,
+//                   t2d.LayoutData10by10[i].color.a,
+//                   t2d.LayoutData10by10[i].bot,
+//                   t2d.LayoutData10by10[i].top);
+//            for(int j = 0 ; j < (t2d.LayoutData10by10[i].xy).size() ; j++){
+//                for(int x = 0 ; x < (t2d.LayoutData10by10[i].xy[j]).size() ; x++){
+//                    printf("\n%d %d %d", j, x, (t2d.LayoutData10by10[i].xy[j][x]).size());
+//                    for(int y = 0 ; y < (t2d.LayoutData10by10[i].xy[j][x]).size() ; y++){
+//                        printf("\n%-9f %-9f %-9f %-9f",
+//                               t2d.LayoutData10by10[i].xy[j][x][y].minx,
+//                               t2d.LayoutData10by10[i].xy[j][x][y].miny,
+//                               t2d.LayoutData10by10[i].xy[j][x][y].maxx,
+//                               t2d.LayoutData10by10[i].xy[j][x][y].maxy);
+//                    }
+//                }
+//            }
+//        }
+        //to map data
+
+
+
+        pos.x = t2d.LayoutMinMax.minx;
+        pos.y = t2d.LayoutMinMax.miny;
+        pos.z = 0;
+        pos.tilt = 90;
+        pos.rotation = 0;
+        pos.zoom = 1;
+        formInfo->outputText();
+
+        double zoomScale = std::max(t2d.LayoutMinMax.maxx-t2d.LayoutMinMax.minx ,t2d.LayoutMinMax.maxy-t2d.LayoutMinMax.miny)/10;
+        formMap->receiveSize_t2d(t2d.LayoutMinMax.minx,t2d.LayoutMinMax.miny,t2d.LayoutMinMax.maxx,t2d.LayoutMinMax.maxy,zoomScale);
+
+        //to top data
+
+
+        DtaoRenderSystem * renderer = this->m_window->getRenderer();
+
+        renderer->createT2DObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, t2d);
+
+        formInfo->receiveFile(t2d);
+        formTop->receiveFile(t2d);
+        formLayer->ReceiveLayerInformation(t2d);
+        //test
+
+
+
     }
     fflush(stdout);
     cout << "test end" << endl;
+
 }
 
-
-
-
-
-
-
-
-
-
-
-
-void MainWindow::on_actionLayer_information_triggered()
+void MainWindow::slotPos()
 {
-    qDebug()<< "feature : " << dockInfo->toggleViewAction();
-    if(dockInfo->toggleViewAction()->isVisible())
-    {
-        qDebug() << "dockInfo visiable true";
-        dockInfo->hide();
-        dockInfo->toggleViewAction()->setVisible(false);
-    }
-    else
-    {
-        qDebug() << "dockInfo visiable false";
-        dockInfo->show();
-        dockInfo->toggleViewAction()->setVisible(true);
-    }
-
+    formTop->changePos();
 }
 
+
+
+
+
+
+
+
+
+
+
+
+void MainWindow::on_actionTop_triggered()
+{
+    qDebug() << "go?";
+    //cocococo
+}

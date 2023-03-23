@@ -10,17 +10,13 @@
 
 void LveCamera::setOrthographicProjection(
     float left, float right, float top, float bottom, float near, float far) {
-  projectionMatrix = glm::mat4{1.0f};
-  projectionMatrix[0][0] = 2.f / (right - left);
-  projectionMatrix[1][1] = 2.f / (bottom - top);
-  projectionMatrix[2][2] = 1.f / (far - near);
-  projectionMatrix[3][0] = -(right + left) / (right - left);
-  projectionMatrix[3][1] = -(bottom + top) / (bottom - top);
-  projectionMatrix[3][2] = -near / (far - near);
+  projectionMatrix = glm::ortho(left,right,top,bottom,near,far);
+  isperspective = false;
 }
 
 void LveCamera::setPerspectiveProjection(float fovy, float aspect, float near, float far) {
     projectionMatrix = glm::perspective(fovy, aspect, near, far);
+    isperspective = true;
     //  assert(glm::abs(aspect - std::numeric_limits<float>::epsilon()) > 0.0f);
     //  const float tanHalfFovy = tan(fovy / 2.f);
     //  projectionMatrix = glm::mat4{0.0f};

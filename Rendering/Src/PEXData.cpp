@@ -163,7 +163,7 @@ void PEXResistorDataManager::loadData(const std::string file_path) {
 
         description = line[PEXINFO_INDEX::PEXINFO_INDEX_DESCRIPTION];
         PEXResDirection resistor_direction = PEXResistor::checkDirectionFromDescription(description);
-        if (value > 0) updateMinMaxRes(value, resistor_direction); //�狼�靛, 0�促 � �亲篬矫
+        if (value > 0) updateMinMaxRes(value, resistor_direction); //ÓÇÇ ÄÚµå, 0º¸´Ù Ûº úÇ×º ¹«½Ã
         this->resistors.push_back(PEXResistor(item_name, node1, node2, value, resistor_direction));
     }
 }

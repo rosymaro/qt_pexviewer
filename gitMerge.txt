@@ -1069,7 +1069,7 @@ void PEXResistorDataManager::loadData(const std::string file_path) {
 
         description = line[PEXINFO_INDEX::PEXINFO_INDEX_DESCRIPTION];
         PEXResDirection resistor_direction = PEXResistor::checkDirectionFromDescription(description);
-        if (value > 0) updateMinMaxRes(value, resistor_direction); //ÀÓÀÇÀÇ ÄÚµå, 0º¸´Ù ÀÛÀº ÀúÇ×Àº ¹«½Ã
+        if (value > 0) updateMinMaxRes(value, resistor_direction); //ÓÇÇ ÄÚµå, 0º¸´Ù Ûº úÇ×º ¹«½Ã
         this->resistors.push_back(PEXResistor(item_name, node1, node2, value, resistor_direction));
     }
 }
@@ -3851,7 +3851,7 @@ void FormInfo::moveRender(float x, float y)
 bool FormInfo::checkNum(const QString &str)
 {
     if(str.toDouble() == 0 && str != "0")
-    // «ìë¡ë°ê¿¨ë 0ìë° string  0 ë ê²½ì°ë ë¬¸ì
+    // «ìë¡ë°ê¿¨ë 0ìë° string  0 ë ê²½ì°ë ë¬¸ì
     {
         return false;
     }
@@ -4105,7 +4105,7 @@ void FormLayer::on_colorbutton_clicked()
 
 void FormLayer::on_opacityslider_valueChanged(int Opacity)
 {
-    // ui->tableWidget->currentRow() ë¡ì°¾ì¼¤ê³  ë©´, current row ê° -1 ë¡ì´
+    // ui->tableWidget->currentRow() ë¡ì°¾ì¼¤ê³  ë©´, current row ê° -1 ë¡ì´
     int sliderrow = -1;
     int sliderrow_for_t2d = -1;
     QString LayerColorname;
@@ -4432,7 +4432,7 @@ void FormMap::receiveSize(float &xMinSize,float &yMinSize,float &xMaxSize,float 
     scale = 178/std::max(width,height);
     width = scale * width;
     height = scale * height;
-//    float rectScale = 176*zoomScale; ì¶í ë³ê²
+//    float rectScale = 176*zoomScale; ì¶í ë³ê²
 
     qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
 
@@ -4461,7 +4461,7 @@ void FormMap::receiveSize_t2d(double &xMinSize,double &yMinSize,double &xMaxSize
     scale = 178/std::max(width,height);
     width = scale * width;
     height = scale * height;
-//    float rectScale = 176*zoomScale; ì¶í ë³ê²
+//    float rectScale = 176*zoomScale; ì¶í ë³ê²
 
     qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
 
@@ -4515,7 +4515,7 @@ void FormMap::slotInfoText(QString funcName, POS_MONITORING value)
     //}
     //if (funcName == "moveZoom")
     //{
-    //    infoZoom = infoZoom + infoZoom*value/1500;        //¼ì  ì´ë¥100% ë¡¤ì ì ì, ê²°êµ­ ì´ê¸°ê°ì GDS Size °ë¼ ë°ëì.
+    //    infoZoom = infoZoom + infoZoom*value/1500;        //¼ì  ì´ë¥100% ë¡¤ì ì ì, ê²°êµ­ ì´ê¸°ê°ì GDS Size °ë¼ ë°ëì.
     //    if (infoZoom < 0.01)
     //        infoZoom = 0.01;
     //    if (infoZoom > 100)
@@ -4679,7 +4679,7 @@ void FormTop::drawing()
     areaFilterRect();
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment  ë¹êµì¬ for skip
+        //layer_enviroment  ë¹êµì¬ for skip
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
         for(int row = m_begin_row ; row < m_end_row ; row++)
         {
@@ -4812,7 +4812,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
 
     double minx, maxx, miny, maxy;
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
     {
         minx = m_min_x_size;
     }
@@ -4821,7 +4821,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         minx = rendering_full->LayoutData10by10[layer].xy[row][col][n].minx;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > m_max_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > m_max_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
     {
         maxx = m_max_x_size;
     }
@@ -4830,7 +4830,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         maxx = rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < m_min_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < m_min_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
     {
         miny = m_min_y_size;
     }
@@ -4839,7 +4839,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         miny = rendering_full->LayoutData10by10[layer].xy[row][col][n].miny;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_max_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_max_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
     {
         maxy = m_max_y_size;
     }
@@ -4886,7 +4886,7 @@ void FormTop::areaFilterRect()
     //layer
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment  ë¹êµì¬ for skip
+        //layer_enviroment  ë¹êµì¬ for skip
 
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
 
@@ -5081,10 +5081,10 @@ void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
     QStringList fileList = gitMergeFile.split(split1);
     QStringList codeListDivide;
     QStringList fileListDivide;
-    for (int i = 1; i < fileList.size(); i+=2)
+    for (int i = 1; i < fileList.size(); i++)
     {
         fileListDivide = fileList[i].split(split2);
-        for (int j = 1; j < codeList.size(); j+=2)
+        for (int j = 1; j < codeList.size(); j++)
         {
             codeListDivide = codeList[j].split(split2);
             if (codeListDivide[0] == fileListDivide[0])
@@ -6849,7 +6849,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
+    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
 
     float initRot = 0;
     float initTilt = 90;
@@ -7036,7 +7036,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
+    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
 
     float initRot = 0;
     float initTilt = 90;

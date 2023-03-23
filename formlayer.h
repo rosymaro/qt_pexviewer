@@ -4,7 +4,6 @@
 #include <QDialog>
 #include <QColorDialog>
 #include <QtWidgets/QCheckBox>
-#include <QtWidgets>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QCheckBox>
@@ -12,6 +11,9 @@
 #include <QtWidgets/QSlider>
 #include <QRgba64>
 #include <QDebug>
+#include "Rendering/Src/lve_window.hpp"
+#include "Rendering/Src/dtaorendersystem.h"
+#include "T2D.h"
 
 
 namespace Ui {
@@ -22,66 +24,45 @@ class FormLayer : public QDialog
 {
     Q_OBJECT
 
-public slots:
-    void ReceiveSplitData(int row, int column, const QVector <QVector <QString>> &inputDataVector);
-
 public:
-    explicit FormLayer(QWidget *parent = nullptr);
+    explicit FormLayer(LveWindow *w, QWidget *parent = nullptr);
     ~FormLayer();
-    int i;
-    int row;
-    int column;
+    void ReceiveLayerInformation(T2D &t2d);
+    void MakeLayerInformationTableHeader();
+    void MakeLayerInformationTalbe();
+    void MakeTableWidgetItemForText(int);
+    void MakeSliderForOpacity(int);
+    void MakeCheckBox(int);
+    void MakeColorButton(int);
+    void MakeHeaderCheckBoxAndSlider();
+    void ChangeAllCheckBoxState(QCheckBox *);
+    void ChangeCheckBoxStateToOn(int, float, QString);
+    void ChangeCheckBoxStateToOff(int, float, QString);
+    void GetPushButtonOldColor(QPushButton *, int *, int *, int *, int *, QRgb *);
+    void EnterPushButtonNewColor(int *, QRgb *);
+    int FindCheckBoxRow(QCheckBox *);
 
-//    QTableWidgetItem *checkBoxItem[3];
-
-
-private slots:
-    void tableWidget_checkBoxChanged();
+public slots:
+    void on_checkboxInTable_stateChanged();
     void on_colorbutton_clicked();
-    void handleOpacitySlider(int);
+    void on_opacityslider_valueChanged(int);
+    void OpacitySliderValueChange(int);
 
 private:
+    LveWindow *m_window;
     Ui::FormLayer *ui;
+    T2D *t2d_layer_information;
+    int data_row_for_t2d = -1;
+    int checkboxrow = -1;
+    int table_default_column = 6;
+    QString empty_for_emit = "";
+    QString CommentAllCheckedCheckBox = "All Layer Checked";
+    QString CommentAllUncheckedCheckBox = "All Layer Unchecked";
+
 
 signals:
     void outputLayerStatus(QString printLayer);
 
 };
-
-//class SliderDelegate : public QItemDelegate
-//{
-//public:
-//    SliderDelegate(QWidget *parent = nullptr) : QItemDelegate(parent){
-////        SliderDelegate delegate(this);
-//    }
-//    QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option,const QModelIndex &index) const override
-//    {
-//        QSlider *slider = new QSlider(Qt::Horizontal, parent);
-//        slider->setRange(0, 100);
-//        slider->setGeometry(option.rect);
-//        slider->setFocusPolicy(Qt::StrongFocus);
-//        slider->setTickPosition(QSlider::TicksBothSides);
-//        slider->setTickInterval(10);
-//        slider->show();
-//        return slider;
-//    }
-
-//    void setEditorData(QWidget *editor, const QModelIndex &index) const override
-//    {
-//        int value = index.model()->data(index, Qt::EditRole).toInt();
-//        QSlider *slider = static_cast<QSlider*>(editor);
-//        slider->setValue(value);
-//        qDebug() << slider;
-//    }
-
-//    void setModelData(QWidget *editor, QAbstractItemModel *model,
-//                      const QModelIndex &index) const override
-//    {
-//        QSlider *slider = static_cast<QSlider*>(editor);
-//        int value = slider->value();
-//        model->setData(index, value, Qt::EditRole);
-//    }
-//};
-
 
 #endif // FORMLAYER_H

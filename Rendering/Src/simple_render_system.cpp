@@ -135,22 +135,24 @@ void SimpleRenderSystem::renderGameObjects(
 
     SimplePushConstantData push{};
     for (auto& obj : gameObjects) {
-
         push.transform = projectionView * obj.transform.mat4();
 
         if (obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_LAYOUT && obj.model->getVisible()) {
+            std::map<float, LveModel::LayerProperty> layer_info = obj.model->getLayer();
 
-            for (auto const& [key, val] : obj.model->getLayer() ) {
-                lvePipelineForLayoutFace->bind(commandBuffer);
-                push.alpha = obj.model->getOpacity();
-                push.color = val;
-                vkCmdPushConstants(
-                            commandBuffer, pipelineLayoutForLayoutFace,
-                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                            sizeof(SimplePushConstantData), &push);
-                obj.model->bindDrawVertexIndexBufferForFace_layer(commandBuffer, key);
-                lvePipelineForLayoutEdge->bind(commandBuffer);
-                obj.model->bindDrawIndexBufferForEdge_layer(commandBuffer, key);
+            for (auto ordered_key : obj.model->drawing_order_layerby ) {
+                if(layer_info[ordered_key].visiblity){
+                    lvePipelineForLayoutFace->bind(commandBuffer);
+                    push.alpha = layer_info[ordered_key].opacity;
+                    push.color = layer_info[ordered_key].color;
+                    vkCmdPushConstants(
+                                commandBuffer, pipelineLayoutForLayoutFace,
+                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                                sizeof(SimplePushConstantData), &push);
+                    obj.model->bindDrawVertexIndexBufferForFace_layer(commandBuffer, ordered_key);
+                    lvePipelineForLayoutEdge->bind(commandBuffer);
+                    obj.model->bindDrawIndexBufferForEdge_layer(commandBuffer, ordered_key);
+                }
             }
 
         }
@@ -183,7 +185,7 @@ void SimpleRenderSystem::renderGameObjects(
         }
 
         if (obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_PEX_CAPACITOR && obj.model->getVisible()) {
-            //*
+            /*
             lvePipelineForPEXCapacitor->bind(commandBuffer);
             vkCmdPushConstants(
                         commandBuffer, pipelineLayoutForPEXCapacitor,

@@ -1,16 +1,168 @@
 #include "formlayer.h"
 #include "ui_formlayer.h"
+#include "Rendering/Src/dtaorendersystem.h"
+#include "Rendering/Src/lve_model.hpp"
+#include <string>
 
 
 
-FormLayer::FormLayer(QWidget *parent) :
-    QDialog(parent),
+FormLayer::FormLayer(LveWindow *w, QWidget *parent) :
+    QDialog(parent), m_window(w),
     ui(new Ui::FormLayer)
 {
     ui->setupUi(this);
-    QStringList defalutTableHeader;
-    QString TalbeHeader[] = {"","COLOR","Layer\nName","Layer\nNum","Layer\nType","Opacity\n"};
+    MakeLayerInformationTableHeader();
+}
 
+FormLayer::~FormLayer()
+{
+    delete ui;
+}
+
+void FormLayer::ReceiveLayerInformation(T2D &t2d)
+{
+    ui->tableWidget->clearContents();
+    t2d_layer_information = &t2d;
+    MakeLayerInformationTableHeader();
+    MakeLayerInformationTalbe();
+}
+
+void FormLayer::MakeLayerInformationTalbe()
+{
+    // QTableWidget ¬ê¸° ¤ì 
+    ui->tableWidget->setColumnCount(table_default_column);
+    ui->tableWidget->setRowCount(t2d_layer_information->LayoutData10by10.size());
+    ui->tableWidget->setColumnWidth(5,80);
+
+    // Table ì±ì°ê¸
+    for (int i=1; i < t2d_layer_information->LayoutData10by10.size() ; i++)
+    {
+        MakeTableWidgetItemForText(i);
+        MakeCheckBox(i);
+        MakeColorButton(i);
+        MakeSliderForOpacity(i);
+    }
+    MakeHeaderCheckBoxAndSlider();
+
+    // Table Edit ê¸ì, ¤ì¤  í ê¸ì
+    ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+}
+
+void FormLayer::on_checkboxInTable_stateChanged()
+{
+    int checkboxrow = -1;
+    QCheckBox *checkboxInTable = qobject_cast<QCheckBox*>(sender());
+    if (!checkboxInTable)
+        return;
+
+    checkboxrow = FindCheckBoxRow(checkboxInTable);
+
+    if (checkboxrow == 0) {
+        ChangeAllCheckBoxState(checkboxInTable);
+        return;
+    }
+
+    // selected checkbox layer name
+    QTableWidgetItem *readcheckbox = ui->tableWidget->item(checkboxrow,2);
+    QString selectedLayer = readcheckbox->text();
+    QString printLayer = "selectedLayer = " + selectedLayer;
+
+    // selected checkbox layer num
+    QTableWidgetItem *ReadLayerNumber = ui->tableWidget->item(checkboxrow,3);
+    float LayerNumber = stof(ReadLayerNumber->text().toStdString());
+
+    if (checkboxInTable->isChecked()) {
+        ChangeCheckBoxStateToOn(checkboxrow, LayerNumber, printLayer);
+    } else {
+        ChangeCheckBoxStateToOff(checkboxrow, LayerNumber, printLayer);
+    }
+}
+
+void FormLayer::on_colorbutton_clicked()
+{
+    QString OldLayerColorRed = "";
+    QString OldLayerColorGreen = "";
+    QString OldLayerColorBlue = "";
+    QString OldLayerColorAlpha = "";
+    int OldLayerColorRedNum = 0;
+    int OldLayerColorGreenNum = 0;
+    int OldLayerColorBlueNum = 0;
+    int OldLayerColorAlphaNum = 0;
+    QRgb orc = qRgba(0, 0, 0, 0);
+
+    QPushButton *ColorCheckButton = qobject_cast<QPushButton*>(sender());
+
+    int colorbuttonRow = ui->tableWidget->currentRow();
+    data_row_for_t2d = colorbuttonRow-1;
+
+    GetPushButtonOldColor(ColorCheckButton, &OldLayerColorRedNum, &OldLayerColorGreenNum, &OldLayerColorBlueNum, &OldLayerColorAlphaNum, &orc);
+    EnterPushButtonNewColor(&colorbuttonRow, &orc);
+}
+
+void FormLayer::on_opacityslider_valueChanged(int Opacity)
+{
+    // ui->tableWidget->currentRow() ë¡ì°¾ì¼¤ê³  ë©´, current row ê° -1 ë¡ì´
+    int sliderrow = -1;
+    int sliderrow_for_t2d = -1;
+    QString LayerColorname;
+    QString LayerColorText;
+    QSlider *OpacityInTalbe = qobject_cast<QSlider*>(sender());
+
+    for (int i = 0; i < ui->tableWidget->rowCount(); i++) {
+        QWidget *widget = ui->tableWidget->cellWidget(i, 5);
+        QSlider *slider = widget->findChild<QSlider*>();
+
+        if (slider == OpacityInTalbe) {
+            sliderrow = i;
+            sliderrow_for_t2d = sliderrow-1;
+            if (sliderrow == 0){
+                for (int k=1; k < ui->tableWidget->rowCount(); k++) {
+                    QWidget *SliderChangeWidget = ui->tableWidget->cellWidget(k, 5);
+                    QSlider *SliderChange = SliderChangeWidget->findChild<QSlider*>();
+                    SliderChange->setValue(Opacity);
+                    t2d_layer_information->LayoutData10by10[sliderrow_for_t2d].color.a = Opacity;
+                    emit outputLayerStatus(empty_for_emit);
+                }
+            } else {
+                QTableWidgetItem *ReadLayer = ui->tableWidget->item(sliderrow,2);
+                QString selectedLayer = ReadLayer->text();
+                QString printLayer = "selectedLayer = " + selectedLayer;
+                printLayer = printLayer + "  Layer  Opacity = " + QString::number(Opacity);
+                QString OldColorStyleSheet = ui->tableWidget->cellWidget(sliderrow,1)->styleSheet();
+                QStringList splittext = OldColorStyleSheet.split("(");
+                QString splitrgbtemp = splittext[1].remove(")");
+                QStringList splitrgb = splitrgbtemp.split(",");
+
+                QString OldLayerColorRed = splitrgb[0];
+                QString OldLayerColorGreen = splitrgb[1];
+                QString OldLayerColorBlue = splitrgb[2];
+                QString OldLayerColorAlpha = QString::number(Opacity);
+
+                LayerColorText = "background-color: rgba(" + OldLayerColorRed;
+                LayerColorText = LayerColorText + "," + OldLayerColorGreen + "," + OldLayerColorBlue + "," + OldLayerColorAlpha + ")";
+                ui->tableWidget->cellWidget(sliderrow,1)->setStyleSheet(LayerColorText);
+                t2d_layer_information->LayoutData10by10[sliderrow_for_t2d].color.a = Opacity;
+                emit outputLayerStatus(printLayer);
+
+                QTableWidgetItem *ReadLayerNumber = ui->tableWidget->item(sliderrow,3);
+                float LayerNumber = stof(ReadLayerNumber->text().toStdString());
+                DtaoRenderSystem *renderer = this->m_window->getRenderer();
+                renderer->getCustomOpacity(LayerNumber,Opacity/(float)255);
+            }
+            break;
+        }
+    }
+}
+
+void FormLayer::OpacitySliderValueChange(int OpacityValue){
+
+    qDebug() << "test number ======================================= " << OpacityValue;
+    emit outputLayerStatus(empty_for_emit);
+}
+
+void FormLayer::MakeLayerInformationTableHeader(){
+    QString TalbeHeader[] = {"","COLOR","Layer\nName","Layer\nNum","Layer\nType","Opacity\n"};
     ui->tableWidget->setColumnCount(6);
     ui->tableWidget->setRowCount(10);
     ui->tableWidget->setColumnWidth(0,15);
@@ -18,20 +170,17 @@ FormLayer::FormLayer(QWidget *parent) :
     ui->tableWidget->setColumnWidth(2,60);
     ui->tableWidget->setColumnWidth(3,60);
     ui->tableWidget->setColumnWidth(4,60);
-    ui->tableWidget->setColumnWidth(5,100);
+    ui->tableWidget->setColumnWidth(5,80);
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// TableWidget Title Format �爼
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /// TableWidget Title Format ¤ì 
     QBrush brush(QColor(255, 255, 255, 255));
     brush.setStyle(Qt::SolidPattern);
     QFont font;
+    font.setPointSize(9);
     font.setBold(true);
     font.setWeight(75);
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// TableWidget Title �牓 氚氚橃榿
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /// TableWidget Title ë ¥ ë°ë°ì
     for (int i=1; i<6; i++){
         QTableWidgetItem *TableHeaderItem = new QTableWidgetItem;
         TableHeaderItem->setText(TalbeHeader[i]);
@@ -40,286 +189,215 @@ FormLayer::FormLayer(QWidget *parent) :
         TableHeaderItem->setForeground(brush);
         ui->tableWidget->setItem(0,i,TableHeaderItem);
         ui->tableWidget->setRowHeight(0,50);
-        ui->tableWidget->item(0,i)->setBackground(QBrush(QColor(80,80,80)));
+        ui->tableWidget->item(0,i)->setBackground(QBrush(QColor(100,100,100)));
     }
 }
 
-FormLayer::~FormLayer()
-{
-    delete ui;
+void FormLayer::MakeTableWidgetItemForText(int table_row){
+    data_row_for_t2d = table_row-1;
+    QTableWidgetItem *tableitem_name = new QTableWidgetItem;
+    QTableWidgetItem *tableitem_num = new QTableWidgetItem;
+    QTableWidgetItem *tableitem_type = new QTableWidgetItem;
+
+    tableitem_name->setText(t2d_layer_information->LayoutData10by10[data_row_for_t2d].layername.c_str());
+    tableitem_num->setText(QString::number(t2d_layer_information->LayoutData10by10[data_row_for_t2d].layernum));
+    tableitem_type->setText(QString::number(t2d_layer_information->LayoutData10by10[data_row_for_t2d].datatype));
+
+    tableitem_name->setTextAlignment(Qt::AlignCenter);
+    tableitem_num->setTextAlignment(Qt::AlignCenter);
+    tableitem_type->setTextAlignment(Qt::AlignCenter);
+
+    ui->tableWidget->setItem((table_row),2,tableitem_name);
+    ui->tableWidget->setItem((table_row),3,tableitem_num);
+    ui->tableWidget->setItem((table_row),4,tableitem_type);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// \brief FormLayer::ReceiveSplitData
-/// \param row
-/// \param column
-/// \param inputDataVector
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void FormLayer::MakeSliderForOpacity(int table_row){
+    data_row_for_t2d = table_row-1;
+    QSlider *OpacitySlider = new QSlider(Qt::Horizontal);
+    QWidget *OpacitySliderWidget = new QWidget();
+    OpacitySlider->setRange(0,255);
+    OpacitySlider->setValue(t2d_layer_information->LayoutData10by10[data_row_for_t2d].color.a);
+    OpacitySlider->setFocusPolicy(Qt::StrongFocus);
+    QHBoxLayout *OpacityLayout = new QHBoxLayout(OpacitySliderWidget);
+    OpacityLayout->addWidget(OpacitySlider);
+    OpacitySliderWidget->setLayout(OpacityLayout);
+    ui->tableWidget->setCellWidget(table_row, 5, OpacitySliderWidget);
+    QObject::connect(OpacitySlider, SIGNAL(valueChanged(int)), this, SLOT(on_opacityslider_valueChanged(int)));
+}
 
-void FormLayer::ReceiveSplitData(int row, int column, const QVector <QVector <QString>> &inputDataVector)
-{
-// QTableWidget �� QStringList �滊氚涥赴岆�愲�曤
-    QStringList vectorTOqstringlist;
-    QStringList vectorTOqstringlistHoriLabels;
-    QStringList vectorTOqstringcolorlist;
+void FormLayer::MakeCheckBox(int table_row){
+    data_row_for_t2d = table_row-1;
+    QCheckBox *checkBoxItem = new QCheckBox();
+    checkBoxItem->setCheckState(Qt::Unchecked);
+    QWidget *checkboxWidget = new QWidget();
+    QHBoxLayout *checkboxLayout = new QHBoxLayout(checkboxWidget);
+    checkboxLayout->addWidget(checkBoxItem);
+    checkboxLayout->setAlignment(Qt::AlignCenter);
+    checkboxLayout->setContentsMargins(0,0,0,0);
+    checkboxWidget->setLayout(checkboxLayout);
+    ui->tableWidget->setCellWidget(table_row,0,checkboxWidget);
+    QObject::connect(checkBoxItem, SIGNAL(stateChanged(int)), this, SLOT(on_checkboxInTable_stateChanged()));
+}
+
+void FormLayer::MakeColorButton(int table_row){
     QString LayerColorRed;
     QString LayerColorGreen;
     QString LayerColorBlue;
+    QString LayerColorAlpha;
     QString LayerColorText;
-    vectorTOqstringlistHoriLabels << " ";
+    data_row_for_t2d = table_row-1;
+    // Layer color rgb defalut value
+    int DefaultRedColor = t2d_layer_information->LayoutData10by10[data_row_for_t2d].color.r;
+    int DefaultGreenColor = t2d_layer_information->LayoutData10by10[data_row_for_t2d].color.g;
+    int DefaultBlueColor = t2d_layer_information->LayoutData10by10[data_row_for_t2d].color.b;
+    int DefaultAlpha = t2d_layer_information->LayoutData10by10[data_row_for_t2d].color.a;
+    QColor DefaultColor = QColor(DefaultRedColor, DefaultGreenColor, DefaultBlueColor, DefaultAlpha);
 
-// QTableWidget �赴 �爼
-    ui->tableWidget->setColumnCount(6);
-    ui->tableWidget->setRowCount(row);
-//    ui->tableWidget->setItemDelegateForColumn(5,new SliderDelegate);
-    ui->tableWidget->setColumnWidth(5,150);
+    // Layer color rgb defalut value
+    LayerColorRed = QString::number(t2d_layer_information->LayoutData10by10[data_row_for_t2d].color.r);
+    LayerColorGreen = QString::number(t2d_layer_information->LayoutData10by10[data_row_for_t2d].color.g);
+    LayerColorBlue = QString::number(t2d_layer_information->LayoutData10by10[data_row_for_t2d].color.b);
+    LayerColorAlpha = QString::number(t2d_layer_information->LayoutData10by10[data_row_for_t2d].color.a);
 
-// Table 毂勳毎旮
-    int TalbeColumnCount = 3;       //input data �� ��column �垬
-    for (int i=0; i<row ; i++)
-    {
-       // table value 毂勳毎旮
-        for (int j=0; j < TalbeColumnCount ; j++)
-        {
-            vectorTOqstringlist << inputDataVector.value(i+1).value(j);
-//            vectorTOqstringlistHoriLabels << inputDataVector.value(0).value(j+1);
-            QTableWidgetItem *tableitem = new QTableWidgetItem;
-            tableitem->setText(vectorTOqstringlist[i*TalbeColumnCount+j]);
-            tableitem->setTextAlignment(Qt::AlignCenter);
-            ui->tableWidget->setItem((i+1),j+2,tableitem);
-        }
+    LayerColorText = "background-color: rgba(" + LayerColorRed;
+    LayerColorText = LayerColorText + "," + LayerColorGreen + "," + LayerColorBlue + "," + LayerColorAlpha + ")";
 
-        //Opacity 毂勳毎旮
-        QSlider *OpacitySlider = new QSlider(Qt::Horizontal);
-        QWidget *OpacitySliderWidget = new QWidget();
-        OpacitySlider->setRange(0,100);
-        OpacitySlider->setValue(100);
-        OpacitySlider->setFocusPolicy(Qt::StrongFocus);
-        QHBoxLayout *OpacityLayout = new QHBoxLayout(OpacitySliderWidget);
-        OpacityLayout->addWidget(OpacitySlider);
-        OpacitySliderWidget->setLayout(OpacityLayout);
-
-//        OpacitySlider->setTickPosition(QSlider::TicksBothSides);
-//        OpacitySlider->setTickInterval(10);
-        ui->tableWidget->setCellWidget(i+1, 5, OpacitySliderWidget);
-        QObject::connect(OpacitySlider, SIGNAL(valueChanged(int)), this, SLOT(handleOpacitySlider(int)));
-
-        // checkbox 毂勳毎旮
-        QCheckBox *checkBoxItem = new QCheckBox();
-        checkBoxItem->setCheckState(Qt::Checked);
-        QWidget *checkboxWidget = new QWidget();
-        QHBoxLayout *checkboxLayout = new QHBoxLayout(checkboxWidget);
-        checkboxLayout->addWidget(checkBoxItem);
-        checkboxLayout->setAlignment(Qt::AlignCenter);
-        checkboxLayout->setContentsMargins(0,0,0,0);
-        checkboxWidget->setLayout(checkboxLayout);
-        ui->tableWidget->setCellWidget(i+1,0,checkboxWidget);
-
-        QWidget *widget = ui->tableWidget->cellWidget(i+1, 0);
-        QCheckBox *checkboxInTable = widget->findChild<QCheckBox *>();
-        QObject::connect(checkboxInTable, SIGNAL(stateChanged(int)), this, SLOT(tableWidget_checkBoxChanged()));
-
-        // Layer color rgb defalut value
-        LayerColorRed = inputDataVector.value(i+1).value(6);
-        LayerColorGreen = inputDataVector.value(i+1).value(7);
-        LayerColorBlue = inputDataVector.value(i+1).value(8);
-
-        LayerColorText = "background-color: rgb(" + LayerColorRed;
-        LayerColorText = LayerColorText + "," + LayerColorGreen + "," + LayerColorBlue + ")";
-
-        // color pushbutton 毂勳毎旮
-        QPushButton *colorbutton = new QPushButton();
-        colorbutton->setStyleSheet(LayerColorText);
-        ui->tableWidget->setCellWidget(i+1,1,colorbutton);
-        QObject::connect(colorbutton, SIGNAL(clicked()), this, SLOT(on_colorbutton_clicked()));
-    }
-
-///////////////////////////////tableWidget title checkbox ///////////////////////////////
-        QCheckBox *checkBoxItem = new QCheckBox();
-        checkBoxItem->setCheckState(Qt::Checked);
-        QWidget *checkboxWidget = new QWidget();
-        QHBoxLayout *checkboxLayout = new QHBoxLayout(checkboxWidget);
-        checkboxLayout->addWidget(checkBoxItem);
-        checkboxLayout->setAlignment(Qt::AlignCenter);
-        checkboxLayout->setContentsMargins(0,0,0,0);
-        checkboxWidget->setLayout(checkboxLayout);
-        ui->tableWidget->setCellWidget(0,0,checkboxWidget);
-
-        QWidget *findwidget = ui->tableWidget->cellWidget(0, 0);
-        QCheckBox *checkboxInTable = findwidget->findChild<QCheckBox *>();
-        QObject::connect(checkboxInTable, SIGNAL(stateChanged(int)), this, SLOT(tableWidget_checkBoxChanged()));
-
-///////////////////////////////tableWidget title slider ///////////////////////////////
-
-        QSpacerItem *HeaderVerticalSpacer = new QSpacerItem(0,20,QSizePolicy::Fixed, QSizePolicy::Fixed);
-        QSlider *HeaderOpacitySlider = new QSlider();
-        HeaderOpacitySlider->setOrientation(Qt::Horizontal);
-        HeaderOpacitySlider->setValue(100);
-        HeaderOpacitySlider->setRange(0,100);
-        QWidget *HeaderSliderWidget = new QWidget();
-        QVBoxLayout *HeaderSliderLayout = new QVBoxLayout(HeaderSliderWidget);
-        HeaderSliderLayout->addItem(HeaderVerticalSpacer);
-        HeaderSliderLayout->addWidget(HeaderOpacitySlider);
-        HeaderSliderWidget->setLayout(HeaderSliderLayout);
-        ui->tableWidget->setCellWidget(0,5,HeaderSliderWidget);
-
-        QObject::connect(HeaderOpacitySlider, SIGNAL(valueChanged(int)), this, SLOT(handleOpacitySlider(int)));
-
-
+    // color pushbutton ì±ì°ê¸
+    QPushButton *colorbutton = new QPushButton();
+    colorbutton->setStyleSheet(LayerColorText);
+    ui->tableWidget->setCellWidget(table_row,1,colorbutton);
+    QObject::connect(colorbutton, SIGNAL(clicked()), this, SLOT(on_colorbutton_clicked()));
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// \brief FormLayer::on_tableWidget_itemChanged
-/// \param checkBoxItem
-/// description : checkbox �儩�澕 Layer On/Off mainwindow status 彀届棎 �滊
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void FormLayer::tableWidget_checkBoxChanged()
-{
-    QCheckBox *checkboxInTable = qobject_cast<QCheckBox*>(sender());
-    if (!checkboxInTable)
-        return;
+void FormLayer::MakeHeaderCheckBoxAndSlider(){
+    //tableWidget title checkbox
+    QCheckBox *checkBoxItem = new QCheckBox();
+    checkBoxItem->setCheckState(Qt::Unchecked);
+    QWidget *checkboxWidget = new QWidget();
+    QHBoxLayout *checkboxLayout = new QHBoxLayout(checkboxWidget);
+    checkboxLayout->addWidget(checkBoxItem);
+    checkboxLayout->setAlignment(Qt::AlignCenter);
+    checkboxLayout->setContentsMargins(0,0,0,0);
+    checkboxWidget->setLayout(checkboxLayout);
+    ui->tableWidget->setCellWidget(0,0,checkboxWidget);
+    QObject::connect(checkBoxItem, SIGNAL(stateChanged(int)), this, SLOT(on_checkboxInTable_stateChanged()));
 
-    int checkboxrow = -1;
+    //tableWidget title slider
+    QSpacerItem *HeaderVerticalSpacer = new QSpacerItem(0,20,QSizePolicy::Fixed, QSizePolicy::Fixed);
+    QSlider *HeaderOpacitySlider = new QSlider();
+    HeaderOpacitySlider->setOrientation(Qt::Horizontal);
+    HeaderOpacitySlider->setRange(0,255);
+    HeaderOpacitySlider->setValue(200);
+    QWidget *HeaderSliderWidget = new QWidget();
+    QVBoxLayout *HeaderSliderLayout = new QVBoxLayout(HeaderSliderWidget);
+    HeaderSliderLayout->addItem(HeaderVerticalSpacer);
+    HeaderSliderLayout->addWidget(HeaderOpacitySlider);
+    HeaderSliderWidget->setLayout(HeaderSliderLayout);
+    ui->tableWidget->setCellWidget(0,5,HeaderSliderWidget);
+    QObject::connect(HeaderOpacitySlider, SIGNAL(valueChanged(int)), this, SLOT(on_opacityslider_valueChanged(int)));
+}
+
+int FormLayer::FindCheckBoxRow(QCheckBox *checkBoxInCell){
+    QCheckBox &temp = *checkBoxInCell;
     for (int i = 0; i < ui->tableWidget->rowCount(); i++) {
         QWidget *widget = ui->tableWidget->cellWidget(i, 0);
         QCheckBox *checkbox = widget->findChild<QCheckBox*>();
-        if (checkbox == checkboxInTable) {
+        if (checkbox == &temp) {
             checkboxrow = i;
             break;
         }
     }
+    return checkboxrow;
+}
 
-    if (checkboxrow == 0) {
-        QString CommentAllCheckedCheckBox = "All Layer Checked";
-        QString CommentAllUncheckedCheckBox = "All Layer Unchecked";
+void FormLayer::ChangeAllCheckBoxState(QCheckBox *checkBoxInCell){
+    if (checkBoxInCell->isChecked()) {
+        for (int i = 1; i < ui->tableWidget->rowCount(); i++) {
+            data_row_for_t2d = i-1;
+            QWidget *widget = ui->tableWidget->cellWidget(i, 0);
+            QCheckBox *checkbox = widget->findChild<QCheckBox*>();
+            checkbox->setCheckState(Qt::Checked);
+            t2d_layer_information->LayoutData10by10[data_row_for_t2d].checking = true;
+        }
+        qDebug() << "All Layer Checkbox Checked.";
+        emit outputLayerStatus(CommentAllCheckedCheckBox);
 
-        if (checkboxInTable->isChecked()) {
-            for (int i = 1; i < ui->tableWidget->rowCount(); i++) {
-                QWidget *widget = ui->tableWidget->cellWidget(i, 0);
-                QCheckBox *checkbox = widget->findChild<QCheckBox*>();
-                checkbox->setCheckState(Qt::Checked);
-            }
-            qDebug() << "All Layer Checkbox Checked.";
-            emit outputLayerStatus(CommentAllCheckedCheckBox);
-
-        } else {
-                for (int i = 1; i < ui->tableWidget->rowCount(); i++) {
-                    QWidget *widget = ui->tableWidget->cellWidget(i, 0);
-                    QCheckBox *checkbox = widget->findChild<QCheckBox*>();
-                    checkbox->setCheckState(Qt::Unchecked);
-                }
-                qDebug() << "All Layer Checkbox Unchecked.";
-                emit outputLayerStatus(CommentAllUncheckedCheckBox);
-            }
-        return;
-    }
-
-    QTableWidgetItem *readcheckbox = ui->tableWidget->item(checkboxrow,2);
-    QString selectedLayer = readcheckbox->text();
-    QString printLayer = "selectedLayer = " + selectedLayer;
-
-    if (checkboxInTable->isChecked()) {
-        printLayer = printLayer + "  Layer  On";
-        emit outputLayerStatus(printLayer);
-        qDebug() << "Checkbox at row" << checkboxrow << "is checked.";
     } else {
-        printLayer = printLayer + "  Layer  Off";
-        emit outputLayerStatus(printLayer);
-        qDebug() << "Checkbox at row" << checkboxrow << "is unchecked.";
+        for (int i = 1; i < ui->tableWidget->rowCount(); i++) {
+            data_row_for_t2d = i-1;
+            QWidget *widget = ui->tableWidget->cellWidget(i, 0);
+            QCheckBox *checkbox = widget->findChild<QCheckBox*>();
+            checkbox->setCheckState(Qt::Unchecked);
+            t2d_layer_information->LayoutData10by10[data_row_for_t2d].checking = false;
+        }
+        qDebug() << "All Layer Checkbox Unchecked.";
+        emit outputLayerStatus(CommentAllUncheckedCheckBox);
     }
 }
 
-void FormLayer::on_colorbutton_clicked()
-{
-    QString LayerColorname;
-    QString LayerColorText;
-    QPushButton *ColorCheckButton = qobject_cast<QPushButton*>(sender());
+void FormLayer::ChangeCheckBoxStateToOn(int check_box_row, float layer_num, QString print_comment){
+    data_row_for_t2d = check_box_row-1;
+    DtaoRenderSystem *renderer = this->m_window->getRenderer();
+    renderer->getCustomVisiblity(layer_num, true);
+    t2d_layer_information->LayoutData10by10[data_row_for_t2d].checking = true;
+    print_comment = print_comment + "  Layer  On";
+    emit outputLayerStatus(print_comment);
+}
 
-    int colorbuttonRow = ui->tableWidget->currentRow();
+void FormLayer::ChangeCheckBoxStateToOff(int check_box_row, float layer_num, QString print_comment){
+    data_row_for_t2d = check_box_row-1;
+    DtaoRenderSystem *renderer = this->m_window->getRenderer();
+    renderer->getCustomVisiblity(layer_num, false);
+    print_comment = print_comment + "  Layer  Off";
+    t2d_layer_information->LayoutData10by10[data_row_for_t2d].checking = false;
+    emit outputLayerStatus(print_comment);
+}
 
-    QString OldColorStyleSheet = ColorCheckButton->styleSheet();
-
+void FormLayer::GetPushButtonOldColor(QPushButton *old_push_button, int *oldred, int *oldgreen, int *oldblue, int *oldalpha, QRgb *oldrgba){
+    QPushButton &oldcolor = *old_push_button;
+    QString OldColorStyleSheet = oldcolor.styleSheet();
     QStringList splittext = OldColorStyleSheet.split("(");
     QString splitrgbtemp = splittext[1].remove(")");
     QStringList splitrgb = splitrgbtemp.split(",");
 
-    qDebug() << "OldColor = " << OldColorStyleSheet;
-    qDebug() << "OldColorsplit = " << splitrgb;
-
-//    int LayerColorRed = splitrgb[0].toInt();
-//    int LayerColorGreen = splitrgb[1].toInt();
-//    int LayerColorBlue = splitrgb[2].toInt();
-
     QString OldLayerColorRed = splitrgb[0];
     QString OldLayerColorGreen = splitrgb[1];
     QString OldLayerColorBlue = splitrgb[2];
-    QString PrintOldLayerColor = "Red Num = " + OldLayerColorRed;
-    PrintOldLayerColor = PrintOldLayerColor + "     Green Num = " + OldLayerColorGreen + "      Blue Num = " + OldLayerColorBlue;
+    QString OldLayerColorAlpha = splitrgb[3];
 
-//    QRgb LayerColorDefault = qRgb(LayerColorRed, LayerColorGreen, LayerColorBlue);
+    *oldred = OldLayerColorRed.toInt();
+    *oldgreen = OldLayerColorGreen.toInt();
+    *oldblue = OldLayerColorBlue.toInt();
+    *oldalpha = OldLayerColorAlpha.toInt();
 
-    QColor color = QColorDialog::getColor(Qt::yellow, this);
-
-    if (color.isValid()){
-        LayerColorname = color.name();
-
-        QColor HexColor(LayerColorname);
-        int NewColorRed = HexColor.red();
-        int NewColorGreen = HexColor.green();
-        int NewColorBlue = HexColor.blue();
-
-        LayerColorText = "background-color: rgb(" + QString::number(NewColorRed);
-        LayerColorText = LayerColorText + "," + QString::number(NewColorGreen) + "," + QString::number(NewColorBlue) + ")";
-
-//        QStringList newcolorsplittemp = LayerColorText.split(":");
-//        QString newcolorsplitrgb = newcolorsplittemp[1].remove(" ");
-//        qDebug() << newcolorsplitrgb;
-
-
-
-//        qDebug() << "Red = " << NewColorRed << "Green = " << NewColorGreen << "Blue = " << NewColorBlue;
-        qDebug() << "NewColor = " <<LayerColorText;
-
-        ui->tableWidget->cellWidget(colorbuttonRow,1)->setStyleSheet(LayerColorText);
-
-    } else {
-        ui->tableWidget->cellWidget(colorbuttonRow,1)->setStyleSheet(OldColorStyleSheet);
-        emit outputLayerStatus(PrintOldLayerColor);
-        qDebug() << "Color is not selected";
-    }
-
-//    QRgb test = QColorDialog::getRgba(orc);
-
-
+    *oldrgba = qRgba(*oldred, *oldgreen, *oldblue, *oldalpha);
 }
 
-void FormLayer::handleOpacitySlider(int Opacity)
-{
-    int sliderrow=-1;
-    QSlider *OpacityInTalbe = qobject_cast<QSlider*>(sender());
-    for (int i = 0; i < ui->tableWidget->rowCount(); i++) {
-        QWidget *widget = ui->tableWidget->cellWidget(i, 5);
-        QSlider *slider = widget->findChild<QSlider*>();
+void FormLayer::EnterPushButtonNewColor(int *selected_color_button_row, QRgb *oldrgba){
+    QString LayerColorText;
+    QRgb chc = QColorDialog::getRgba(*oldrgba);
+    int NewColorRed = qRed(chc);
+    int NewColorGreen = qGreen(chc);
+    int NewColorBlue = qBlue(chc);
+    int NewColorAlpha = qAlpha(chc);
 
-        if (slider == OpacityInTalbe) {
-            sliderrow = i;
+    LayerColorText = "background-color: rgba(" + QString::number(NewColorRed);
+    LayerColorText = LayerColorText + "," + QString::number(NewColorGreen) + "," + QString::number(NewColorBlue) + "," + QString::number(NewColorAlpha) + ")";
+    ui->tableWidget->cellWidget(*selected_color_button_row,1)->setStyleSheet(LayerColorText);
 
-            if (sliderrow == 0){
+    t2d_layer_information->LayoutData10by10[data_row_for_t2d].color.r = NewColorRed;
+    t2d_layer_information->LayoutData10by10[data_row_for_t2d].color.g = NewColorGreen;
+    t2d_layer_information->LayoutData10by10[data_row_for_t2d].color.b = NewColorBlue;
+    t2d_layer_information->LayoutData10by10[data_row_for_t2d].color.a = NewColorAlpha;
 
-                for (int k=1; k < ui->tableWidget->rowCount(); k++) {
-                    QWidget *SliderChangeWidget = ui->tableWidget->cellWidget(k, 5);
-                    QSlider *SliderChange = SliderChangeWidget->findChild<QSlider*>();
-                    SliderChange->setValue(Opacity);
-                }
-            } else {
-                QTableWidgetItem *ReadLayer = ui->tableWidget->item(sliderrow,2);
-                QString selectedLayer = ReadLayer->text();
-                QString printLayer = "selectedLayer = " + selectedLayer;
-                printLayer = printLayer + "  Layer  Opacity = " + QString::number(Opacity);
-                emit outputLayerStatus(printLayer);
-                qDebug() << printLayer;
-            }
-            break;
-        }
-    }
+    float LayerNumber = stof(ui->tableWidget->item(*selected_color_button_row,3)->text().toStdString());
+    DtaoRenderSystem *renderer = this->m_window->getRenderer();
+    renderer->getCustomColor(LayerNumber, glm::vec3 {NewColorRed/(float)255,NewColorGreen/(float)255,NewColorBlue/(float)255});
+
+    emit outputLayerStatus(empty_for_emit);
+
+    QWidget *SliderChangeWidget = ui->tableWidget->cellWidget(*selected_color_button_row, 5);
+    QSlider *SliderChange = SliderChangeWidget->findChild<QSlider*>();
+    SliderChange->setValue(NewColorAlpha);
 }

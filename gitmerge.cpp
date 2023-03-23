@@ -60,7 +60,7 @@ void GitMerge::mergeFiles(QString &totalMerge)
 
         itemMerge = itemMerge.remove("\\");
         itemMerge = itemMerge.trimmed();
-        //주석을 처리해야 한다.
+        //ì£¼ìì²ë¦¬´ì¼ ë¤.
         if (itemMerge.contains(".cpp", Qt::CaseInsensitive) || itemMerge.contains(".h", Qt::CaseInsensitive) || itemMerge.contains(".ui", Qt::CaseInsensitive))
         {
             QFile codeFile(itemMerge.prepend("./"));
@@ -166,10 +166,10 @@ void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
     QStringList fileList = gitMergeFile.split(split1);
     QStringList codeListDivide;
     QStringList fileListDivide;
-    for (int i = 1; i < fileList.size(); i+=2)
+    for (int i = 1; i < fileList.size(); i++)
     {
         fileListDivide = fileList[i].split(split2);
-        for (int j = 1; j < codeList.size(); j+=2)
+        for (int j = 1; j < codeList.size(); j++)
         {
             codeListDivide = codeList[j].split(split2);
             if (codeListDivide[0] == fileListDivide[0])
@@ -200,7 +200,7 @@ void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
                 }
                 break;
             }
-            if (j == codeList.size()-1) // 찾아봤는데 기존 파일이 없다.
+            if (j == codeList.size()-1) // ì°¾ìë´¤ëê¸°ì¡´ ì¼ë¤.
             {
                 QFile file(fileListDivide[0]);
                 if(!file.open(QFile::WriteOnly | QFile::Text))

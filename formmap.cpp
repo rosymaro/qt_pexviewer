@@ -26,7 +26,7 @@ void FormMap::receiveSize(float &xMinSize,float &yMinSize,float &xMaxSize,float 
     scale = 178/std::max(width,height);
     width = scale * width;
     height = scale * height;
-//    float rectScale = 176*zoomScale; �旐�氤�
+//    float rectScale = 176*zoomScale; ì¶í ë³ê²
 
     qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
 
@@ -44,64 +44,94 @@ void FormMap::receiveSize(float &xMinSize,float &yMinSize,float &xMaxSize,float 
 
 }
 
-void FormMap::slotInfoText(QString funcName, float value)
+
+void FormMap::receiveSize_t2d(double &xMinSize,double &yMinSize,double &xMaxSize,double &yMaxSize, double &zoomScale)
+{
+    float scale=1;
+
+    width = xMaxSize-xMinSize;
+    height = yMaxSize-yMinSize;
+    qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
+    scale = 178/std::max(width,height);
+    width = scale * width;
+    height = scale * height;
+//    float rectScale = 176*zoomScale; ì¶í ë³ê²
+
+    qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
+
+    QGraphicsRectItem *rectItem = new QGraphicsRectItem;
+    QGraphicsScene *scene = new QGraphicsScene(this);
+    rectItem->setRect(-(width/2),-(height/2),width,height);
+    rectItem->setBrush(QBrush(QColor(Qt::gray)));
+    scene->addItem(rectItem);
+
+    SuperItem *super = new SuperItem;
+    scene->addItem(super);
+    QObject::connect(this,&FormMap::signalMove,super,&SuperItem::slotMove);
+
+    ui->graphicsView->setScene(scene);
+
+}
+
+void FormMap::slotInfoText(QString funcName, POS_MONITORING value)
+
 {
 
-    if (funcName == "moveGdsX")
-    {
-        pointX = pointX + value;
-        initPointX = pointX;
-        emit signalMove(value,0,0,999,999);
-    }
-    if (funcName == "moveGdsY")
-    {
-        pointY = pointY + value;
-        initPointY = pointY;
-        emit signalMove(0, value,0,999,999);
-    }
-    if (funcName == "rotateRenderX")
-    {
-        infoRot = initRot + value;
-        if (infoRot>360)
-            infoRot = infoRot - 360;
-        if (infoRot<0)
-            infoRot = infoRot + 360;
-        emit signalMove(0, 0 ,0,infoRot,999);
-    }
-    if (funcName == "rotateRenderY")
-    {
-        infoTilt = initTilt + value;
-        if (infoTilt>90)
-            infoTilt = 90;
-        if (infoTilt<-90)
-            infoTilt = -90;
-        emit signalMove(0, 0 ,0,999,infoTilt);
-    }
-    if (funcName == "moveZoom")
-    {
-        infoZoom = infoZoom + infoZoom*value/1500;        //检�澊�00% �れ�勳殨潓, �瓣�齑堦赴臧GDS Size �澕 氚旊�堨�
-        if (infoZoom < 0.01)
-            infoZoom = 0.01;
-        if (infoZoom > 100)
-            infoZoom = 100;
-        emit signalMove(0, 0, infoZoom, 999, 999);
-    }
-    if (funcName == "moveRenderX")
-    {
-        x = value;
-    }
-    if (funcName == "moveRenderY")
-    {
-        y = value;
-    }
-    if (funcName == "mouseRelease")
-    {
-        initTilt = infoTilt;
-        initRot = infoRot;
-        initPointX = pointX;
-        initPointY = pointY;
-        initPointZ = pointZ;
-    }
+    //if (funcName == "moveGdsX")
+    //{
+    //    pointX = pointX + value;
+    //    initPointX = pointX;
+    //    emit signalMove(value,0,0,999,999);
+    //}
+    //if (funcName == "moveGdsY")
+    //{
+    //    pointY = pointY + value;
+    //    initPointY = pointY;
+    //    emit signalMove(0, value,0,999,999);
+    //}
+    //if (funcName == "rotateRenderX")
+    //{
+    //    infoRot = initRot + value;
+    //    if (infoRot>360)
+    //        infoRot = infoRot - 360;
+    //    if (infoRot<0)
+    //        infoRot = infoRot + 360;
+    //    emit signalMove(0, 0 ,0,infoRot,999);
+    //}
+    //if (funcName == "rotateRenderY")
+    //{
+    //    infoTilt = initTilt + value;
+    //    if (infoTilt>90)
+    //        infoTilt = 90;
+    //    if (infoTilt<-90)
+    //        infoTilt = -90;
+    //    emit signalMove(0, 0 ,0,999,infoTilt);
+    //}
+    //if (funcName == "moveZoom")
+    //{
+    //    infoZoom = infoZoom + infoZoom*value/1500;        //¼ì  ì´ë¥100% ë¡¤ì ì ì, ê²°êµ­ ì´ê¸°ê°ì GDS Size °ë¼ ë°ëì.
+    //    if (infoZoom < 0.01)
+    //        infoZoom = 0.01;
+    //    if (infoZoom > 100)
+    //        infoZoom = 100;
+    //    emit signalMove(0, 0, infoZoom, 999, 999);
+    //}
+    //if (funcName == "moveRenderX")
+    //{
+    //    x = value;
+    //}
+    //if (funcName == "moveRenderY")
+    //{
+    //    y = value;
+    //}
+    //if (funcName == "mouseRelease")
+    //{
+    //    initTilt = infoTilt;
+    //    initRot = infoRot;
+    //    initPointX = pointX;
+    //    initPointY = pointY;
+    //    initPointZ = pointZ;
+    //}
 }
 
 FormMap::~FormMap()

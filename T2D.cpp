@@ -27,6 +27,7 @@ bool T2D::text2data(std::string file_name){
         int row = atoi(split[9].c_str());
         int col = atoi(split[10].c_str());
 
+        buf_ldata10by10.checking = false;
         buf_ldata10by10.layername = split[0];
         buf_ldata10by10.layernum = atoi(split[1].c_str());
         buf_ldata10by10.datatype = atoi(split[2].c_str());
@@ -52,7 +53,7 @@ bool T2D::text2data(std::string file_name){
             for(int i = 0 ; i < nsize ; i++){
                 getline(readfile, line);
                 split = T2D::string_split(line, ' ');
-                bBox buf;
+                B_BOX buf;
                 buf.minx = atof(split[0].c_str());
                 buf.miny = atof(split[1].c_str());
                 buf.maxx = atof(split[2].c_str());

@@ -14,6 +14,7 @@
 #include "filedb.h"
 #include "all_data.h"
 #include <QVector>
+#include "defineParam.h"
 
 #include "T2D.h"
 
@@ -37,9 +38,10 @@ public:
 
 public slots:
 
-    void slotInfoText(QString funcName, float value);
+    void slotInfoText(QString funcName, POS_MONITORING value);
     void inputLayerStatus(QString text);
     void on_actionOpen_file_triggered();
+    void inputPosInformation();
 
 signals:
     void signalInfoText(QString funcName, float value);
@@ -47,13 +49,11 @@ signals:
 
 
 private slots:
-    void on_actionOpen_Map_File_triggered();
-
     void on_actionOpen_Layout_triggered();
-
     void on_actionOpen_DB_triggered();
+    void slotPos();
 
-    void on_actionLayer_information_triggered();
+    void on_actionTop_triggered();
 
 private:
     LveWindow *m_window;
@@ -64,12 +64,12 @@ private:
     FormTop *formTop;
     FormInfo *formInfo;
     FormMap *formMap;
-    QDockWidget *dockInfo;
     SuperItem *superItem;
     QRect *windowSize;
     FileDb *fileDb;
     all_data *input_dataS;
     QStringList split_data;
+    POS_MONITORING pos;
 };
 
 #endif // MAINWINDOW_H

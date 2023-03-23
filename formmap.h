@@ -1,8 +1,9 @@
 #ifndef FORMMAP_H
 #define FORMMAP_H
-
+#include <glm/gtx/string_cast.hpp>
 #include <QDialog>
 #include <QGraphicsRectItem>
+#include "defineParam.h"
 
 namespace Ui {
 class FormMap;
@@ -14,7 +15,7 @@ class SuperItem : public QObject, public QGraphicsItem
 public:
     SuperItem(QGraphicsItem* parent = NULL);
 public slots:
-    void slotMove(float x, float y, float zoom, float rot, float tilt);
+    void slotMove(float x, float y, float zoom, float rot, float tilt);    
 
 protected:
     void paint(QPainter *painter,
@@ -37,9 +38,10 @@ public:
     explicit FormMap(QWidget *parent = nullptr);
     ~FormMap();
     void receiveSize(float &xMinSize,float &yMinSize,float &xMaxSize,float &yMaxSize, float &zoomScale);
+    void receiveSize_t2d(double &xMinSize,double &yMinSize,double &xMaxSize,double &yMaxSize, double &zoomScale);
 
 public slots:
-    void slotInfoText(QString funcName, float value);
+    void slotInfoText(QString funcName, POS_MONITORING value);
 
 signals:
     void signalMove(float x, float y, float zoom, float rot, float tilt);
@@ -58,7 +60,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom 齑堦赴臧�棎 �GDS size 毳臧���橃爼 ��
+    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
 
     float initRot = 0;
     float initTilt = 90;

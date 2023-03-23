@@ -6,13 +6,13 @@
 #include <chrono>
 
 #include "LayoutPEXData.h"
-
+#include <unordered_set>
 #include <QFile>
 
 
-LayoutModel::LayoutModel(LveDevice& device, MODEL_TYPE model_type, const std::string& data_file)
+LayoutModel::LayoutModel(LveDevice& device, MODEL_TYPE model_type, T2D &t2d)
     : LveModel(device, model_type), layout_data{} {
-    this->makeRenderingData(data_file);
+    this->makeRenderingData(t2d);
     this->createBuffers();
 }
 
@@ -20,17 +20,13 @@ LayoutModel::~LayoutModel() {
     this->layout_data.clear();
 }
 
-void LayoutModel::makeRenderingData(const std::string& file_path) {
-    if (!QFile::exists(file_path.c_str())) {
-        std::cerr << "Error! " << file_path << " is not exist!!\n";
-        return;
-    }
-
+void LayoutModel::makeRenderingData(T2D &t2d) {
+    loadData(t2d);
     std::chrono::system_clock::time_point start, end;
     std::chrono::seconds run_time;
 
     start = std::chrono::system_clock::now();
-    loadData(file_path);
+    //loadData(file_path);
     end = std::chrono::system_clock::now();
     run_time = std::chrono::duration_cast<std::chrono::seconds>(end - start);
     std::cout << "Run Time / LayoutModel / loadData [sec] : "
@@ -58,34 +54,56 @@ void LayoutModel::makeRenderingData(const std::string& file_path) {
               << run_time.count() << "\n";
 }
 
-void LayoutModel::loadData(const std::string& file_path) {
-    this->layout_data.loadLayoutData(file_path);
+void LayoutModel::loadData(T2D &t2d) {
+    this->layout_data.loadLayoutData(t2d);
 }
 
 void LayoutModel::makeCubeVertices() {
-    std::vector<LayoutItem>& layout_items = this->layout_data.getPatterns();
-    std::vector<LayoutItem>::iterator it = layout_items.begin();
+    std::vector<LDATA10BY10> &layout_items = this->layout_data.getPatterns_t2d();
+    std::vector<LDATA10BY10>::iterator it = layout_items.begin();
     cube_vertex cur_cube_vertices;
+    std::unordered_set<int> checking_set;
 
 
     for (it = layout_items.begin(); it != layout_items.end(); ++it) {
-        cur_cube_vertices.layernum = it->layer_number;
-        cur_cube_vertices.vertex[0] = { it->pattern.minx, it->pattern.maxy, it->pattern.maxz };
-        cur_cube_vertices.vertex[1] = { it->pattern.minx, it->pattern.miny, it->pattern.maxz };
-        cur_cube_vertices.vertex[2] = { it->pattern.maxx, it->pattern.miny, it->pattern.maxz };
-        cur_cube_vertices.vertex[3] = { it->pattern.maxx, it->pattern.maxy, it->pattern.maxz };
+        cur_cube_vertices.layernum = it->layernum;
+        for(auto row : it->xy ){
+            for (auto col : row){
+                if(col.size() == 0) break;
+                for(auto each_box : col){
+                    cur_cube_vertices.vertex[0] = { each_box.minx, each_box.maxy, it->top };
+                    cur_cube_vertices.vertex[1] = { each_box.minx, each_box.miny, it->top };
+                    cur_cube_vertices.vertex[2] = { each_box.maxx, each_box.miny, it->top };
+                    cur_cube_vertices.vertex[3] = { each_box.maxx, each_box.maxy, it->top };
 
-        cur_cube_vertices.vertex[4] = { it->pattern.minx, it->pattern.maxy, it->pattern.minz };
-        cur_cube_vertices.vertex[5] = { it->pattern.minx, it->pattern.miny, it->pattern.minz };
-        cur_cube_vertices.vertex[6] = { it->pattern.maxx, it->pattern.miny, it->pattern.minz };
-        cur_cube_vertices.vertex[7] = { it->pattern.maxx, it->pattern.maxy, it->pattern.minz };
+                    cur_cube_vertices.vertex[4] = { each_box.minx, each_box.maxy, it->bot };
+                    cur_cube_vertices.vertex[5] = { each_box.minx, each_box.miny, it->bot };
+                    cur_cube_vertices.vertex[6] = { each_box.maxx, each_box.miny, it->bot };
+                    cur_cube_vertices.vertex[7] = { each_box.maxx, each_box.maxy, it->bot };
 
-        this->cube_vertices.push_back(cur_cube_vertices);
+                    this->cube_vertices.push_back(cur_cube_vertices);
+
+                    if(checking_set.find(it->layernum) == checking_set.end()){
+                        checking_set.insert(it->layernum);
+                        drawing_order_layerby.push_back(it->layernum);
+                    }
+                }
+
+            }
+            layerList[it->layernum].color = glm::vec3 {it->color.r/(float)255,it->color.g/(float)255, it->color.b/(float)255};
+            layerList[it->layernum].opacity = it->color.a/(float)255;
+            layerList[it->layernum].visiblity = it->checking;
+
+        }
+
+
         //std::cout << cube_vertices.back().layernum << '\n';
     }
 }
 
 void LayoutModel::makeVertices() {
+    std::vector<LDATA10BY10> &layout_items = this->layout_data.getPatterns_t2d();
+    std::vector<LDATA10BY10>::iterator it = layout_items.begin();
     Vertex temp_vertex;
 
     float up_color = 0.15f;
@@ -97,6 +115,7 @@ void LayoutModel::makeVertices() {
 
             if (i < 4) temp_vertex.color = { up_color , up_color , up_color };
             else       temp_vertex.color = { down_color , down_color , down_color };
+
 
             layerby_vertices[cur_cube.layernum].push_back(temp_vertex);
         }
@@ -138,6 +157,8 @@ void LayoutModel::makeIndicesForFace_map() {
             indices[key].push_back(start_idx + 6); indices[key].push_back(start_idx + 2); indices[key].push_back(start_idx + 1);//back
         }
     }
+
+    qDebug() << layerby_vertices.size();
 
 }
 

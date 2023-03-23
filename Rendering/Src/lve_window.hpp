@@ -1,8 +1,11 @@
 #ifndef LVEWINDOW_H
 #define LVEWINDOW_H
 #include <vulkan/vulkan.h>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
 
 #include <QVulkanWindow>
+#include "defineParam.h"
 //#include <QVulkanWindowRenderer>
 
 //#include "dtaorendersystem.h"
@@ -25,6 +28,7 @@ public:
     QVulkanWindowRenderer *createRenderer() override;
     //QVulkanWindowRenderer * getRenderer(){ return this->m_renderer;}
     //LveCamera* camera;
+    void emitStatus(float value);
 
 public:
     DtaoRenderSystem * getRenderer(){return this->m_renderer;}
@@ -50,7 +54,7 @@ private:
     QPoint m_lastPos;
 
 signals:
-    void signalInfoText(QString funcName, float value);
+    void signalInfoText(QString funcName, POS_MONITORING value);
 };
 
 #endif // LVEWINDOW_H

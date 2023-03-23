@@ -26,7 +26,7 @@
      <x>0</x>
      <y>0</y>
      <width>1024</width>
-     <height>21</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -35,7 +35,6 @@
     </property>
     <addaction name="actionOpen_file"/>
     <addaction name="separator"/>
-    <addaction name="actionOpen_Map_File"/>
     <addaction name="actionOpen_Layout"/>
     <addaction name="separator"/>
     <addaction name="actionOpen_DB"/>
@@ -46,8 +45,15 @@
     </property>
     <addaction name="actionLayer_information"/>
    </widget>
+   <widget class="QMenu" name="menuCamera">
+    <property name="title">
+     <string>Camera</string>
+    </property>
+    <addaction name="actionTop"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
+   <addaction name="menuCamera"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
@@ -60,6 +66,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionTop"/>
   </widget>
   <action name="actionOpen_file">
    <property name="text">
@@ -71,11 +78,6 @@
     <string>Layer information</string>
    </property>
   </action>
-  <action name="actionOpen_Map_File">
-   <property name="text">
-    <string>Open Map File</string>
-   </property>
-  </action>
   <action name="actionOpen_Layout">
    <property name="text">
     <string>Open Layout</string>
@@ -84,6 +86,11 @@
   <action name="actionOpen_DB">
    <property name="text">
     <string>Open DB</string>
+   </property>
+  </action>
+  <action name="actionTop">
+   <property name="text">
+    <string>Top</string>
    </property>
   </action>
  </widget>

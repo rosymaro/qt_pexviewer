@@ -38,6 +38,8 @@ int main(int argc, char *argv[])
     MainWindow mainWindow(vulkanWindow);
     QObject::connect(vulkanWindow, &LveWindow::signalInfoText, &mainWindow, &MainWindow::slotInfoText);
 
+
+
     QRect size = mainWindow.geometry();
     mainWindow.shareGeo(size);
     qDebug() << "Main geo : " << mainWindow.geometry();

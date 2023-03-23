@@ -12,6 +12,7 @@
 
 #include <string>
 #include <iostream>
+
 #include <map>
 //#include <ranges>
 #include "LayoutPEXData.h"
@@ -36,6 +37,12 @@ public:
 
         static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
         static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
+    };
+
+    struct LayerProperty {
+        bool visiblity;
+        glm::vec3 color{};
+        float opacity;
     };
 
     LveModel(LveDevice& device, MODEL_TYPE model_type);
@@ -90,12 +97,16 @@ public:
     std::vector<Vertex> vertices{};
     std::vector<uint32_t> indices_face{};
     std::vector<uint32_t> indices_edge{};
+    std::vector<float> drawing_order_layerby{};
 
     std::map<float, std::vector<Vertex>> layerby_vertices;
     std::map<float, std::vector<uint32_t>> layerby_face;
     std::map<float, std::vector<uint32_t>> layerby_edge;
-    std::map<float, glm::vec3> layerList;
-
+    std::map<float, LayerProperty> layerList;
+    std::map<float, glm::vec3> init_layerby_color;
+    void changeLayerColor(float layernumber, glm::vec3 rgb);
+    void changeLayerOpacity(float layernumber, float opacity);
+    void changeLayerVisiblity(float layernumber, bool visiblity);
     bool visible{true};
     float opacity{ 1.0f };
 
@@ -115,6 +126,6 @@ public:
     void toggleVisible() { this->visible = !this->visible; }
     void updateOpacity(float amount);
     float getOpacity() { return this->opacity; }
-    std::map<float, glm::vec3> getLayer();
+    std::map<float, LayerProperty> getLayer();
 };
 

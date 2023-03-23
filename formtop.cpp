@@ -6,127 +6,288 @@
 #include <QMap>
 #include <iostream>
 #include <QDebug>
+#include <excpt.h>
+
 
 FormTop::FormTop(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::FormTop)
 {
+    int slider_init_value = 50;
+
     ui->setupUi(this);
-}
-
-//void FormTop::receiveFile(QVector<QList<float>> **mapFile)
-void FormTop::receiveFile(QVector<QVector<QVector<QList<float>>>>& mapFile)
-{
-//    QString temp;
-//    temp = strVector[1][3];
-//    float fTemp = temp.toFloat()*1000000;
-//    int iTemp = int(fTemp);
-    float minX=0, maxX=0, minY=0, maxY=0;
-    float posX = 0, posY =0;
-    int areaX = 10, areaY = 10;
-    int beginX = 0, beginY = 0, endX = mapFile.size(), endY = mapFile[0].size();
-    if (posX - areaX > 0){beginX=posX - areaX;}
-    if (posY - areaY > 0){beginY=posY - areaY;}
-    if (posX + areaX < mapFile.size()){endX = posX + areaX;}
-    if (posY + areaY < mapFile[0].size()){endY = posY + areaY;}
-
-
-
-    QMap<int, QColor> mapColor;
-    mapColor.insert(0,Qt::white);
-    mapColor.insert(15,Qt::red);
-    mapColor.insert(16,Qt::yellow);
-    mapColor.insert(17,Qt::green);
-    mapColor.insert(18,Qt::blue);
-    mapColor.insert(19,Qt::magenta);
-    mapColor.insert(714,Qt::red);
-    mapColor.insert(177,Qt::red);
-
-    qDebug() << "mapColor" <<mapColor;
-
-    QGraphicsScene *scene = new QGraphicsScene(this);
-    scene->setBackgroundBrush(QBrush(QColor(Qt::white)));
-    //scene->setSceneRect(0,0,200,200);
-    QPen mPen;
-    mPen.setWidth(5);
-    mPen.setColor(Qt::red);
-// ���堧�vector 毳波旍: delete 毳勴
-    //            for(auto cur_item : rectItemList){
-    //                delete cur_item;
-    //            }
-    //            rectItemList.clear();
-
-
-    QVector<QGraphicsRectItem*> rectItemList;
-
-    QGraphicsLineItem *zeroX = new QGraphicsLineItem;
-    QGraphicsLineItem *zeroY = new QGraphicsLineItem;
-    QTransform trans;
+    this->m_scene = new QGraphicsScene(this);
     trans.scale(1,-1);
-
-    QVector<QList<float>> vecList;
-    for (int i = beginX ; i < endX ; i++)
-    {
-        for (int j = beginY ; j < endY ; j++)
-        {
-            vecList.append(mapFile[i][j]);
-        }
-    }
-
-    for (auto &data : vecList)
-    {
-
-        if (data.size() == 8)
-        {
-            QGraphicsRectItem *rectItem = new QGraphicsRectItem;
-            rectItemList.push_back(rectItem);
-
-
-            float x = 500*(data[2]);
-            float y = 500*(data[3]);
-            float w = 500*(data[4] - data[2]);
-            float h = 500*(data[5] - data[3]);
-
-            if (x<minX){minX = x;}
-            if (x>maxX){maxX = x;}
-            if (y<minY){minY = y;}
-            if (y>maxY){maxY = y;}
-            rectItem->setRect(x,y,w,h);
-            rectItem->setBrush(QBrush(QColor(mapColor[int(data[0])])));
-            rectItem->setOpacity(0.5);
-            rectItem->setZValue(data[6]);
-
-            rectItem->setTransform(trans);
-            scene->addItem(rectItem);
-        }
-    }
-    zeroX->setLine(0,0,maxX,0);
-    zeroY->setLine(0,0,0,maxY);
-    zeroX->setPen(QPen(QColor(Qt::red)));
-    zeroY->setPen(QPen(QColor(Qt::red)));
-    zeroX->setZValue(400);
-    zeroY->setZValue(400);
-    zeroY->setTransform(trans);
-    scene->addItem(zeroX);
-    scene->addItem(zeroY);
-    ui->graphicsView->setScene(scene);
-//    float dx = 100-(maxX-minX)/2;
-//    float dy = 100-(maxY-minY)/2;
-
-
-
-//    ui->graphicsView->horizontalScrollBar()->setValue(ui->graphicsView->horizontalScrollBar()->value()+dx);
-//    ui->graphicsView->verticalScrollBar()->setValue(ui->graphicsView->verticalScrollBar()->value()+dy);
-//    ui->graphicsView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-//    ui->graphicsView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
+    ui->horizontalSlider->setValue(slider_init_value);
 
 }
-
-
 
 
 FormTop::~FormTop()
 {
     delete ui;
 }
+
+void FormTop::receiveFile(T2D &t2d)
+{
+    drawingClear();
+    m_scene->clear();
+    rendering_full = &t2d;            
+    for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
+    {
+        for(int row = 0 ; row < (int)rendering_full->LayoutData10by10[layer].xy.size() ; row++)
+        {
+            rendering_full->LayoutData10by10[layer].xy_filtered.resize(rendering_full->LayoutData10by10[layer].xy.size());
+            for(int col = 0 ; col < (int)rendering_full->LayoutData10by10[layer].xy[row].size() ; col++)
+            {
+                rendering_full->LayoutData10by10[layer].xy_filtered[row].resize(rendering_full->LayoutData10by10[layer].xy[row].size());
+            }
+        }
+    }
+
+
+
+    m_scene->setBackgroundBrush(QBrush(QColor(Qt::white)));
+
+    drawing();
+}
+
+void FormTop::drawing()
+{
+    areaFilterRect();
+    for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
+    {
+        //layer_enviroment  ë¹êµì¬ for skip
+        if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
+        for(int row = m_begin_row ; row < m_end_row ; row++)
+        {
+            for(int col = m_begin_col ; col < m_end_col ; col++)
+            {
+                for(int n = 0 ; n < (int)(rendering_full->LayoutData10by10[layer].xy_filtered[row][col]).size(); n++)
+                {
+                    addRectItem(layer,row,col,n,trans);
+                }
+            }
+        }
+    }
+
+    ui->graphicsView->setScene(m_scene);
+}
+
+void FormTop::drawingClear()
+{
+    // ê¸°ì¡´ë vector ë¥¨ê²¨ì¼ : delete ë¥í´
+    for(auto cur_item : rectItemList)
+    {
+        delete cur_item;
+    }
+    rectItemList.clear();
+
+}
+
+void FormTop::slotPos(POS_MONITORING &pos)
+{
+    this->pos = &pos;
+    temp_pos.x = pos.x;
+    temp_pos.y = pos.y;
+}
+
+void FormTop::changePos()
+{
+    qDebug() << "change pos";
+    if(temp_pos.x != pos->x || temp_pos.y != pos->y)
+    {
+        m_min_x_size = pos->x - m_area / m_area_scale;
+        m_max_x_size = pos->x + m_area / m_area_scale;
+        m_min_y_size = pos->y - m_area / m_area_scale;
+        m_max_y_size = pos->y + m_area / m_area_scale;
+
+        temp_pos.x = pos->x;
+        temp_pos.y = pos->y;
+
+        drawingClear();
+        drawing();
+    }
+}
+
+void FormTop::on_horizontalSlider_valueChanged(int value)
+{
+    m_area = value;
+
+    if(error_temp == 0)
+    {
+        qDebug() << "pos init";
+        m_min_x_size = 0 - m_area / m_area_scale;
+        m_max_x_size = 0 + m_area / m_area_scale;
+        m_min_y_size = 0 - m_area / m_area_scale;
+        m_max_y_size = 0 + m_area / m_area_scale;
+        error_temp += 1;
+    }
+    else
+    {
+        qDebug() << "pos working";
+        m_min_x_size = pos->x - m_area / m_area_scale;
+        m_max_x_size = pos->x + m_area / m_area_scale;
+        m_min_y_size = pos->y - m_area / m_area_scale;
+        m_max_y_size = pos->y + m_area / m_area_scale;
+
+        drawingClear();
+        drawing();
+    }
+}
+
+void FormTop::addRectItem(int layer, int row, int col, int n, QTransform trans)
+{
+
+    QGraphicsRectItem *rectItem = new QGraphicsRectItem;
+    rectItemList.push_back(rectItem);
+
+    float opacity = rendering_full->LayoutData10by10[layer].color.a;
+    opacity = opacity/255;
+
+    float x = m_scale*(rendering_full->LayoutData10by10[layer].xy_filtered[row][col][n].minx);
+    float y = m_scale*(rendering_full->LayoutData10by10[layer].xy_filtered[row][col][n].miny);
+    float w = m_scale*(rendering_full->LayoutData10by10[layer].xy_filtered[row][col][n].maxx-rendering_full->LayoutData10by10[layer].xy_filtered[row][col][n].minx);
+    float h = m_scale*(rendering_full->LayoutData10by10[layer].xy_filtered[row][col][n].maxy-rendering_full->LayoutData10by10[layer].xy_filtered[row][col][n].miny);
+
+    rectItem->setRect(x,y,w,h);
+    rectItem->setBrush(QBrush(QColor(rendering_full->LayoutData10by10[layer].color.r,rendering_full->LayoutData10by10[layer].color.g,rendering_full->LayoutData10by10[layer].color.b,rendering_full->LayoutData10by10[layer].color.a)));
+    rectItem->setOpacity(opacity);
+    qDebug()<< " rect    : " << rectItem->rect() << ":: row/col : " << row << "/" << col << " " << n;
+    qDebug()<< " opacity : " << rendering_full->LayoutData10by10[layer].color.a << " : " << opacity;
+    rectItem->setZValue(rendering_full->LayoutData10by10[layer].bot);
+
+    rectItem->setTransform(trans);
+    m_scene->addItem(rectItem);
+}
+
+int FormTop::extPos(double *pos, double *min, double *max)
+{
+    double area = m_area / m_area_scale; // 0.05 = 50/1000
+    int pos_col_row = (*pos-*min)/m_block_size; // 30.0413/10 = 3
+    int max_col_row = (*max-*min)/m_block_size;
+
+
+    //block ¼ë¡ ë¥¸ ê²½ê³ë©ê·¼ì²ì ê²½ì° external ì¶ê
+    if ((*pos - *min)<area && pos_col_row > 0) // 30.0413 - 3*10 = 0.0413 < 0.05
+    {
+        return pos_col_row - 1;
+    }
+    else if ((*max - *pos)<area && pos_col_row < max_col_row) // 39.9811 col 3 : (3+1)*10 - 39.9811 = 0.0189 < 0.05
+    {
+        return pos_col_row + 1;
+    }
+
+    return pos_col_row;
+}
+
+void FormTop::filterRenderingData(int layer, int row, int col, int n)
+{
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx > m_max_x_size){return;}
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx < m_min_x_size){return;}
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny > m_max_y_size){return;}
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy < m_min_y_size){return;}
+
+    double minx, maxx, miny, maxy;
+
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    {
+        minx = m_min_x_size;
+    }
+    else
+    {
+        minx = rendering_full->LayoutData10by10[layer].xy[row][col][n].minx;
+    }
+
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > m_max_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    {
+        maxx = m_max_x_size;
+    }
+    else
+    {
+        maxx = rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx;
+    }
+
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < m_min_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    {
+        miny = m_min_y_size;
+    }
+    else
+    {
+        miny = rendering_full->LayoutData10by10[layer].xy[row][col][n].miny;
+    }
+
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_max_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    {
+        maxy = m_max_y_size;
+    }
+    else
+    {
+        maxy = rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy;
+    }
+
+    B_BOX temp;
+    temp.minx = minx;
+    temp.miny = miny;
+    temp.maxx = maxx;
+    temp.maxy = maxy;
+
+    rendering_full->LayoutData10by10[layer].xy_filtered[row][col].push_back(temp);
+}
+
+void FormTop::areaFilterRect()
+{
+    //filter BBOX clear
+
+    for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
+    {
+        for(int row = m_begin_row ; row < m_end_row ; row++)
+        {
+            for(int col = m_begin_col ; col < m_end_col ; col++)
+            {
+                rendering_full->LayoutData10by10[layer].xy_filtered[row][col].clear();
+            }
+        }
+    }
+
+    int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //ì´ ìë   23.3841 / 10 = 2.33841 -> int 2
+    int ext_col = extPos(&pos->x, &rendering_full->LayoutMinMax.minx, &rendering_full->LayoutMinMax.maxx);
+    m_begin_col = qMin(pos_col,ext_col);
+    m_end_col = qMax(pos_col,ext_col)+1;
+
+    int pos_row = (pos->y - rendering_full->LayoutMinMax.miny)/m_block_size;
+    int ext_row = extPos(&pos->y, &rendering_full->LayoutMinMax.miny,&rendering_full->LayoutMinMax.maxy);
+    m_begin_row = qMin(pos_row,ext_row);
+    m_end_row = qMax(pos_col,ext_row)+1;
+
+
+    //layer
+    for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
+    {
+        //layer_enviroment  ë¹êµì¬ for skip
+
+        if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
+
+        for(int row = m_begin_row ; row < m_end_row ; row++)
+        {
+            for(int col = m_begin_col ; col < m_end_col ; col++)
+            {
+                for(int n = 0 ; n < (int)(rendering_full->LayoutData10by10[layer].xy[row][col]).size(); n++)
+                {                
+                    filterRenderingData(layer,row,col,n);
+                }
+            }
+        }
+    }
+
+}
+
+
+
+
+
+
+
+
+
+

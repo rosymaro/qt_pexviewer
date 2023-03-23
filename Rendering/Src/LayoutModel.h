@@ -1,12 +1,12 @@
 #pragma once
 
 #include "lve_model.hpp"
-
+#include "T2D.h"
 
 class LayoutModel : public LveModel
 {
 public:
-    LayoutModel(LveDevice& device, MODEL_TYPE model_type, const std::string& data_file);
+    LayoutModel(LveDevice& device, MODEL_TYPE model_type, T2D &t2d);
     ~LayoutModel();
 
     LayoutModel() = delete;
@@ -17,8 +17,8 @@ private:
     LayoutDataManager layout_data;
 
 public:
-    virtual void makeRenderingData(const std::string& file_path = "");
-    virtual void loadData(const std::string& file_path = "");
+    virtual void makeRenderingData(T2D &t2d);
+    virtual void loadData(T2D &t2d);
     virtual void makeVertices();
     virtual void makeIndices();
 
@@ -29,6 +29,7 @@ public:
     void makeCubeVertices_map();
     void makeIndicesForFace_map();
     void makeIndicesForEdge_map();
+
 
     LayoutDataManager* getLayoutDataManager() {return &this->layout_data;}
 

@@ -18,6 +18,10 @@ DtaoRenderSystem::DtaoRenderSystem(LveWindow *w)
     : lveWindow(w)
 {
     this->trans_info = {};
+    this->camera.setViewTarget(
+                glm::vec3(0.0f,0.0f,1.0f),
+                glm::vec3(0.0f, 0.0f, 0.0f),
+                glm::vec3(0.0f, 1.0f, 0.0f));
     qDebug() << "\n$$$$$ DtaoRenderSystem()";
 }
 
@@ -65,9 +69,11 @@ void DtaoRenderSystem::beginRenderPass(VkCommandBuffer command_buffer){
 
 void DtaoRenderSystem::startNextFrame(){
     this->cameraController.moveCamera(
-                1.0, this->camera, this->getRenderScale(), this->gameObjects);
+                aspect, this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
     this->cameraController.moveCameraMouse(
-                this->camera, this->getRenderScale(), this->gameObjects);
+                this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
+    //this->cameraController.setPerspective(this->camera, aspect);
+
 
     VkCommandBuffer command_buffer = this->lveWindow->currentCommandBuffer();
     beginRenderPass(command_buffer);
@@ -79,6 +85,7 @@ void DtaoRenderSystem::startNextFrame(){
 
     lveWindow->frameReady();
     lveWindow->requestUpdate(); // render continuously, throttled by the presentation rate
+
 }
 
 void DtaoRenderSystem::initResources() {
@@ -87,10 +94,7 @@ void DtaoRenderSystem::initResources() {
     createSimpleRenderSystem();
     //if(!this->render_object_created) loadGameObjects();
 
-    this->camera.setViewTarget(
-                glm::vec3(1.0f,1.0f,1.0f),
-                glm::vec3(0.0f, 0.0f, 0.0f),
-                glm::vec3(0.0f, 0.0f, 1.0f));
+
 
     VkDevice dev = this->lveWindow->device();
     m_devFuncs = this->lveWindow->vulkanInstance()->deviceFunctions(dev);
@@ -109,8 +113,9 @@ void DtaoRenderSystem::releaseResources() {
 void DtaoRenderSystem::initSwapChainResources() {
     qDebug() << "\n$$$$$ DtaoRenderSystem::initSwapChainResources()";
     const QSize sz = this->lveWindow->swapChainImageSize();
-    float aspect = sz.width()/(double)sz.height();
+    aspect = sz.width()/(double)sz.height();
     this->camera.setPerspectiveProjection(glm::radians(50.f), aspect, 0.1f, 100.f);
+    //this->camera.setOrthographicProjection(-1,1,-1,1,0.1f,100.f);
 }
 
 
@@ -138,14 +143,91 @@ void DtaoRenderSystem::deleteSimpleRenderSystem(){
     qDebug() << "\n$$$$$ DtaoRenderSystem::deleteSimpleRenderSystem()";
     delete this->simpleRenderSystem;
 }
-
+/*
 void DtaoRenderSystem::createNewObject(MODEL_TYPE model_type, const std::string & file_path) {
     if( model_type == MODEL_TYPE::MODEL_TYPE_LAYOUT) createNewLayoutObject(file_path);
     else if( model_type == MODEL_TYPE::MODEL_TYPE_PEX_CAPACITOR) createNewPEXCapObject(file_path);
     else if( model_type == MODEL_TYPE::MODEL_TYPE_PEX_RESISTOR) createNewPEXResObject(file_path);
     else if( model_type == MODEL_TYPE::MODEL_TYPE_AXIS) createNewAxisObject(file_path);
+}*/
+
+void DtaoRenderSystem::createT2DObject(MODEL_TYPE model_type, T2D t2d) {
+    if( model_type == MODEL_TYPE::MODEL_TYPE_LAYOUT) createT2DLayoutObject(t2d);
+    //else if( model_type == MODEL_TYPE::MODEL_TYPE_PEX_CAPACITOR) createNewPEXCapObject(file_path);
+    //else if( model_type == MODEL_TYPE::MODEL_TYPE_PEX_RESISTOR) createNewPEXResObject(file_path);
+    //else if( model_type == MODEL_TYPE::MODEL_TYPE_AXIS) createNewAxisObject(file_path);
 }
 
+void DtaoRenderSystem::getCustomColor(float layernumber, glm::vec3 rgb){
+    if(!gameObjects.empty()){
+        for (auto& obj : gameObjects){
+          if(obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_LAYOUT){
+              obj.model->changeLayerColor(layernumber,rgb);
+          }
+        }
+
+    } else {
+        qDebug() << "there is no layer. get layer first!";
+    }
+
+}
+
+void DtaoRenderSystem::getCustomOpacity(float layernumber, float opacity){
+    if(!gameObjects.empty()){
+        for (auto& obj : gameObjects){
+          if(obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_LAYOUT){
+              obj.model->changeLayerOpacity(layernumber,opacity);
+          }
+        }
+
+    } else {
+        qDebug() << "there is no layer. get layer first!";
+    }
+}
+
+void DtaoRenderSystem::getCustomVisiblity(float layernumber, bool visibility){
+    if(!gameObjects.empty()){
+        for (auto& obj : gameObjects){
+          if(obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_LAYOUT){
+              obj.model->changeLayerVisiblity(layernumber,visibility);
+          }
+        }
+
+    } else {
+        qDebug() << "there is no layer. get layer first!";
+    }
+}
+
+void DtaoRenderSystem::createT2DLayoutObject(T2D & t2d){
+
+    //Layout model
+    //std::string layout_info_file_path = file_path;
+    std::shared_ptr<LayoutModel> model
+            = std::make_unique<LayoutModel>(
+                *this->lveDevice, MODEL_TYPE_LAYOUT, t2d);
+    model->opacity = 0.5f;
+
+    LayoutDataManager* layout_data = model->getLayoutDataManager();
+    this->trans_info.trans_x = static_cast<float>( layout_data->getMinX() + layout_data->getDiffX()/2 );
+    this->trans_info.trans_y = static_cast<float>( layout_data->getMinY()+ layout_data->getDiffY()/2);
+    this->trans_info.trans_z = static_cast<float>( layout_data->getMinZ());
+    this->trans_info.scale = static_cast<float>( layout_data->getScale());
+
+    //auto new_object = DTAOObject::createObject();
+    auto new_object = LveGameObject::createGameObject();
+    new_object.model = model;
+    new_object.transform.translation = {
+        -this->trans_info.trans_x, -this->trans_info.trans_y, -this->trans_info.trans_z};
+    new_object.transform.scale = {
+        this->trans_info.scale, this->trans_info.scale, this->trans_info.scale };
+
+    //this->dtao_objects.push_back(std::move(new_object));
+    this->gameObjects.push_back(std::move(new_object));
+    this->render_object_created = true;
+    this->layout_model = model;
+}
+
+/*
 void DtaoRenderSystem::createNewLayoutObject(const std::string & file_path){
 
     //Layout model
@@ -231,6 +313,7 @@ void DtaoRenderSystem::createNewAxisObject(const std::string & file_path){
     //this->dtao_objects.push_back(std::move(new_object));
     this->gameObjects.push_back(std::move(new_object));
 }
+*/
 
 /*
 void DtaoRenderSystem::loadGameObjects() {
