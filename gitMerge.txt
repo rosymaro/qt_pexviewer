@@ -1069,7 +1069,7 @@ void PEXResistorDataManager::loadData(const std::string file_path) {
 
         description = line[PEXINFO_INDEX::PEXINFO_INDEX_DESCRIPTION];
         PEXResDirection resistor_direction = PEXResistor::checkDirectionFromDescription(description);
-        if (value > 0) updateMinMaxRes(value, resistor_direction); //ÓÇÇ ÄÚµå, 0º¸´Ù Ûº úÇ×º ¹«½Ã
+        if (value > 0) updateMinMaxRes(value, resistor_direction); //ÀÓÀÇÀÇ ÄÚµå, 0º¸´Ù ÀÛÀº ÀúÇ×Àº ¹«½Ã
         this->resistors.push_back(PEXResistor(item_name, node1, node2, value, resistor_direction));
     }
 }
@@ -3675,7 +3675,7 @@ FormHier::FormHier(QWidget *parent) :
     ui(new Ui::FormHier)
 {
     ui->setupUi(this);
-    // QTableWidget defalut ¬ê¸° ¤ì 
+    // QTableWidget defalut ¬ê¸° ¤ì 
     QStringList defalutTableHeader;
     defalutTableHeader << "LayerName" << "LayerNum" << "LayerType" << "Red" << "Green" << "Blue";
 
@@ -3720,7 +3720,7 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
     QStringList vectorTOqstringlist;
     QStringList vectorTOqstringlistHoriLabels;
 
-// QTableWidget ¬ê¸° ¤ì 
+// QTableWidget ¬ê¸° ¤ì 
     ui->tableWidget->setColumnCount(column);
     ui->tableWidget->setRowCount(row);
 
@@ -3797,31 +3797,20 @@ void FormInfo::receiveFile(T2D &t2d)
 
 void FormInfo::outputText()
 {
+    double rot = pos->rotation;
+    if (rot <0) {
+        rot = rot+360;
+    }
     ui->pos_x->setText(QString::number(round(pos->x*10000)/10000));
     ui->pos_y->setText(QString::number(round(pos->y*10000)/10000));
     ui->pos_z->setText(QString::number(round(pos->z*10000)/10000));
-    ui->ang_tilt->setText(QString::number(round(pos->tilt*10000)/10000));
-    ui->ang_rotation->setText(QString::number(round(pos->rotation*10000)/10000));
-    ui->zoom->setText(QString::number(round(pos->zoom))+"%");
+    ui->ang_tilt->setText(QString::number(round(pos->tilt)));
+    //ui->ang_rotation->setText(QString::number(round(pos->rotation*10000)/10000));
+    ui->ang_rotation->setText(QString::number(round(360-rot)));
+    ui->zoom->setText(QString::number(round(pos->zoom*100))+"%");
 }
 
-void FormInfo::slotInfoText(QString funcName, POS_MONITORING value)
-{
-    if (funcName == "camera_position")
-    {
-        float rot = value.rotation;
-        if(rot <0) {
-            rot = rot+360;
-        }
-        ui->ang_rotation->setText(QString::number(round(rot)));
-        ui->ang_tilt->setText(QString::number(round(value.tilt)));
-        ui->zoom->setText(QString::number(round(value.zoom*100)));
-
-        emit signalPos();
-    }
-}
-
-void FormInfo::slotPos(POS_MONITORING &pos)
+void FormInfo::receivePointPos(POS_MONITORING &pos)
 {
     this->pos = &pos;
     temp_pos.x = pos.x;
@@ -3831,6 +3820,17 @@ void FormInfo::slotPos(POS_MONITORING &pos)
     temp_pos.rotation = pos.rotation;
     temp_pos.zoom = pos.zoom;
     temp_pos.window_zoom = 1;
+}
+
+void FormInfo::changePos()
+{
+    temp_pos.x = pos->x;
+    temp_pos.y = pos->y;
+    temp_pos.z = pos->z;
+    temp_pos.tilt = pos->tilt;
+    temp_pos.rotation = pos->rotation;
+    temp_pos.zoom = pos->zoom;
+    outputText();
 }
 
 void FormInfo::moveRender(float x, float y)
@@ -3851,7 +3851,7 @@ void FormInfo::moveRender(float x, float y)
 bool FormInfo::checkNum(const QString &str)
 {
     if(str.toDouble() == 0 && str != "0")
-    // «ìë¡ë°ê¿¨ë 0ìë° string  0 ë ê²½ì°ë ë¬¸ì
+    // «ìë¡ë°ê¿¨ë 0ìë° string  0 ë ê²½ì°ë ë¬¸ì
     {
         return false;
     }
@@ -3861,21 +3861,32 @@ bool FormInfo::checkNum(const QString &str)
     }
 }
 
-void FormInfo::checkText(double *point, const QString &arg1, double min_limit, double max_limit)
+void FormInfo::checkText(double *point, const QString &arg1, double min_limit, double max_limit, int type)
 {
     double double_arg = arg1.toDouble();
     if(checkNum(arg1)) // «ì¸ì ì
     {
         if(double_arg >= min_limit && double_arg <= max_limit) //tilt
         {
-            *point = double_arg;
+            if (type == 6) //zoom
+            {
+                *point = double_arg/100;
+            }
+            else if (type == 5) //rotation
+            {
+                *point = 360-double_arg;
+            }
+            else
+            {
+                *point = double_arg;
+            }
         }
     }
     else if(arg1.isEmpty() || arg1.contains("-") || arg1.contains("0."))
     {
 
     }    
-    else // ê¸°ì¡´ ê°ì¼ë¡ ì
+    else // ê¸°ì¡´ ê°ì¼ë¡ ì
     {
         outputText();
     }
@@ -3886,14 +3897,16 @@ void FormInfo::on_pos_x_textEdited(const QString &arg1)
 {
     double min_limit = m_min_x;
     double max_limit = m_max_x;
-    checkText(&temp_pos.x,arg1,min_limit,max_limit);
+    int type = 1;
+    checkText(&temp_pos.x,arg1,min_limit,max_limit,type);
 }
 
 void FormInfo::on_pos_y_textEdited(const QString &arg1)
 {
     double min_limit = m_min_y;
     double max_limit = m_max_y;
-    checkText(&temp_pos.y,arg1,min_limit,max_limit);
+    int type = 2;
+    checkText(&temp_pos.y,arg1,min_limit,max_limit,type);
 
 }
 
@@ -3901,28 +3914,32 @@ void FormInfo::on_pos_z_textEdited(const QString &arg1)
 {
     double min_limit = m_min_z;
     double max_limit = m_max_z;
-    checkText(&temp_pos.z,arg1,min_limit,max_limit);
+    int type = 3;
+    checkText(&temp_pos.z,arg1,min_limit,max_limit,type);
 }
 
 void FormInfo::on_ang_tilt_textEdited(const QString &arg1)
 {
     double min_limit = m_min_tilt;
     double max_limit = m_max_tilt;
-    checkText(&temp_pos.tilt,arg1,min_limit,max_limit);
+    int type = 4;
+    checkText(&temp_pos.tilt,arg1,min_limit,max_limit,type);
 }
 
 void FormInfo::on_ang_rotation_textEdited(const QString &arg1)
 {
     double min_limit = m_min_rot;
     double max_limit = m_max_rot;
-    checkText(&temp_pos.rotation,arg1,min_limit,max_limit);
+    int type = 5;
+    checkText(&temp_pos.rotation,arg1,min_limit,max_limit,type);
 }
 
 void FormInfo::on_zoom_textEdited(const QString &arg1)
 {
     double min_limit = m_min_zoom;
     double max_limit = m_max_zoom;
-    checkText(&temp_pos.zoom,arg1,min_limit,max_limit);
+    int type = 6;
+    checkText(&temp_pos.zoom,arg1,min_limit,max_limit,type);
 }
 
 void FormInfo::inputPos()
@@ -3939,7 +3956,7 @@ void FormInfo::inputPos()
                              << pos->tilt << ","
                              << pos->rotation << ","
                              << pos->zoom;
-    emit signalPos();
+    emit signalDirectlyInputPos();
 }
 
 void FormInfo::on_pos_x_returnPressed()
@@ -3994,12 +4011,12 @@ void FormInfo::on_ang_tilt_editingFinished()
 
 void FormInfo::on_ang_rotation_editingFinished()
 {
-    ui->ang_rotation->setText(QString::number(round(temp_pos.rotation*10000)/10000));
+    ui->ang_rotation->setText(QString::number(round((360-temp_pos.rotation)*10000)/10000));
 }
 
 void FormInfo::on_zoom_editingFinished()
 {
-    ui->zoom->setText(QString::number(round(pos->zoom))+"%");
+    ui->zoom->setText(QString::number(round(pos->zoom*100))+"%");
 }
 !@hash[]!@file[]./formlayer.cpp!@hash[]!@code[]#include "formlayer.h"
 #include "ui_formlayer.h"
@@ -4032,7 +4049,7 @@ void FormLayer::ReceiveLayerInformation(T2D &t2d)
 
 void FormLayer::MakeLayerInformationTalbe()
 {
-    // QTableWidget ¬ê¸° ¤ì 
+    // QTableWidget ¬ê¸° ¤ì 
     ui->tableWidget->setColumnCount(table_default_column);
     ui->tableWidget->setRowCount(t2d_layer_information->LayoutData10by10.size());
     ui->tableWidget->setColumnWidth(5,80);
@@ -4047,7 +4064,7 @@ void FormLayer::MakeLayerInformationTalbe()
     }
     MakeHeaderCheckBoxAndSlider();
 
-    // Table Edit ê¸ì, ¤ì¤  í ê¸ì
+    // Table Edit ê¸ì, ¤ì¤  í ê¸ì
     ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
 }
@@ -4105,7 +4122,7 @@ void FormLayer::on_colorbutton_clicked()
 
 void FormLayer::on_opacityslider_valueChanged(int Opacity)
 {
-    // ui->tableWidget->currentRow() ë¡ì°¾ì¼¤ê³  ë©´, current row ê° -1 ë¡ì´
+    // ui->tableWidget->currentRow() ë¡ì°¾ì¼¤ê³  ë©´, current row ê° -1 ë¡ì´
     int sliderrow = -1;
     int sliderrow_for_t2d = -1;
     QString LayerColorname;
@@ -4165,25 +4182,25 @@ void FormLayer::OpacitySliderValueChange(int OpacityValue){
 }
 
 void FormLayer::MakeLayerInformationTableHeader(){
-    QString TalbeHeader[] = {"","COLOR","Layer\nName","Layer\nNum","Layer\nType","Opacity\n"};
+    QString TalbeHeader[] = {"","Color","Layer\nName","Layer\nNum","Layer\nType","Opacity\n"};
     ui->tableWidget->setColumnCount(6);
     ui->tableWidget->setRowCount(10);
-    ui->tableWidget->setColumnWidth(0,15);
-    ui->tableWidget->setColumnWidth(1,50);
-    ui->tableWidget->setColumnWidth(2,60);
-    ui->tableWidget->setColumnWidth(3,60);
-    ui->tableWidget->setColumnWidth(4,60);
-    ui->tableWidget->setColumnWidth(5,80);
+    ui->tableWidget->setColumnWidth(0,20);
+    ui->tableWidget->setColumnWidth(1,40);
+    ui->tableWidget->setColumnWidth(2,40);
+    ui->tableWidget->setColumnWidth(3,40);
+    ui->tableWidget->setColumnWidth(4,40);
+    ui->tableWidget->setColumnWidth(5,60);
 
-    /// TableWidget Title Format ¤ì 
+    /// TableWidget Title Format ¤ì 
     QBrush brush(QColor(255, 255, 255, 255));
     brush.setStyle(Qt::SolidPattern);
     QFont font;
-    font.setPointSize(9);
+    font.setPointSize(8);
     font.setBold(true);
-    font.setWeight(75);
+    font.setWeight(55);
 
-    /// TableWidget Title ë ¥ ë°ë°ì
+    /// TableWidget Title ë ¥ ë°ë°ì
     for (int i=1; i<6; i++){
         QTableWidgetItem *TableHeaderItem = new QTableWidgetItem;
         TableHeaderItem->setText(TalbeHeader[i]);
@@ -4414,6 +4431,54 @@ void FormLayer::EnterPushButtonNewColor(int *selected_color_button_row, QRgb *ol
 #include <QRect>
 #include <QKeyEvent>
 
+SuperItem::SuperItem(QGraphicsItem* parent) : QGraphicsItem(parent)
+{
+    setFlag(QGraphicsItem::ItemIsMovable);
+}
+
+void SuperItem::slotMove(POS_MONITORING *pos)
+{
+    double delta_x = pos->x - m_pos_past_x;
+    double delta_y = pos->y - m_pos_past_y;
+    double rot = 360 - pos->rotation;
+
+    if (delta_x !=0 && delta_y !=0)
+    {
+        qDebug() << "delta x :" << delta_x << " || delta y :" << delta_y;
+        moveBy(delta_x, -1 * delta_y);
+        m_pos_past_x = this->x();
+        m_pos_past_y = this->y();
+    }
+
+
+
+    QTransform trans;
+    trans.rotate(rot);
+    trans.scale(m_view_size*m_zoom_init/pos->zoom, (m_view_size*m_zoom_init/pos->zoom) * (pos->tilt / 90));
+      //zoom ì´ê¸°ê° 25%ë©..
+    setTransform(trans);
+
+}
+
+void SuperItem::slotInitMove(double x, double y)
+{
+    moveBy(x,y);
+}
+
+void SuperItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+{
+    painter->setPen(Qt::red);
+    painter->drawRoundedRect(-88,-88,175,175,5,5);
+    painter->setPen(Qt::blue);
+    painter->drawLine(-86,-86,86,-86);
+}
+
+QRectF SuperItem::boundingRect() const{
+    return QRectF(-89,-89,176,176);
+}
+
+
+
 FormMap::FormMap(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::FormMap)
@@ -4422,66 +4487,52 @@ FormMap::FormMap(QWidget *parent) :
 
 }
 
-void FormMap::receiveSize(float &xMinSize,float &yMinSize,float &xMaxSize,float &yMaxSize, float &zoomScale)
+FormMap::~FormMap()
 {
-    float scale=1;
+    delete ui;
+}
 
-    width = xMaxSize-xMinSize;
-    height = yMaxSize-yMinSize;
-    qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
-    scale = 178/std::max(width,height);
-    width = scale * width;
-    height = scale * height;
-//    float rectScale = 176*zoomScale; ì¶í ë³ê²
-
-    qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
+void FormMap::receiveFile(T2D &t2d)
+{
+    m_width = t2d.LayoutMinMax.maxx - t2d.LayoutMinMax.minx;
+    m_height = t2d.LayoutMinMax.maxy - t2d.LayoutMinMax.miny;
+    m_scale = m_box_size/qMax(m_width,m_height);
+    m_width_scaled = m_scale * m_width;
+    m_height_scaled = m_scale * m_height;
+    double window_width = ui->graphicsView->size().width();
+    double window_height = ui->graphicsView->size().height();
 
     QGraphicsRectItem *rectItem = new QGraphicsRectItem;
     QGraphicsScene *scene = new QGraphicsScene(this);
-    rectItem->setRect(-(width/2),-(height/2),width,height);
+    rectItem->setRect(-(m_width_scaled/2),-(m_height_scaled/2),m_width_scaled,m_height_scaled);
     rectItem->setBrush(QBrush(QColor(Qt::gray)));
+    rectItem->setPos(window_width/2,-window_height/2); //ì¢ì¸¡ (0,0) ì ë¶ì¤ì¼ë¡ ´ë
     scene->addItem(rectItem);
+            //
 
     SuperItem *super = new SuperItem;
     scene->addItem(super);
+
     QObject::connect(this,&FormMap::signalMove,super,&SuperItem::slotMove);
+    QObject::connect(this,&FormMap::signalInitMove,super,&SuperItem::slotInitMove);
+
+    emit signalInitMove(window_width/2,-window_height/2);
 
     ui->graphicsView->setScene(scene);
 
 }
 
-
-void FormMap::receiveSize_t2d(double &xMinSize,double &yMinSize,double &xMaxSize,double &yMaxSize, double &zoomScale)
+void FormMap::receivePointPos(POS_MONITORING &pos)
 {
-    float scale=1;
-
-    width = xMaxSize-xMinSize;
-    height = yMaxSize-yMinSize;
-    qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
-    scale = 178/std::max(width,height);
-    width = scale * width;
-    height = scale * height;
-//    float rectScale = 176*zoomScale; ì¶í ë³ê²
-
-    qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
-
-    QGraphicsRectItem *rectItem = new QGraphicsRectItem;
-    QGraphicsScene *scene = new QGraphicsScene(this);
-    rectItem->setRect(-(width/2),-(height/2),width,height);
-    rectItem->setBrush(QBrush(QColor(Qt::gray)));
-    scene->addItem(rectItem);
-
-    SuperItem *super = new SuperItem;
-    scene->addItem(super);
-    QObject::connect(this,&FormMap::signalMove,super,&SuperItem::slotMove);
-
-    ui->graphicsView->setScene(scene);
-
+    this->pos = &pos;
+}
+void FormMap::changePos()
+{
+    emit signalMove(pos);
 }
 
-void FormMap::slotInfoText(QString funcName, POS_MONITORING value)
 
-{
+
 
     //if (funcName == "moveGdsX")
     //{
@@ -4515,7 +4566,7 @@ void FormMap::slotInfoText(QString funcName, POS_MONITORING value)
     //}
     //if (funcName == "moveZoom")
     //{
-    //    infoZoom = infoZoom + infoZoom*value/1500;        //¼ì  ì´ë¥100% ë¡¤ì ì ì, ê²°êµ­ ì´ê¸°ê°ì GDS Size °ë¼ ë°ëì.
+    //    infoZoom = infoZoom + infoZoom*value/1500;        //¼ì  ì´ë¥100% ë¡¤ì ì ì, ê²°êµ­ ì´ê¸°ê°ì GDS Size °ë¼ ë°ëì.
     //    if (infoZoom < 0.01)
     //        infoZoom = 0.01;
     //    if (infoZoom > 100)
@@ -4538,64 +4589,7 @@ void FormMap::slotInfoText(QString funcName, POS_MONITORING value)
     //    initPointY = pointY;
     //    initPointZ = pointZ;
     //}
-}
-
-FormMap::~FormMap()
-{
-    delete ui;
-}
-
-SuperItem::SuperItem(QGraphicsItem* parent) : QGraphicsItem(parent)
-{
-    setFlag(QGraphicsItem::ItemIsMovable);
-}
-
-
-
-QRectF SuperItem::boundingRect() const{
-    return QRectF(-88,-88,175,175);
-}
-
-void SuperItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
-{
-    painter->setPen(Qt::red);
-    painter->drawRoundedRect(-88,-88,175,175,5,5);
-
-
-}
-
-void SuperItem::slotMove(float x, float y, float zoom, float rot, float tilt)
-{
-    QTransform trans;
-
-    if (zoom != 0)
-    {
-        _zoom = zoom;
-    }
-    if (rot != 999)
-    {
-        _rot = rot;
-    }
-    if (tilt != 999)
-    {
-        _tilt = tilt;
-    }
-    trans.rotate(_rot);
-    trans.scale(_zoom, _zoom*_tilt/90);
-    setTransform(trans);
-
-    if (x + y !=0)
-    {
-        moveBy(x, -y);
-        qDebug() << "pos : " << pos();
-    }
-
-
-
-
-
-
-}
+//}
 
 //void SuperItem::keyPressEvent(QKeyEvent *event){
 //    switch(event->key()){
@@ -4628,7 +4622,6 @@ void SuperItem::slotMove(float x, float y, float zoom, float rot, float tilt)
 #include <QMap>
 #include <iostream>
 #include <QDebug>
-#include <excpt.h>
 
 
 FormTop::FormTop(QWidget *parent) :
@@ -4679,7 +4672,7 @@ void FormTop::drawing()
     areaFilterRect();
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment  ë¹êµì¬ for skip
+        //layer_enviroment  ë¹êµì¬ for skip
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
         for(int row = m_begin_row ; row < m_end_row ; row++)
         {
@@ -4707,7 +4700,7 @@ void FormTop::drawingClear()
 
 }
 
-void FormTop::slotPos(POS_MONITORING &pos)
+void FormTop::receivePointPos(POS_MONITORING &pos)
 {
     this->pos = &pos;
     temp_pos.x = pos.x;
@@ -4715,8 +4708,7 @@ void FormTop::slotPos(POS_MONITORING &pos)
 }
 
 void FormTop::changePos()
-{
-    qDebug() << "change pos";
+{    
     if(temp_pos.x != pos->x || temp_pos.y != pos->y)
     {
         m_min_x_size = pos->x - m_area / m_area_scale;
@@ -4736,14 +4728,14 @@ void FormTop::on_horizontalSlider_valueChanged(int value)
 {
     m_area = value;
 
-    if(error_temp == 0)
+    if(init_check)
     {
         qDebug() << "pos init";
         m_min_x_size = 0 - m_area / m_area_scale;
         m_max_x_size = 0 + m_area / m_area_scale;
         m_min_y_size = 0 - m_area / m_area_scale;
         m_max_y_size = 0 + m_area / m_area_scale;
-        error_temp += 1;
+        init_check = false;
     }
     else
     {
@@ -4812,7 +4804,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
 
     double minx, maxx, miny, maxy;
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
     {
         minx = m_min_x_size;
     }
@@ -4821,7 +4813,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         minx = rendering_full->LayoutData10by10[layer].xy[row][col][n].minx;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > m_max_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > m_max_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
     {
         maxx = m_max_x_size;
     }
@@ -4830,7 +4822,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         maxx = rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < m_min_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < m_min_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
     {
         miny = m_min_y_size;
     }
@@ -4839,7 +4831,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         miny = rendering_full->LayoutData10by10[layer].xy[row][col][n].miny;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_max_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_max_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
     {
         maxy = m_max_y_size;
     }
@@ -4886,7 +4878,7 @@ void FormTop::areaFilterRect()
     //layer
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment  ë¹êµì¬ for skip
+        //layer_enviroment  ë¹êµì¬ for skip
 
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
 
@@ -5219,43 +5211,49 @@ MainWindow::MainWindow(LveWindow *w)
     QWidget *wrapper = QWidget::createWindowContainer(w);
     ui->graphicsView->setViewport(wrapper);
 
-    QDockWidget *dockHier = new QDockWidget(tr("Hierarchy"), this);
+    dockHier = new QDockWidget(tr("Hierarchy"), this);
     dockHier->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockHier->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    dockHier->setObjectName("DockWidgetHier");
     addDockWidget(Qt::RightDockWidgetArea, dockHier);
     formHier = new FormHier;
     dockHier->setWidget(formHier);
 
-    QDockWidget *dockLayer = new QDockWidget(tr("Layer Information"), this);
+    dockLayer = new QDockWidget(tr("Layer Information"), this);
     dockLayer->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockLayer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    dockLayer->setObjectName("DockWidgetLayer");
     addDockWidget(Qt::RightDockWidgetArea, dockLayer);
     formLayer = new FormLayer(this->m_window);
     dockLayer->setWidget(formLayer);
 
-    QDockWidget *dockMap = new QDockWidget(tr("Map"), this);
+    dockMap = new QDockWidget(tr("Map"), this);
     dockMap->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockMap->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    dockMap->setObjectName("DockWidgetMap");
     addDockWidget(Qt::LeftDockWidgetArea, dockMap);
     formMap = new FormMap;
     dockMap->setWidget(formMap);
 
-    QDockWidget *dockTop = new QDockWidget(tr("Topview"), this);
+    dockTop = new QDockWidget(tr("Topview"), this);
     dockTop->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    dockTop->setObjectName("DockWidgetTop");
     addDockWidget(Qt::LeftDockWidgetArea, dockTop);
     formTop = new FormTop;
     dockTop->setWidget(formTop);
 
-    QDockWidget *dockInfo = new QDockWidget(tr("Info"), this);
+    dockInfo = new QDockWidget(tr("Info"), this);
     dockInfo->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockInfo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    dockInfo->setObjectName("DockWidgetInfo");
     addDockWidget(Qt::LeftDockWidgetArea, dockInfo);
     formInfo = new FormInfo;
     dockInfo->setWidget(formInfo);
 
     resizeDocks({dockInfo, dockTop, dockMap, dockLayer, dockHier}, {200,200}, Qt::Horizontal);
     resizeDocks({dockTop, dockMap}, {200,200}, Qt::Vertical);
+    resizeDocks({dockLayer, dockHier}, {350,300}, Qt::Vertical);
 
     input_dataS = new all_data;
 
@@ -5267,9 +5265,9 @@ MainWindow::MainWindow(LveWindow *w)
     pos.rotation = 0;
     pos.zoom = 1;
     pos.window_zoom = 1;
-    formInfo->slotPos(pos);
-    formTop->slotPos(pos);
-
+    formMap->receivePointPos(pos);
+    formTop->receivePointPos(pos);
+    formInfo->receivePointPos(pos);
 
     /// connect ////////////////////
     QObject::connect(ui->actionOpen_file, SIGNAL(triggered()), this, SLOT(on_actionOpen_file_triggered));
@@ -5277,7 +5275,7 @@ MainWindow::MainWindow(LveWindow *w)
     QObject::connect(input_dataS, SIGNAL(sendSplitData(int, int, const QVector <QVector <QString>> &)), formHier, SLOT(ReceiveSplitData(int, int, const QVector <QVector <QString>> &)));
     QObject::connect(input_dataS, SIGNAL(sendSplitData(int, int, const QVector <QVector <QString>> &)), formLayer, SLOT(ReceiveSplitData(int, int, const QVector <QVector <QString>> &)));
     QObject::connect(formLayer, SIGNAL(outputLayerStatus(QString)), this, SLOT(inputLayerStatus(QString)));
-    QObject::connect(formInfo, SIGNAL(signalPos()), this, SLOT(slotPos()));
+    QObject::connect(formInfo, SIGNAL(signalDirectlyInputPos()), this, SLOT(slotDirectlyInputPos()));
 }
 
 void MainWindow::shareGeo(QRect size)
@@ -5294,28 +5292,57 @@ MainWindow::~MainWindow()
 
 void MainWindow::slotInfoText(QString funcName, POS_MONITORING value)
 {
-    formInfo->slotInfoText(funcName,value);
-    formMap->slotInfoText(funcName,value);
-    //qDebug() << "slotInfoText" << funcName << value.x << " "<< value.y << " "<< value.z << " ";
-///// temp //////
-    QString text = funcName + " : " ;
-    for (int i = text.size() ; i < 30 ; i++)
+
+    if(value.x != pos_past.x ||
+       value.y != pos_past.y ||
+       value.z != pos_past.z ||
+       (value.tilt - pos_past.tilt) > 0.01 ||
+       (value.rotation - pos_past.rotation) > 0.01 ||
+       value.zoom != pos_past.zoom)
     {
-        text.append(" ");
+
+        qDebug()<< "changePos";
+
+        pos.x = value.x;
+        pos.y = value.y;
+        pos.z = value.z;
+        pos.tilt = value.tilt;
+        pos.rotation = value.rotation;
+        pos.zoom = value.zoom;
+
+        formMap->changePos();
+        formTop->changePos();
+        formInfo->changePos();
+
+        pos_past.x = pos.x;
+        pos_past.y = pos.y;
+        pos_past.z = pos.z;
+        pos_past.tilt = pos.tilt;
+        pos_past.rotation = pos.rotation;
+        pos_past.zoom = pos.zoom;
     }
 
-    statusText.prepend(text);
 
-    if (statusText.size() > 120)
-        statusText.remove(120,statusText.size()-120);
-    ui->statusbar->showMessage(statusText);
+    //qDebug() << "slotInfoText" << funcName << value.x << " "<< value.y << " "<< value.z << " ";
+///// temp //////
+//    QString text = funcName + " : " ;
+//    for (int i = text.size() ; i < 30 ; i++)
+//    {
+//        text.append(" ");
+//    }
+
+//    statusText.prepend(text);
+
+//    if (statusText.size() > 120)
+//        statusText.remove(120,statusText.size()-120);
+//    ui->statusbar->showMessage(statusText);
 
 }
 
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "ì¼  í",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "ì¼  í",".","Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
@@ -5337,7 +5364,7 @@ void MainWindow::inputPosInformation()
 
 void MainWindow::on_actionOpen_Layout_triggered()
 {
-    QString file_name = QFileDialog::getOpenFileName(this, "ì¼  í",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "ì¼  í",".","Files(*.*)");
     DtaoRenderSystem * renderer = this->m_window->getRenderer();
 
     //renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
@@ -5389,9 +5416,6 @@ void MainWindow::on_actionOpen_DB_triggered(){
         pos.zoom = 1;
         formInfo->outputText();
 
-        double zoomScale = std::max(t2d.LayoutMinMax.maxx-t2d.LayoutMinMax.minx ,t2d.LayoutMinMax.maxy-t2d.LayoutMinMax.miny)/10;
-        formMap->receiveSize_t2d(t2d.LayoutMinMax.minx,t2d.LayoutMinMax.miny,t2d.LayoutMinMax.maxx,t2d.LayoutMinMax.maxy,zoomScale);
-
         //to top data
 
 
@@ -5401,7 +5425,8 @@ void MainWindow::on_actionOpen_DB_triggered(){
 
         formInfo->receiveFile(t2d);
         formTop->receiveFile(t2d);
-        formLayer->ReceiveLayerInformation(t2d);
+        formMap->receiveFile(t2d);
+        formLayer->ReceiveLayerInformation(t2d);        
         //test
 
 
@@ -5412,26 +5437,87 @@ void MainWindow::on_actionOpen_DB_triggered(){
 
 }
 
-void MainWindow::slotPos()
+void MainWindow::slotDirectlyInputPos() //point info ì ì§ì  ë ¥ê²½ì°
 {
+    formMap->changePos();
     formTop->changePos();
+    //ì²­¬í­ 230324 vulkan ìì ¬ê¸°¤í
 }
-
-
-
-
-
-
-
-
-
-
-
 
 void MainWindow::on_actionTop_triggered()
 {
     qDebug() << "go?";
     //cocococo
+}
+
+void MainWindow::on_docker_Map_triggered()
+{
+    if (dockMap->isHidden()){
+        MainWindow::restoreGeometry(dock_widget_geometry);
+        MainWindow::restoreState(dock_widget_state);
+        dockLayer->show();
+
+    } else {
+        dock_widget_geometry = MainWindow::saveGeometry();
+        dock_widget_state = MainWindow::saveState();
+        dockMap->hide();
+    }
+}
+
+void MainWindow::on_docker_TopView_triggered()
+{
+    if (dockTop->isHidden()){
+        MainWindow::restoreGeometry(dock_widget_geometry);
+        MainWindow::restoreState(dock_widget_state);
+        dockTop->show();
+
+    } else {
+        dock_widget_geometry = MainWindow::saveGeometry();
+        dock_widget_state = MainWindow::saveState();
+        dockTop->hide();
+    }
+}
+
+void MainWindow::on_docker_Info_triggered()
+{
+    if (dockInfo->isHidden()){
+        MainWindow::restoreGeometry(dock_widget_geometry);
+        MainWindow::restoreState(dock_widget_state);
+        dockInfo->show();
+
+    } else {
+        dock_widget_geometry = MainWindow::saveGeometry();
+        dock_widget_state = MainWindow::saveState();
+        dockInfo->hide();
+    }
+}
+
+void MainWindow::on_docker_Hier_triggered()
+{
+    if (dockHier->isHidden()){
+        MainWindow::restoreGeometry(dock_widget_geometry);
+        MainWindow::restoreState(dock_widget_state);
+        dockHier->show();
+
+    } else {
+        dock_widget_geometry = MainWindow::saveGeometry();
+        dock_widget_state = MainWindow::saveState();
+        dockHier->hide();
+    }
+}
+
+void MainWindow::on_docker_Layer_triggered()
+{
+    if (dockLayer->isHidden()){
+        MainWindow::restoreGeometry(dock_widget_geometry);
+        MainWindow::restoreState(dock_widget_state);
+        dockLayer->show();
+
+    } else {
+        dock_widget_geometry = MainWindow::saveGeometry();
+        dock_widget_state = MainWindow::saveState();
+        dockLayer->hide();
+    }
 }
 !@hash[]!@file[]./Rendering/Src/LayoutModel.h!@hash[]!@code[]#pragma once
 
@@ -6830,15 +6916,15 @@ public:
     ~FormInfo();
     void receiveFile(T2D &t2d);
     void outputText();
+    void receivePointPos(POS_MONITORING &pos);
+    void changePos();
 
 public slots:
-    void slotInfoText(QString funcName, POS_MONITORING value);
-    void slotPos(POS_MONITORING &pos);
     void moveRender(float x, float y);
 
 private:
     bool checkNum(const QString &str);
-    void checkText(double *point, const QString &str, double min_limit, double max_limit);
+    void checkText(double *point, const QString &str, double min_limit, double max_limit, int type);
 
     T2D *rendering_full;
     Ui::FormInfo *ui;
@@ -6849,7 +6935,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
+    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
 
     float initRot = 0;
     float initTilt = 90;
@@ -6877,11 +6963,11 @@ private:
     double m_max_tilt = 90;
     double m_min_rot = 0;
     double m_max_rot = 360;
-    double m_min_zoom = 1;
-    double m_max_zoom = 9999;
+    double m_min_zoom = 0.01;
+    double m_max_zoom = 999;
 
 signals:
-    void signalPos();
+    void signalDirectlyInputPos();
 private slots:
     void on_pos_x_textEdited(const QString &arg1);
     void on_pos_y_textEdited(const QString &arg1);
@@ -6980,6 +7066,7 @@ signals:
 #include <QDialog>
 #include <QGraphicsRectItem>
 #include "defineParam.h"
+#include "T2D.h"
 
 namespace Ui {
 class FormMap;
@@ -6991,18 +7078,23 @@ class SuperItem : public QObject, public QGraphicsItem
 public:
     SuperItem(QGraphicsItem* parent = NULL);
 public slots:
-    void slotMove(float x, float y, float zoom, float rot, float tilt);    
+    void slotMove(POS_MONITORING *pos);
+    void slotInitMove(double x, double y);
 
 protected:
     void paint(QPainter *painter,
                const QStyleOptionGraphicsItem *option,
-               QWidget *widget);
+               QWidget *widget);    
     QRectF boundingRect() const;
 
+
 //    virtual void keyPressEvent(QKeyEvent *evnet);
-    float _zoom = 1;
-    float _rot = 0;
-    float _tilt = 90;
+
+private:
+    double m_pos_past_x = 0;
+    double m_pos_past_y = 0;
+    double m_view_size = 1;
+    double m_zoom_init = 1;
 
 };
 
@@ -7013,30 +7105,36 @@ class FormMap : public QDialog
 public:
     explicit FormMap(QWidget *parent = nullptr);
     ~FormMap();
-    void receiveSize(float &xMinSize,float &yMinSize,float &xMaxSize,float &yMaxSize, float &zoomScale);
-    void receiveSize_t2d(double &xMinSize,double &yMinSize,double &xMaxSize,double &yMaxSize, double &zoomScale);
-
-public slots:
-    void slotInfoText(QString funcName, POS_MONITORING value);
+    void receiveFile(T2D &t2d);
+    void receivePointPos(POS_MONITORING &pos);
+    void changePos();
 
 signals:
-    void signalMove(float x, float y, float zoom, float rot, float tilt);
+    void signalMove(POS_MONITORING *pos);
+    void signalInitMove(double x, double y);
 
-private:
+private:    
     Ui::FormMap *ui;
     QGraphicsRectItem *rectItem;
     QGraphicsRectItem *rectItem2;
     QRect *rect;
-    float width;
-    float height;
+    double m_width;
+    double m_height;
+    double m_scale = 1;
+    double m_box_size = 178;
+    double m_width_scaled;
+    double m_height_scaled;
+
     SuperItem *super;
+
+    POS_MONITORING *pos;
 
     float pointX = 0;
     float pointY = 0;
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
+    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
 
     float initRot = 0;
     float initTilt = 90;
@@ -7076,7 +7174,7 @@ public:
     void receiveFile(T2D &t2d);
     void drawing();
     void drawingClear();
-    void slotPos(POS_MONITORING &pos);
+    void receivePointPos(POS_MONITORING &pos);
     void changePos();
 //    void receiveFile(QVector<QList<float>> **mapFile);
 
@@ -7097,7 +7195,7 @@ private:
     QTransform trans;
     int m_begin_x = 0, m_begin_y = 0, m_end_x = 1, m_end_y = 1, m_scale = 500;
     float m_min_x = 0, m_min_y =0, m_max_x =0, m_max_y=0;
-    int error_temp = 0;
+    bool init_check = true;
 
     int m_begin_row = 0, m_end_row = 1, m_begin_col = 0, m_end_col = 1;
     int m_block_size = 10; //10um
@@ -7185,9 +7283,14 @@ signals:
 private slots:
     void on_actionOpen_Layout_triggered();
     void on_actionOpen_DB_triggered();
-    void slotPos();
+    void slotDirectlyInputPos();
 
     void on_actionTop_triggered();
+    void on_docker_TopView_triggered();
+    void on_docker_Map_triggered();
+    void on_docker_Info_triggered();
+    void on_docker_Hier_triggered();
+    void on_docker_Layer_triggered();
 
 private:
     LveWindow *m_window;
@@ -7198,12 +7301,23 @@ private:
     FormTop *formTop;
     FormInfo *formInfo;
     FormMap *formMap;
+    QDockWidget *dockHier;
+    QDockWidget *dockLayer;
+    QDockWidget *dockMap;
+    QDockWidget *dockTop;
+    QDockWidget *dockInfo;
     SuperItem *superItem;
     QRect *windowSize;
     FileDb *fileDb;
     all_data *input_dataS;
     QStringList split_data;
     POS_MONITORING pos;
+    POS_MONITORING pos_past;
+    QByteArray dock_widget_geometry;
+    QByteArray dock_widget_state;
+
+
+
 };
 
 #endif // MAINWINDOW_H
@@ -7215,19 +7329,13 @@ private:
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>510</width>
+    <width>320</width>
     <height>300</height>
    </rect>
   </property>
-  <property name="sizePolicy">
-   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-    <horstretch>0</horstretch>
-    <verstretch>0</verstretch>
-   </sizepolicy>
-  </property>
   <property name="minimumSize">
    <size>
-    <width>450</width>
+    <width>320</width>
     <height>100</height>
    </size>
   </property>
@@ -7247,13 +7355,13 @@ private:
        </property>
        <property name="minimumSize">
         <size>
-         <width>260</width>
-         <height>100</height>
+         <width>0</width>
+         <height>0</height>
         </size>
        </property>
        <property name="baseSize">
         <size>
-         <width>260</width>
+         <width>300</width>
          <height>100</height>
         </size>
        </property>
@@ -7533,20 +7641,20 @@ private:
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>450</width>
-    <height>600</height>
+    <width>320</width>
+    <height>400</height>
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
   <property name="minimumSize">
    <size>
-    <width>450</width>
-    <height>300</height>
+    <width>320</width>
+    <height>0</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -7563,6 +7671,12 @@ private:
     <layout class="QGridLayout" name="gridLayout">
      <item row="0" column="0">
       <widget class="QTableWidget" name="tableWidget">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="focusPolicy">
         <enum>Qt::ClickFocus</enum>
        </property>
@@ -7745,6 +7859,12 @@ private:
     <bool>false</bool>
    </attribute>
    <addaction name="actionTop"/>
+   <addaction name="separator"/>
+   <addaction name="docker_Map"/>
+   <addaction name="docker_TopView"/>
+   <addaction name="docker_Info"/>
+   <addaction name="docker_Hier"/>
+   <addaction name="docker_Layer"/>
   </widget>
   <action name="actionOpen_file">
    <property name="text">
@@ -7769,6 +7889,71 @@ private:
   <action name="actionTop">
    <property name="text">
     <string>Top</string>
+   </property>
+  </action>
+  <action name="docker_Map">
+   <property name="icon">
+    <iconset>
+     <normaloff>ImageFile/Map_Icon_50by50.png</normaloff>
+     <normalon>ImageFile/box-shadow.png</normalon>ImageFile/Map_Icon_50by50.png</iconset>
+   </property>
+   <property name="text">
+    <string>docker_Map</string>
+   </property>
+   <property name="toolTip">
+    <string>docker_Map</string>
+   </property>
+  </action>
+  <action name="docker_TopView">
+   <property name="icon">
+    <iconset>
+     <normalon>ImageFile/Top_View_Icon_50by50.png</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>docker_TopView</string>
+   </property>
+   <property name="toolTip">
+    <string>docker_TopView</string>
+   </property>
+  </action>
+  <action name="docker_Info">
+   <property name="icon">
+    <iconset>
+     <normalon>ImageFile/Info_Icon_50by50.png</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>docker_Info</string>
+   </property>
+   <property name="toolTip">
+    <string>docker_Info</string>
+   </property>
+  </action>
+  <action name="docker_Hier">
+   <property name="icon">
+    <iconset>
+     <normalon>ImageFile/Hier_Icon_50by50.png</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>docker_Hier</string>
+   </property>
+   <property name="toolTip">
+    <string>docker_Hier</string>
+   </property>
+  </action>
+  <action name="docker_Layer">
+   <property name="icon">
+    <iconset>
+     <normalon>ImageFile/Layer_Icon_50by50.png</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>docker_Layer</string>
+   </property>
+   <property name="toolTip">
+    <string>docker_Layer</string>
    </property>
   </action>
  </widget>
@@ -7856,6 +8041,7 @@ RESOURCES += \
     Resources.qrc
 
 DISTFILES += \
+    ImageFile/box-shadow.png \
     Rendering/Data/MVP_PEX_RC_r1_0130.csv \
     Rendering/Data/MVP_PEX_RC_r1_0130_0208version.csv \
     Rendering/Data/big_test_espin.csv \
@@ -7892,4 +8078,5 @@ INCLUDEPATH += $$PWD/../../Library/VulkanSDK/1.3.239.0/Lib
 DEPENDPATH += $$PWD/../../Library/VulkanSDK/1.3.239.0/Lib
 
 INCLUDEPATH += $$PWD/../../Library/glm-0.9.9.8/glm
+
 
