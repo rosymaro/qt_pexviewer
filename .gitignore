@@ -18,6 +18,9 @@ object_script.*
 *.userosscache
 *.sln.docstates
 *.sln
+user*
+ui_*.h
+*_back
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

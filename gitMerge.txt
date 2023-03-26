@@ -1069,7 +1069,7 @@ void PEXResistorDataManager::loadData(const std::string file_path) {
 
         description = line[PEXINFO_INDEX::PEXINFO_INDEX_DESCRIPTION];
         PEXResDirection resistor_direction = PEXResistor::checkDirectionFromDescription(description);
-        if (value > 0) updateMinMaxRes(value, resistor_direction); //ÀÓÀÇÀÇ ÄÚµå, 0º¸´Ù ÀÛÀº ÀúÇ×Àº ¹«½Ã
+        if (value > 0) updateMinMaxRes(value, resistor_direction); //ÓÇÇ ÄÚµå, 0º¸´Ù Ûº úÇ×º ¹«½Ã
         this->resistors.push_back(PEXResistor(item_name, node1, node2, value, resistor_direction));
     }
 }
@@ -3851,7 +3851,7 @@ void FormInfo::moveRender(float x, float y)
 bool FormInfo::checkNum(const QString &str)
 {
     if(str.toDouble() == 0 && str != "0")
-    // «ìë¡ë°ê¿¨ë 0ìë° string  0 ë ê²½ì°ë ë¬¸ì
+    // «ìë¡ë°ê¿¨ë 0ìë° string  0 ë ê²½ì°ë ë¬¸ì
     {
         return false;
     }
@@ -4122,7 +4122,7 @@ void FormLayer::on_colorbutton_clicked()
 
 void FormLayer::on_opacityslider_valueChanged(int Opacity)
 {
-    // ui->tableWidget->currentRow() ë¡ì°¾ì¼¤ê³  ë©´, current row ê° -1 ë¡ì´
+    // ui->tableWidget->currentRow() ë¡ì°¾ì¼¤ê³  ë©´, current row ê° -1 ë¡ì´
     int sliderrow = -1;
     int sliderrow_for_t2d = -1;
     QString LayerColorname;
@@ -4436,32 +4436,42 @@ SuperItem::SuperItem(QGraphicsItem* parent) : QGraphicsItem(parent)
     setFlag(QGraphicsItem::ItemIsMovable);
 }
 
-void SuperItem::slotMove(POS_MONITORING *pos)
+void SuperItem::receivePointPos(POS_MONITORING *pos)
 {
-    double delta_x = pos->x - m_pos_past_x;
-    double delta_y = pos->y - m_pos_past_y;
-    double rot = 360 - pos->rotation;
+    this->m_pos = pos;
+}
 
-    if (delta_x !=0 && delta_y !=0)
+void SuperItem::slotMove()
+{
+    qDebug() << "1 pos delta x :" << m_pos->x << " || delta y :" << m_pos->y;
+    qDebug() << "2 pas delta x :" << m_pos_past_x << " || delta y :" << m_pos_past_y;
+    double delta_x = m_scale*(m_pos->x - m_pos_past_x);
+    double delta_y = m_scale*(m_pos->y - m_pos_past_y);
+    double rot = 360 - m_pos->rotation;
+
+    if (delta_x !=0 || delta_y !=0)
     {
         qDebug() << "delta x :" << delta_x << " || delta y :" << delta_y;
         moveBy(delta_x, -1 * delta_y);
-        m_pos_past_x = this->x();
-        m_pos_past_y = this->y();
+        m_pos_past_x = m_pos->x;
+        m_pos_past_y = m_pos->y;
     }
 
 
 
     QTransform trans;
     trans.rotate(rot);
-    trans.scale(m_view_size*m_zoom_init/pos->zoom, (m_view_size*m_zoom_init/pos->zoom) * (pos->tilt / 90));
-      //zoom ì´ê¸°ê° 25%ë©..
+    trans.scale(m_view_size*m_zoom_init/m_pos->zoom, (m_view_size*m_zoom_init/m_pos->zoom) * (m_pos->tilt / 90));
+      //zoom ì´ê¸°ê° 25%ë©..
     setTransform(trans);
 
 }
 
-void SuperItem::slotInitMove(double x, double y)
+void SuperItem::slotInitMove(double x, double y, double scale)
 {
+    m_pos_past_x = m_pos->x;
+    m_pos_past_y = m_pos->y;
+    m_scale = scale;
     moveBy(x,y);
 }
 
@@ -4484,6 +4494,7 @@ FormMap::FormMap(QWidget *parent) :
     ui(new Ui::FormMap)
 {
     ui->setupUi(this);
+    super = new SuperItem;
 
 }
 
@@ -4506,29 +4517,32 @@ void FormMap::receiveFile(T2D &t2d)
     QGraphicsScene *scene = new QGraphicsScene(this);
     rectItem->setRect(-(m_width_scaled/2),-(m_height_scaled/2),m_width_scaled,m_height_scaled);
     rectItem->setBrush(QBrush(QColor(Qt::gray)));
-    rectItem->setPos(window_width/2,-window_height/2); //ì¢ì¸¡ (0,0) ì ë¶ì¤ì¼ë¡ ´ë
+    rectItem->setPos(window_width/2,-window_height/2); //ì¢ì¸¡ (0,0) ì ë¶ì¤ì¼ë¡ ´ë
     scene->addItem(rectItem);
+    scene->setSceneRect(0,-m_box_size,m_box_size,m_box_size);
             //
 
-    SuperItem *super = new SuperItem;
     scene->addItem(super);
 
     QObject::connect(this,&FormMap::signalMove,super,&SuperItem::slotMove);
     QObject::connect(this,&FormMap::signalInitMove,super,&SuperItem::slotInitMove);
 
-    emit signalInitMove(window_width/2,-window_height/2);
+    emit signalInitMove(window_width/2,-window_height/2,m_scale);
 
     ui->graphicsView->setScene(scene);
+    ui->graphicsView->setFixedSize(m_box_size,m_box_size);
+    ui->graphicsView->setRenderHint(QPainter::Antialiasing);
 
 }
 
 void FormMap::receivePointPos(POS_MONITORING &pos)
 {
     this->pos = &pos;
+    super->receivePointPos(this->pos);
 }
 void FormMap::changePos()
 {
-    emit signalMove(pos);
+    emit signalMove();
 }
 
 
@@ -4566,7 +4580,7 @@ void FormMap::changePos()
     //}
     //if (funcName == "moveZoom")
     //{
-    //    infoZoom = infoZoom + infoZoom*value/1500;        //¼ì  ì´ë¥100% ë¡¤ì ì ì, ê²°êµ­ ì´ê¸°ê°ì GDS Size °ë¼ ë°ëì.
+    //    infoZoom = infoZoom + infoZoom*value/1500;        //¼ì  ì´ë¥100% ë¡¤ì ì ì, ê²°êµ­ ì´ê¸°ê°ì GDS Size °ë¼ ë°ëì.
     //    if (infoZoom < 0.01)
     //        infoZoom = 0.01;
     //    if (infoZoom > 100)
@@ -4670,9 +4684,15 @@ void FormTop::receiveFile(T2D &t2d)
 void FormTop::drawing()
 {
     areaFilterRect();
+    if(m_begin_row == 0 && m_begin_col ==0 && zero_point)
+    {
+        addZeroPoint();
+        zero_point = false;
+    }
+
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment  ë¹êµì¬ for skip
+        //layer_enviroment  ë¹êµì¬ for skip
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
         for(int row = m_begin_row ; row < m_end_row ; row++)
         {
@@ -4697,6 +4717,7 @@ void FormTop::drawingClear()
         delete cur_item;
     }
     rectItemList.clear();
+    zero_point = true;
 
 }
 
@@ -4721,6 +4742,8 @@ void FormTop::changePos()
 
         drawingClear();
         drawing();
+        ui->graphicsView->setTransform(QTransform().translate(m_scale*pos->x, -1*m_scale*pos->y));
+        qDebug() << "transpose : "<<QTransform().transposed();
     }
 }
 
@@ -4750,9 +4773,20 @@ void FormTop::on_horizontalSlider_valueChanged(int value)
     }
 }
 
+void FormTop::addZeroPoint()
+{
+    qDebug() << "drawing or not?";
+    QGraphicsRectItem *zeroItem = new QGraphicsRectItem;
+    rectItemList.push_back(zeroItem);
+    zeroItem->setRect(m_scale*rendering_full->LayoutMinMax.minx,m_scale*rendering_full->LayoutMinMax.miny,m_scale*0.01,m_scale*0.01);
+    zeroItem->setBrush(QBrush(QColor(Qt::red)));
+    zeroItem->setZValue(9999);
+    m_scene->addItem(zeroItem);
+}
+
+
 void FormTop::addRectItem(int layer, int row, int col, int n, QTransform trans)
 {
-
     QGraphicsRectItem *rectItem = new QGraphicsRectItem;
     rectItemList.push_back(rectItem);
 
@@ -4766,9 +4800,7 @@ void FormTop::addRectItem(int layer, int row, int col, int n, QTransform trans)
 
     rectItem->setRect(x,y,w,h);
     rectItem->setBrush(QBrush(QColor(rendering_full->LayoutData10by10[layer].color.r,rendering_full->LayoutData10by10[layer].color.g,rendering_full->LayoutData10by10[layer].color.b,rendering_full->LayoutData10by10[layer].color.a)));
-    rectItem->setOpacity(opacity);
-    qDebug()<< " rect    : " << rectItem->rect() << ":: row/col : " << row << "/" << col << " " << n;
-    qDebug()<< " opacity : " << rendering_full->LayoutData10by10[layer].color.a << " : " << opacity;
+    rectItem->setOpacity(opacity); 
     rectItem->setZValue(rendering_full->LayoutData10by10[layer].bot);
 
     rectItem->setTransform(trans);
@@ -4804,7 +4836,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
 
     double minx, maxx, miny, maxy;
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
     {
         minx = m_min_x_size;
     }
@@ -4813,7 +4845,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         minx = rendering_full->LayoutData10by10[layer].xy[row][col][n].minx;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > m_max_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > m_max_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
     {
         maxx = m_max_x_size;
     }
@@ -4822,7 +4854,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         maxx = rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < m_min_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < m_min_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
     {
         miny = m_min_y_size;
     }
@@ -4831,7 +4863,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         miny = rendering_full->LayoutData10by10[layer].xy[row][col][n].miny;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_max_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_max_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
     {
         maxy = m_max_y_size;
     }
@@ -4878,7 +4910,7 @@ void FormTop::areaFilterRect()
     //layer
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment  ë¹êµì¬ for skip
+        //layer_enviroment  ë¹êµì¬ for skip
 
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
 
@@ -5408,8 +5440,8 @@ void MainWindow::on_actionOpen_DB_triggered(){
 
 
 
-        pos.x = t2d.LayoutMinMax.minx;
-        pos.y = t2d.LayoutMinMax.miny;
+        pos.x = (t2d.LayoutMinMax.maxx - t2d.LayoutMinMax.minx)/2;
+        pos.y = (t2d.LayoutMinMax.maxy - t2d.LayoutMinMax.miny)/2;
         pos.z = 0;
         pos.tilt = 90;
         pos.rotation = 0;
@@ -6935,7 +6967,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
+    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
 
     float initRot = 0;
     float initTilt = 90;
@@ -7077,11 +7109,12 @@ class SuperItem : public QObject, public QGraphicsItem
     Q_OBJECT
 public:
     SuperItem(QGraphicsItem* parent = NULL);
+    void receivePointPos(POS_MONITORING *pos);
 public slots:
-    void slotMove(POS_MONITORING *pos);
-    void slotInitMove(double x, double y);
+    void slotMove();
+    void slotInitMove(double x, double y, double scale);
 
-protected:
+protected:    
     void paint(QPainter *painter,
                const QStyleOptionGraphicsItem *option,
                QWidget *widget);    
@@ -7091,11 +7124,14 @@ protected:
 //    virtual void keyPressEvent(QKeyEvent *evnet);
 
 private:
+    POS_MONITORING *m_pos;
     double m_pos_past_x = 0;
     double m_pos_past_y = 0;
     double m_view_size = 1;
     double m_zoom_init = 1;
-
+    double m_init_x = 0;
+    double m_init_y = 0;
+    double m_scale = 1;
 };
 
 class FormMap : public QDialog
@@ -7110,8 +7146,8 @@ public:
     void changePos();
 
 signals:
-    void signalMove(POS_MONITORING *pos);
-    void signalInitMove(double x, double y);
+    void signalMove();
+    void signalInitMove(double x, double y, double m_scale);
 
 private:    
     Ui::FormMap *ui;
@@ -7134,7 +7170,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
+    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
 
     float initRot = 0;
     float initTilt = 90;
@@ -7182,6 +7218,7 @@ private slots:
     void on_horizontalSlider_valueChanged(int value);
 
 private:
+    void addZeroPoint();
     void addRectItem(int layer, int row, int col, int n, QTransform trans);    
     int extPos(double *pos, double *min, double *max);
     void filterRenderingData(int layer, int row, int col, int n);
@@ -7196,6 +7233,7 @@ private:
     int m_begin_x = 0, m_begin_y = 0, m_end_x = 1, m_end_y = 1, m_scale = 500;
     float m_min_x = 0, m_min_y =0, m_max_x =0, m_max_y=0;
     bool init_check = true;
+    bool zero_point = true;
 
     int m_begin_row = 0, m_end_row = 1, m_begin_col = 0, m_end_col = 1;
     int m_block_size = 10; //10um

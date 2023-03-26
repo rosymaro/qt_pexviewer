@@ -6,7 +6,6 @@
 #include <QMap>
 #include <iostream>
 #include <QDebug>
-#include <excpt.h>
 
 
 FormTop::FormTop(QWidget *parent) :
@@ -55,6 +54,12 @@ void FormTop::receiveFile(T2D &t2d)
 void FormTop::drawing()
 {
     areaFilterRect();
+    if(m_begin_row == 0 && m_begin_col ==0 && zero_point)
+    {
+        addZeroPoint();
+        zero_point = false;
+    }
+
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
         //layer_enviroment  ë¹êµì¬ for skip
@@ -82,10 +87,11 @@ void FormTop::drawingClear()
         delete cur_item;
     }
     rectItemList.clear();
+    zero_point = true;
 
 }
 
-void FormTop::slotPos(POS_MONITORING &pos)
+void FormTop::receivePointPos(POS_MONITORING &pos)
 {
     this->pos = &pos;
     temp_pos.x = pos.x;
@@ -93,8 +99,7 @@ void FormTop::slotPos(POS_MONITORING &pos)
 }
 
 void FormTop::changePos()
-{
-    qDebug() << "change pos";
+{    
     if(temp_pos.x != pos->x || temp_pos.y != pos->y)
     {
         m_min_x_size = pos->x - m_area / m_area_scale;
@@ -107,6 +112,8 @@ void FormTop::changePos()
 
         drawingClear();
         drawing();
+        ui->graphicsView->setTransform(QTransform().translate(m_scale*pos->x, -1*m_scale*pos->y));
+        qDebug() << "transpose : "<<QTransform().transposed();
     }
 }
 
@@ -114,14 +121,14 @@ void FormTop::on_horizontalSlider_valueChanged(int value)
 {
     m_area = value;
 
-    if(error_temp == 0)
+    if(init_check)
     {
         qDebug() << "pos init";
         m_min_x_size = 0 - m_area / m_area_scale;
         m_max_x_size = 0 + m_area / m_area_scale;
         m_min_y_size = 0 - m_area / m_area_scale;
         m_max_y_size = 0 + m_area / m_area_scale;
-        error_temp += 1;
+        init_check = false;
     }
     else
     {
@@ -136,9 +143,20 @@ void FormTop::on_horizontalSlider_valueChanged(int value)
     }
 }
 
+void FormTop::addZeroPoint()
+{
+    qDebug() << "drawing or not?";
+    QGraphicsRectItem *zeroItem = new QGraphicsRectItem;
+    rectItemList.push_back(zeroItem);
+    zeroItem->setRect(m_scale*rendering_full->LayoutMinMax.minx,m_scale*rendering_full->LayoutMinMax.miny,m_scale*0.01,m_scale*0.01);
+    zeroItem->setBrush(QBrush(QColor(Qt::red)));
+    zeroItem->setZValue(9999);
+    m_scene->addItem(zeroItem);
+}
+
+
 void FormTop::addRectItem(int layer, int row, int col, int n, QTransform trans)
 {
-
     QGraphicsRectItem *rectItem = new QGraphicsRectItem;
     rectItemList.push_back(rectItem);
 
@@ -152,9 +170,7 @@ void FormTop::addRectItem(int layer, int row, int col, int n, QTransform trans)
 
     rectItem->setRect(x,y,w,h);
     rectItem->setBrush(QBrush(QColor(rendering_full->LayoutData10by10[layer].color.r,rendering_full->LayoutData10by10[layer].color.g,rendering_full->LayoutData10by10[layer].color.b,rendering_full->LayoutData10by10[layer].color.a)));
-    rectItem->setOpacity(opacity);
-    qDebug()<< " rect    : " << rectItem->rect() << ":: row/col : " << row << "/" << col << " " << n;
-    qDebug()<< " opacity : " << rendering_full->LayoutData10by10[layer].color.a << " : " << opacity;
+    rectItem->setOpacity(opacity); 
     rectItem->setZValue(rendering_full->LayoutData10by10[layer].bot);
 
     rectItem->setTransform(trans);

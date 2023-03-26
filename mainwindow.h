@@ -51,9 +51,14 @@ signals:
 private slots:
     void on_actionOpen_Layout_triggered();
     void on_actionOpen_DB_triggered();
-    void slotPos();
+    void slotDirectlyInputPos();
 
     void on_actionTop_triggered();
+    void on_docker_TopView_triggered();
+    void on_docker_Map_triggered();
+    void on_docker_Info_triggered();
+    void on_docker_Hier_triggered();
+    void on_docker_Layer_triggered();
 
 private:
     LveWindow *m_window;
@@ -64,12 +69,23 @@ private:
     FormTop *formTop;
     FormInfo *formInfo;
     FormMap *formMap;
+    QDockWidget *dockHier;
+    QDockWidget *dockLayer;
+    QDockWidget *dockMap;
+    QDockWidget *dockTop;
+    QDockWidget *dockInfo;
     SuperItem *superItem;
     QRect *windowSize;
     FileDb *fileDb;
     all_data *input_dataS;
     QStringList split_data;
     POS_MONITORING pos;
+    POS_MONITORING pos_past;
+    QByteArray dock_widget_geometry;
+    QByteArray dock_widget_state;
+
+
+
 };
 
 #endif // MAINWINDOW_H
