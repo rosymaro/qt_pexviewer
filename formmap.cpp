@@ -44,6 +44,7 @@ void SuperItem::slotMove()
 
 }
 
+
 void SuperItem::slotInitMove(double x, double y, double scale)
 {
     m_pos_past_x = m_pos->x;
@@ -97,6 +98,7 @@ void FormMap::receiveFile(T2D &t2d)
     rectItem->setPos(window_width/2,-window_height/2); //ì¢ì¸¡ (0,0) ì ë¶ì¤ì¼ë¡ ´ë
     scene->addItem(rectItem);
     scene->setSceneRect(0,-m_box_size,m_box_size,m_box_size);
+
             //
 
     scene->addItem(super);

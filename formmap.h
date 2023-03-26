@@ -55,6 +55,7 @@ signals:
     void signalMove();
     void signalInitMove(double x, double y, double m_scale);
 
+
 private:    
     Ui::FormMap *ui;
     QGraphicsRectItem *rectItem;
