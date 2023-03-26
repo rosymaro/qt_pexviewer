@@ -6,7 +6,6 @@
 #include <QMap>
 #include <iostream>
 #include <QDebug>
-#include <excpt.h>
 
 
 FormTop::FormTop(QWidget *parent) :
@@ -85,7 +84,7 @@ void FormTop::drawingClear()
 
 }
 
-void FormTop::slotPos(POS_MONITORING &pos)
+void FormTop::receivePointPos(POS_MONITORING &pos)
 {
     this->pos = &pos;
     temp_pos.x = pos.x;
@@ -93,8 +92,7 @@ void FormTop::slotPos(POS_MONITORING &pos)
 }
 
 void FormTop::changePos()
-{
-    qDebug() << "change pos";
+{    
     if(temp_pos.x != pos->x || temp_pos.y != pos->y)
     {
         m_min_x_size = pos->x - m_area / m_area_scale;
@@ -114,14 +112,14 @@ void FormTop::on_horizontalSlider_valueChanged(int value)
 {
     m_area = value;
 
-    if(error_temp == 0)
+    if(init_check)
     {
         qDebug() << "pos init";
         m_min_x_size = 0 - m_area / m_area_scale;
         m_max_x_size = 0 + m_area / m_area_scale;
         m_min_y_size = 0 - m_area / m_area_scale;
         m_max_y_size = 0 + m_area / m_area_scale;
-        error_temp += 1;
+        init_check = false;
     }
     else
     {

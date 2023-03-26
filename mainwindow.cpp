@@ -28,43 +28,49 @@ MainWindow::MainWindow(LveWindow *w)
     QWidget *wrapper = QWidget::createWindowContainer(w);
     ui->graphicsView->setViewport(wrapper);
 
-    QDockWidget *dockHier = new QDockWidget(tr("Hierarchy"), this);
+    dockHier = new QDockWidget(tr("Hierarchy"), this);
     dockHier->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockHier->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    dockHier->setObjectName("DockWidgetHier");
     addDockWidget(Qt::RightDockWidgetArea, dockHier);
     formHier = new FormHier;
     dockHier->setWidget(formHier);
 
-    QDockWidget *dockLayer = new QDockWidget(tr("Layer Information"), this);
+    dockLayer = new QDockWidget(tr("Layer Information"), this);
     dockLayer->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockLayer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    dockLayer->setObjectName("DockWidgetLayer");
     addDockWidget(Qt::RightDockWidgetArea, dockLayer);
     formLayer = new FormLayer(this->m_window);
     dockLayer->setWidget(formLayer);
 
-    QDockWidget *dockMap = new QDockWidget(tr("Map"), this);
+    dockMap = new QDockWidget(tr("Map"), this);
     dockMap->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockMap->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    dockMap->setObjectName("DockWidgetMap");
     addDockWidget(Qt::LeftDockWidgetArea, dockMap);
     formMap = new FormMap;
     dockMap->setWidget(formMap);
 
-    QDockWidget *dockTop = new QDockWidget(tr("Topview"), this);
+    dockTop = new QDockWidget(tr("Topview"), this);
     dockTop->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    dockTop->setObjectName("DockWidgetTop");
     addDockWidget(Qt::LeftDockWidgetArea, dockTop);
     formTop = new FormTop;
     dockTop->setWidget(formTop);
 
-    QDockWidget *dockInfo = new QDockWidget(tr("Info"), this);
+    dockInfo = new QDockWidget(tr("Info"), this);
     dockInfo->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockInfo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    dockInfo->setObjectName("DockWidgetInfo");
     addDockWidget(Qt::LeftDockWidgetArea, dockInfo);
     formInfo = new FormInfo;
     dockInfo->setWidget(formInfo);
 
     resizeDocks({dockInfo, dockTop, dockMap, dockLayer, dockHier}, {200,200}, Qt::Horizontal);
     resizeDocks({dockTop, dockMap}, {200,200}, Qt::Vertical);
+    resizeDocks({dockLayer, dockHier}, {350,300}, Qt::Vertical);
 
     input_dataS = new all_data;
 
@@ -76,9 +82,9 @@ MainWindow::MainWindow(LveWindow *w)
     pos.rotation = 0;
     pos.zoom = 1;
     pos.window_zoom = 1;
-    formInfo->slotPos(pos);
-    formTop->slotPos(pos);
-
+    formMap->receivePointPos(pos);
+    formTop->receivePointPos(pos);
+    formInfo->receivePointPos(pos);
 
     /// connect ////////////////////
     QObject::connect(ui->actionOpen_file, SIGNAL(triggered()), this, SLOT(on_actionOpen_file_triggered));
@@ -86,7 +92,7 @@ MainWindow::MainWindow(LveWindow *w)
     QObject::connect(input_dataS, SIGNAL(sendSplitData(int, int, const QVector <QVector <QString>> &)), formHier, SLOT(ReceiveSplitData(int, int, const QVector <QVector <QString>> &)));
     QObject::connect(input_dataS, SIGNAL(sendSplitData(int, int, const QVector <QVector <QString>> &)), formLayer, SLOT(ReceiveSplitData(int, int, const QVector <QVector <QString>> &)));
     QObject::connect(formLayer, SIGNAL(outputLayerStatus(QString)), this, SLOT(inputLayerStatus(QString)));
-    QObject::connect(formInfo, SIGNAL(signalPos()), this, SLOT(slotPos()));
+    QObject::connect(formInfo, SIGNAL(signalDirectlyInputPos()), this, SLOT(slotDirectlyInputPos()));
 }
 
 void MainWindow::shareGeo(QRect size)
@@ -103,28 +109,57 @@ MainWindow::~MainWindow()
 
 void MainWindow::slotInfoText(QString funcName, POS_MONITORING value)
 {
-    formInfo->slotInfoText(funcName,value);
-    formMap->slotInfoText(funcName,value);
-    //qDebug() << "slotInfoText" << funcName << value.x << " "<< value.y << " "<< value.z << " ";
-///// temp //////
-    QString text = funcName + " : " ;
-    for (int i = text.size() ; i < 30 ; i++)
+
+    if(value.x != pos_past.x ||
+       value.y != pos_past.y ||
+       value.z != pos_past.z ||
+       (value.tilt - pos_past.tilt) > 0.01 ||
+       (value.rotation - pos_past.rotation) > 0.01 ||
+       value.zoom != pos_past.zoom)
     {
-        text.append(" ");
+
+        qDebug()<< "changePos";
+
+        pos.x = value.x;
+        pos.y = value.y;
+        pos.z = value.z;
+        pos.tilt = value.tilt;
+        pos.rotation = value.rotation;
+        pos.zoom = value.zoom;
+
+        formMap->changePos();
+        formTop->changePos();
+        formInfo->changePos();
+
+        pos_past.x = pos.x;
+        pos_past.y = pos.y;
+        pos_past.z = pos.z;
+        pos_past.tilt = pos.tilt;
+        pos_past.rotation = pos.rotation;
+        pos_past.zoom = pos.zoom;
     }
 
-    statusText.prepend(text);
 
-    if (statusText.size() > 120)
-        statusText.remove(120,statusText.size()-120);
-    ui->statusbar->showMessage(statusText);
+    //qDebug() << "slotInfoText" << funcName << value.x << " "<< value.y << " "<< value.z << " ";
+///// temp //////
+//    QString text = funcName + " : " ;
+//    for (int i = text.size() ; i < 30 ; i++)
+//    {
+//        text.append(" ");
+//    }
+
+//    statusText.prepend(text);
+
+//    if (statusText.size() > 120)
+//        statusText.remove(120,statusText.size()-120);
+//    ui->statusbar->showMessage(statusText);
 
 }
 
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "ì¼  í",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "ì¼  í",".","Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
@@ -146,7 +181,7 @@ void MainWindow::inputPosInformation()
 
 void MainWindow::on_actionOpen_Layout_triggered()
 {
-    QString file_name = QFileDialog::getOpenFileName(this, "ì¼  í",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "ì¼  í",".","Files(*.*)");
     DtaoRenderSystem * renderer = this->m_window->getRenderer();
 
     //renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
@@ -198,9 +233,6 @@ void MainWindow::on_actionOpen_DB_triggered(){
         pos.zoom = 1;
         formInfo->outputText();
 
-        double zoomScale = std::max(t2d.LayoutMinMax.maxx-t2d.LayoutMinMax.minx ,t2d.LayoutMinMax.maxy-t2d.LayoutMinMax.miny)/10;
-        formMap->receiveSize_t2d(t2d.LayoutMinMax.minx,t2d.LayoutMinMax.miny,t2d.LayoutMinMax.maxx,t2d.LayoutMinMax.maxy,zoomScale);
-
         //to top data
 
 
@@ -210,7 +242,8 @@ void MainWindow::on_actionOpen_DB_triggered(){
 
         formInfo->receiveFile(t2d);
         formTop->receiveFile(t2d);
-        formLayer->ReceiveLayerInformation(t2d);
+        formMap->receiveFile(t2d);
+        formLayer->ReceiveLayerInformation(t2d);        
         //test
 
 
@@ -221,24 +254,85 @@ void MainWindow::on_actionOpen_DB_triggered(){
 
 }
 
-void MainWindow::slotPos()
+void MainWindow::slotDirectlyInputPos() //point info ì ì§ì  ë ¥ê²½ì°
 {
+    formMap->changePos();
     formTop->changePos();
+    //ì²­¬í­ 230324 vulkan ìì ¬ê¸°¤í
 }
-
-
-
-
-
-
-
-
-
-
-
 
 void MainWindow::on_actionTop_triggered()
 {
     qDebug() << "go?";
     //cocococo
+}
+
+void MainWindow::on_docker_Map_triggered()
+{
+    if (dockMap->isHidden()){
+        MainWindow::restoreGeometry(dock_widget_geometry);
+        MainWindow::restoreState(dock_widget_state);
+        dockLayer->show();
+
+    } else {
+        dock_widget_geometry = MainWindow::saveGeometry();
+        dock_widget_state = MainWindow::saveState();
+        dockMap->hide();
+    }
+}
+
+void MainWindow::on_docker_TopView_triggered()
+{
+    if (dockTop->isHidden()){
+        MainWindow::restoreGeometry(dock_widget_geometry);
+        MainWindow::restoreState(dock_widget_state);
+        dockTop->show();
+
+    } else {
+        dock_widget_geometry = MainWindow::saveGeometry();
+        dock_widget_state = MainWindow::saveState();
+        dockTop->hide();
+    }
+}
+
+void MainWindow::on_docker_Info_triggered()
+{
+    if (dockInfo->isHidden()){
+        MainWindow::restoreGeometry(dock_widget_geometry);
+        MainWindow::restoreState(dock_widget_state);
+        dockInfo->show();
+
+    } else {
+        dock_widget_geometry = MainWindow::saveGeometry();
+        dock_widget_state = MainWindow::saveState();
+        dockInfo->hide();
+    }
+}
+
+void MainWindow::on_docker_Hier_triggered()
+{
+    if (dockHier->isHidden()){
+        MainWindow::restoreGeometry(dock_widget_geometry);
+        MainWindow::restoreState(dock_widget_state);
+        dockHier->show();
+
+    } else {
+        dock_widget_geometry = MainWindow::saveGeometry();
+        dock_widget_state = MainWindow::saveState();
+        dockHier->hide();
+    }
+}
+
+void MainWindow::on_docker_Layer_triggered()
+{
+    if (dockLayer->isHidden()){
+        MainWindow::restoreGeometry(dock_widget_geometry);
+        MainWindow::restoreState(dock_widget_state);
+        dockLayer->show();
+
+    } else {
+        dock_widget_geometry = MainWindow::saveGeometry();
+        dock_widget_state = MainWindow::saveState();
+        dockLayer->hide();
+    }
 }

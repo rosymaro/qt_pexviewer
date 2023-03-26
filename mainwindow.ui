@@ -67,6 +67,12 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionTop"/>
+   <addaction name="separator"/>
+   <addaction name="docker_Map"/>
+   <addaction name="docker_TopView"/>
+   <addaction name="docker_Info"/>
+   <addaction name="docker_Hier"/>
+   <addaction name="docker_Layer"/>
   </widget>
   <action name="actionOpen_file">
    <property name="text">
@@ -91,6 +97,71 @@
   <action name="actionTop">
    <property name="text">
     <string>Top</string>
+   </property>
+  </action>
+  <action name="docker_Map">
+   <property name="icon">
+    <iconset>
+     <normaloff>ImageFile/Map_Icon_50by50.png</normaloff>
+     <normalon>ImageFile/box-shadow.png</normalon>ImageFile/Map_Icon_50by50.png</iconset>
+   </property>
+   <property name="text">
+    <string>docker_Map</string>
+   </property>
+   <property name="toolTip">
+    <string>docker_Map</string>
+   </property>
+  </action>
+  <action name="docker_TopView">
+   <property name="icon">
+    <iconset>
+     <normalon>ImageFile/Top_View_Icon_50by50.png</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>docker_TopView</string>
+   </property>
+   <property name="toolTip">
+    <string>docker_TopView</string>
+   </property>
+  </action>
+  <action name="docker_Info">
+   <property name="icon">
+    <iconset>
+     <normalon>ImageFile/Info_Icon_50by50.png</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>docker_Info</string>
+   </property>
+   <property name="toolTip">
+    <string>docker_Info</string>
+   </property>
+  </action>
+  <action name="docker_Hier">
+   <property name="icon">
+    <iconset>
+     <normalon>ImageFile/Hier_Icon_50by50.png</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>docker_Hier</string>
+   </property>
+   <property name="toolTip">
+    <string>docker_Hier</string>
+   </property>
+  </action>
+  <action name="docker_Layer">
+   <property name="icon">
+    <iconset>
+     <normalon>ImageFile/Layer_Icon_50by50.png</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>docker_Layer</string>
+   </property>
+   <property name="toolTip">
+    <string>docker_Layer</string>
    </property>
   </action>
  </widget>

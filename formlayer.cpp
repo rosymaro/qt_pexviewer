@@ -29,7 +29,7 @@ void FormLayer::ReceiveLayerInformation(T2D &t2d)
 
 void FormLayer::MakeLayerInformationTalbe()
 {
-    // QTableWidget ¬ê¸° ¤ì 
+    // QTableWidget ¬ê¸° ¤ì 
     ui->tableWidget->setColumnCount(table_default_column);
     ui->tableWidget->setRowCount(t2d_layer_information->LayoutData10by10.size());
     ui->tableWidget->setColumnWidth(5,80);
@@ -44,7 +44,7 @@ void FormLayer::MakeLayerInformationTalbe()
     }
     MakeHeaderCheckBoxAndSlider();
 
-    // Table Edit ê¸ì, ¤ì¤  í ê¸ì
+    // Table Edit ê¸ì, ¤ì¤  í ê¸ì
     ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
 }
@@ -102,7 +102,7 @@ void FormLayer::on_colorbutton_clicked()
 
 void FormLayer::on_opacityslider_valueChanged(int Opacity)
 {
-    // ui->tableWidget->currentRow() ë¡ì°¾ì¼¤ê³  ë©´, current row ê° -1 ë¡ì´
+    // ui->tableWidget->currentRow() ë¡ì°¾ì¼¤ê³  ë©´, current row ê° -1 ë¡ì´
     int sliderrow = -1;
     int sliderrow_for_t2d = -1;
     QString LayerColorname;
@@ -162,25 +162,25 @@ void FormLayer::OpacitySliderValueChange(int OpacityValue){
 }
 
 void FormLayer::MakeLayerInformationTableHeader(){
-    QString TalbeHeader[] = {"","COLOR","Layer\nName","Layer\nNum","Layer\nType","Opacity\n"};
+    QString TalbeHeader[] = {"","Color","Layer\nName","Layer\nNum","Layer\nType","Opacity\n"};
     ui->tableWidget->setColumnCount(6);
     ui->tableWidget->setRowCount(10);
-    ui->tableWidget->setColumnWidth(0,15);
-    ui->tableWidget->setColumnWidth(1,50);
-    ui->tableWidget->setColumnWidth(2,60);
-    ui->tableWidget->setColumnWidth(3,60);
-    ui->tableWidget->setColumnWidth(4,60);
-    ui->tableWidget->setColumnWidth(5,80);
+    ui->tableWidget->setColumnWidth(0,20);
+    ui->tableWidget->setColumnWidth(1,40);
+    ui->tableWidget->setColumnWidth(2,40);
+    ui->tableWidget->setColumnWidth(3,40);
+    ui->tableWidget->setColumnWidth(4,40);
+    ui->tableWidget->setColumnWidth(5,60);
 
-    /// TableWidget Title Format ¤ì 
+    /// TableWidget Title Format ¤ì 
     QBrush brush(QColor(255, 255, 255, 255));
     brush.setStyle(Qt::SolidPattern);
     QFont font;
-    font.setPointSize(9);
+    font.setPointSize(8);
     font.setBold(true);
-    font.setWeight(75);
+    font.setWeight(55);
 
-    /// TableWidget Title ë ¥ ë°ë°ì
+    /// TableWidget Title ë ¥ ë°ë°ì
     for (int i=1; i<6; i++){
         QTableWidgetItem *TableHeaderItem = new QTableWidgetItem;
         TableHeaderItem->setText(TalbeHeader[i]);

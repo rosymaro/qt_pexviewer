@@ -20,15 +20,15 @@ public:
     ~FormInfo();
     void receiveFile(T2D &t2d);
     void outputText();
+    void receivePointPos(POS_MONITORING &pos);
+    void changePos();
 
 public slots:
-    void slotInfoText(QString funcName, POS_MONITORING value);
-    void slotPos(POS_MONITORING &pos);
     void moveRender(float x, float y);
 
 private:
     bool checkNum(const QString &str);
-    void checkText(double *point, const QString &str, double min_limit, double max_limit);
+    void checkText(double *point, const QString &str, double min_limit, double max_limit, int type);
 
     T2D *rendering_full;
     Ui::FormInfo *ui;
@@ -39,7 +39,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
+    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
 
     float initRot = 0;
     float initTilt = 90;
@@ -67,11 +67,11 @@ private:
     double m_max_tilt = 90;
     double m_min_rot = 0;
     double m_max_rot = 360;
-    double m_min_zoom = 1;
-    double m_max_zoom = 9999;
+    double m_min_zoom = 0.01;
+    double m_max_zoom = 999;
 
 signals:
-    void signalPos();
+    void signalDirectlyInputPos();
 private slots:
     void on_pos_x_textEdited(const QString &arg1);
     void on_pos_y_textEdited(const QString &arg1);

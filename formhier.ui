@@ -6,19 +6,13 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>510</width>
+    <width>320</width>
     <height>300</height>
    </rect>
   </property>
-  <property name="sizePolicy">
-   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-    <horstretch>0</horstretch>
-    <verstretch>0</verstretch>
-   </sizepolicy>
-  </property>
   <property name="minimumSize">
    <size>
-    <width>450</width>
+    <width>320</width>
     <height>100</height>
    </size>
   </property>
@@ -38,13 +32,13 @@
        </property>
        <property name="minimumSize">
         <size>
-         <width>260</width>
-         <height>100</height>
+         <width>0</width>
+         <height>0</height>
         </size>
        </property>
        <property name="baseSize">
         <size>
-         <width>260</width>
+         <width>300</width>
          <height>100</height>
         </size>
        </property>

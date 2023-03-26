@@ -8,6 +8,54 @@
 #include <QRect>
 #include <QKeyEvent>
 
+SuperItem::SuperItem(QGraphicsItem* parent) : QGraphicsItem(parent)
+{
+    setFlag(QGraphicsItem::ItemIsMovable);
+}
+
+void SuperItem::slotMove(POS_MONITORING *pos)
+{
+    double delta_x = pos->x - m_pos_past_x;
+    double delta_y = pos->y - m_pos_past_y;
+    double rot = 360 - pos->rotation;
+
+    if (delta_x !=0 && delta_y !=0)
+    {
+        qDebug() << "delta x :" << delta_x << " || delta y :" << delta_y;
+        moveBy(delta_x, -1 * delta_y);
+        m_pos_past_x = this->x();
+        m_pos_past_y = this->y();
+    }
+
+
+
+    QTransform trans;
+    trans.rotate(rot);
+    trans.scale(m_view_size*m_zoom_init/pos->zoom, (m_view_size*m_zoom_init/pos->zoom) * (pos->tilt / 90));
+      //zoom ì´ê¸°ê° 25%ë©..
+    setTransform(trans);
+
+}
+
+void SuperItem::slotInitMove(double x, double y)
+{
+    moveBy(x,y);
+}
+
+void SuperItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+{
+    painter->setPen(Qt::red);
+    painter->drawRoundedRect(-88,-88,175,175,5,5);
+    painter->setPen(Qt::blue);
+    painter->drawLine(-86,-86,86,-86);
+}
+
+QRectF SuperItem::boundingRect() const{
+    return QRectF(-89,-89,176,176);
+}
+
+
+
 FormMap::FormMap(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::FormMap)
@@ -16,66 +64,52 @@ FormMap::FormMap(QWidget *parent) :
 
 }
 
-void FormMap::receiveSize(float &xMinSize,float &yMinSize,float &xMaxSize,float &yMaxSize, float &zoomScale)
+FormMap::~FormMap()
 {
-    float scale=1;
+    delete ui;
+}
 
-    width = xMaxSize-xMinSize;
-    height = yMaxSize-yMinSize;
-    qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
-    scale = 178/std::max(width,height);
-    width = scale * width;
-    height = scale * height;
-//    float rectScale = 176*zoomScale; ì¶í ë³ê²
-
-    qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
+void FormMap::receiveFile(T2D &t2d)
+{
+    m_width = t2d.LayoutMinMax.maxx - t2d.LayoutMinMax.minx;
+    m_height = t2d.LayoutMinMax.maxy - t2d.LayoutMinMax.miny;
+    m_scale = m_box_size/qMax(m_width,m_height);
+    m_width_scaled = m_scale * m_width;
+    m_height_scaled = m_scale * m_height;
+    double window_width = ui->graphicsView->size().width();
+    double window_height = ui->graphicsView->size().height();
 
     QGraphicsRectItem *rectItem = new QGraphicsRectItem;
     QGraphicsScene *scene = new QGraphicsScene(this);
-    rectItem->setRect(-(width/2),-(height/2),width,height);
+    rectItem->setRect(-(m_width_scaled/2),-(m_height_scaled/2),m_width_scaled,m_height_scaled);
     rectItem->setBrush(QBrush(QColor(Qt::gray)));
+    rectItem->setPos(window_width/2,-window_height/2); //ì¢ì¸¡ (0,0) ì ë¶ì¤ì¼ë¡ ´ë
     scene->addItem(rectItem);
+            //
 
     SuperItem *super = new SuperItem;
     scene->addItem(super);
+
     QObject::connect(this,&FormMap::signalMove,super,&SuperItem::slotMove);
+    QObject::connect(this,&FormMap::signalInitMove,super,&SuperItem::slotInitMove);
+
+    emit signalInitMove(window_width/2,-window_height/2);
 
     ui->graphicsView->setScene(scene);
 
 }
 
-
-void FormMap::receiveSize_t2d(double &xMinSize,double &yMinSize,double &xMaxSize,double &yMaxSize, double &zoomScale)
+void FormMap::receivePointPos(POS_MONITORING &pos)
 {
-    float scale=1;
-
-    width = xMaxSize-xMinSize;
-    height = yMaxSize-yMinSize;
-    qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
-    scale = 178/std::max(width,height);
-    width = scale * width;
-    height = scale * height;
-//    float rectScale = 176*zoomScale; ì¶í ë³ê²
-
-    qDebug() << "scale : " << scale << "| width : " << width << "| height : " << height;
-
-    QGraphicsRectItem *rectItem = new QGraphicsRectItem;
-    QGraphicsScene *scene = new QGraphicsScene(this);
-    rectItem->setRect(-(width/2),-(height/2),width,height);
-    rectItem->setBrush(QBrush(QColor(Qt::gray)));
-    scene->addItem(rectItem);
-
-    SuperItem *super = new SuperItem;
-    scene->addItem(super);
-    QObject::connect(this,&FormMap::signalMove,super,&SuperItem::slotMove);
-
-    ui->graphicsView->setScene(scene);
-
+    this->pos = &pos;
+}
+void FormMap::changePos()
+{
+    emit signalMove(pos);
 }
 
-void FormMap::slotInfoText(QString funcName, POS_MONITORING value)
 
-{
+
 
     //if (funcName == "moveGdsX")
     //{
@@ -109,7 +143,7 @@ void FormMap::slotInfoText(QString funcName, POS_MONITORING value)
     //}
     //if (funcName == "moveZoom")
     //{
-    //    infoZoom = infoZoom + infoZoom*value/1500;        //¼ì  ì´ë¥100% ë¡¤ì ì ì, ê²°êµ­ ì´ê¸°ê°ì GDS Size °ë¼ ë°ëì.
+    //    infoZoom = infoZoom + infoZoom*value/1500;        //¼ì  ì´ë¥100% ë¡¤ì ì ì, ê²°êµ­ ì´ê¸°ê°ì GDS Size °ë¼ ë°ëì.
     //    if (infoZoom < 0.01)
     //        infoZoom = 0.01;
     //    if (infoZoom > 100)
@@ -132,64 +166,7 @@ void FormMap::slotInfoText(QString funcName, POS_MONITORING value)
     //    initPointY = pointY;
     //    initPointZ = pointZ;
     //}
-}
-
-FormMap::~FormMap()
-{
-    delete ui;
-}
-
-SuperItem::SuperItem(QGraphicsItem* parent) : QGraphicsItem(parent)
-{
-    setFlag(QGraphicsItem::ItemIsMovable);
-}
-
-
-
-QRectF SuperItem::boundingRect() const{
-    return QRectF(-88,-88,175,175);
-}
-
-void SuperItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
-{
-    painter->setPen(Qt::red);
-    painter->drawRoundedRect(-88,-88,175,175,5,5);
-
-
-}
-
-void SuperItem::slotMove(float x, float y, float zoom, float rot, float tilt)
-{
-    QTransform trans;
-
-    if (zoom != 0)
-    {
-        _zoom = zoom;
-    }
-    if (rot != 999)
-    {
-        _rot = rot;
-    }
-    if (tilt != 999)
-    {
-        _tilt = tilt;
-    }
-    trans.rotate(_rot);
-    trans.scale(_zoom, _zoom*_tilt/90);
-    setTransform(trans);
-
-    if (x + y !=0)
-    {
-        moveBy(x, -y);
-        qDebug() << "pos : " << pos();
-    }
-
-
-
-
-
-
-}
+//}
 
 //void SuperItem::keyPressEvent(QKeyEvent *event){
 //    switch(event->key()){

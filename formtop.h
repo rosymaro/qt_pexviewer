@@ -23,7 +23,7 @@ public:
     void receiveFile(T2D &t2d);
     void drawing();
     void drawingClear();
-    void slotPos(POS_MONITORING &pos);
+    void receivePointPos(POS_MONITORING &pos);
     void changePos();
 //    void receiveFile(QVector<QList<float>> **mapFile);
 
@@ -44,7 +44,7 @@ private:
     QTransform trans;
     int m_begin_x = 0, m_begin_y = 0, m_end_x = 1, m_end_y = 1, m_scale = 500;
     float m_min_x = 0, m_min_y =0, m_max_x =0, m_max_y=0;
-    int error_temp = 0;
+    bool init_check = true;
 
     int m_begin_row = 0, m_end_row = 1, m_begin_col = 0, m_end_col = 1;
     int m_block_size = 10; //10um

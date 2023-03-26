@@ -42,31 +42,20 @@ void FormInfo::receiveFile(T2D &t2d)
 
 void FormInfo::outputText()
 {
+    double rot = pos->rotation;
+    if (rot <0) {
+        rot = rot+360;
+    }
     ui->pos_x->setText(QString::number(round(pos->x*10000)/10000));
     ui->pos_y->setText(QString::number(round(pos->y*10000)/10000));
     ui->pos_z->setText(QString::number(round(pos->z*10000)/10000));
-    ui->ang_tilt->setText(QString::number(round(pos->tilt*10000)/10000));
-    ui->ang_rotation->setText(QString::number(round(pos->rotation*10000)/10000));
-    ui->zoom->setText(QString::number(round(pos->zoom))+"%");
+    ui->ang_tilt->setText(QString::number(round(pos->tilt)));
+    //ui->ang_rotation->setText(QString::number(round(pos->rotation*10000)/10000));
+    ui->ang_rotation->setText(QString::number(round(360-rot)));
+    ui->zoom->setText(QString::number(round(pos->zoom*100))+"%");
 }
 
-void FormInfo::slotInfoText(QString funcName, POS_MONITORING value)
-{
-    if (funcName == "camera_position")
-    {
-        float rot = value.rotation;
-        if(rot <0) {
-            rot = rot+360;
-        }
-        ui->ang_rotation->setText(QString::number(round(rot)));
-        ui->ang_tilt->setText(QString::number(round(value.tilt)));
-        ui->zoom->setText(QString::number(round(value.zoom*100)));
-
-        emit signalPos();
-    }
-}
-
-void FormInfo::slotPos(POS_MONITORING &pos)
+void FormInfo::receivePointPos(POS_MONITORING &pos)
 {
     this->pos = &pos;
     temp_pos.x = pos.x;
@@ -76,6 +65,17 @@ void FormInfo::slotPos(POS_MONITORING &pos)
     temp_pos.rotation = pos.rotation;
     temp_pos.zoom = pos.zoom;
     temp_pos.window_zoom = 1;
+}
+
+void FormInfo::changePos()
+{
+    temp_pos.x = pos->x;
+    temp_pos.y = pos->y;
+    temp_pos.z = pos->z;
+    temp_pos.tilt = pos->tilt;
+    temp_pos.rotation = pos->rotation;
+    temp_pos.zoom = pos->zoom;
+    outputText();
 }
 
 void FormInfo::moveRender(float x, float y)
@@ -106,21 +106,32 @@ bool FormInfo::checkNum(const QString &str)
     }
 }
 
-void FormInfo::checkText(double *point, const QString &arg1, double min_limit, double max_limit)
+void FormInfo::checkText(double *point, const QString &arg1, double min_limit, double max_limit, int type)
 {
     double double_arg = arg1.toDouble();
     if(checkNum(arg1)) // «ì¸ì ì
     {
         if(double_arg >= min_limit && double_arg <= max_limit) //tilt
         {
-            *point = double_arg;
+            if (type == 6) //zoom
+            {
+                *point = double_arg/100;
+            }
+            else if (type == 5) //rotation
+            {
+                *point = 360-double_arg;
+            }
+            else
+            {
+                *point = double_arg;
+            }
         }
     }
     else if(arg1.isEmpty() || arg1.contains("-") || arg1.contains("0."))
     {
 
     }    
-    else // ê¸°ì¡´ ê°ì¼ë¡ ì
+    else // ê¸°ì¡´ ê°ì¼ë¡ ì
     {
         outputText();
     }
@@ -131,14 +142,16 @@ void FormInfo::on_pos_x_textEdited(const QString &arg1)
 {
     double min_limit = m_min_x;
     double max_limit = m_max_x;
-    checkText(&temp_pos.x,arg1,min_limit,max_limit);
+    int type = 1;
+    checkText(&temp_pos.x,arg1,min_limit,max_limit,type);
 }
 
 void FormInfo::on_pos_y_textEdited(const QString &arg1)
 {
     double min_limit = m_min_y;
     double max_limit = m_max_y;
-    checkText(&temp_pos.y,arg1,min_limit,max_limit);
+    int type = 2;
+    checkText(&temp_pos.y,arg1,min_limit,max_limit,type);
 
 }
 
@@ -146,28 +159,32 @@ void FormInfo::on_pos_z_textEdited(const QString &arg1)
 {
     double min_limit = m_min_z;
     double max_limit = m_max_z;
-    checkText(&temp_pos.z,arg1,min_limit,max_limit);
+    int type = 3;
+    checkText(&temp_pos.z,arg1,min_limit,max_limit,type);
 }
 
 void FormInfo::on_ang_tilt_textEdited(const QString &arg1)
 {
     double min_limit = m_min_tilt;
     double max_limit = m_max_tilt;
-    checkText(&temp_pos.tilt,arg1,min_limit,max_limit);
+    int type = 4;
+    checkText(&temp_pos.tilt,arg1,min_limit,max_limit,type);
 }
 
 void FormInfo::on_ang_rotation_textEdited(const QString &arg1)
 {
     double min_limit = m_min_rot;
     double max_limit = m_max_rot;
-    checkText(&temp_pos.rotation,arg1,min_limit,max_limit);
+    int type = 5;
+    checkText(&temp_pos.rotation,arg1,min_limit,max_limit,type);
 }
 
 void FormInfo::on_zoom_textEdited(const QString &arg1)
 {
     double min_limit = m_min_zoom;
     double max_limit = m_max_zoom;
-    checkText(&temp_pos.zoom,arg1,min_limit,max_limit);
+    int type = 6;
+    checkText(&temp_pos.zoom,arg1,min_limit,max_limit,type);
 }
 
 void FormInfo::inputPos()
@@ -184,7 +201,7 @@ void FormInfo::inputPos()
                              << pos->tilt << ","
                              << pos->rotation << ","
                              << pos->zoom;
-    emit signalPos();
+    emit signalDirectlyInputPos();
 }
 
 void FormInfo::on_pos_x_returnPressed()
@@ -239,10 +256,10 @@ void FormInfo::on_ang_tilt_editingFinished()
 
 void FormInfo::on_ang_rotation_editingFinished()
 {
-    ui->ang_rotation->setText(QString::number(round(temp_pos.rotation*10000)/10000));
+    ui->ang_rotation->setText(QString::number(round((360-temp_pos.rotation)*10000)/10000));
 }
 
 void FormInfo::on_zoom_editingFinished()
 {
-    ui->zoom->setText(QString::number(round(pos->zoom))+"%");
+    ui->zoom->setText(QString::number(round(pos->zoom*100))+"%");
 }

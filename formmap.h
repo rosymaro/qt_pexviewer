@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QGraphicsRectItem>
 #include "defineParam.h"
+#include "T2D.h"
 
 namespace Ui {
 class FormMap;
@@ -15,18 +16,23 @@ class SuperItem : public QObject, public QGraphicsItem
 public:
     SuperItem(QGraphicsItem* parent = NULL);
 public slots:
-    void slotMove(float x, float y, float zoom, float rot, float tilt);    
+    void slotMove(POS_MONITORING *pos);
+    void slotInitMove(double x, double y);
 
 protected:
     void paint(QPainter *painter,
                const QStyleOptionGraphicsItem *option,
-               QWidget *widget);
+               QWidget *widget);    
     QRectF boundingRect() const;
 
+
 //    virtual void keyPressEvent(QKeyEvent *evnet);
-    float _zoom = 1;
-    float _rot = 0;
-    float _tilt = 90;
+
+private:
+    double m_pos_past_x = 0;
+    double m_pos_past_y = 0;
+    double m_view_size = 1;
+    double m_zoom_init = 1;
 
 };
 
@@ -37,30 +43,36 @@ class FormMap : public QDialog
 public:
     explicit FormMap(QWidget *parent = nullptr);
     ~FormMap();
-    void receiveSize(float &xMinSize,float &yMinSize,float &xMaxSize,float &yMaxSize, float &zoomScale);
-    void receiveSize_t2d(double &xMinSize,double &yMinSize,double &xMaxSize,double &yMaxSize, double &zoomScale);
-
-public slots:
-    void slotInfoText(QString funcName, POS_MONITORING value);
+    void receiveFile(T2D &t2d);
+    void receivePointPos(POS_MONITORING &pos);
+    void changePos();
 
 signals:
-    void signalMove(float x, float y, float zoom, float rot, float tilt);
+    void signalMove(POS_MONITORING *pos);
+    void signalInitMove(double x, double y);
 
-private:
+private:    
     Ui::FormMap *ui;
     QGraphicsRectItem *rectItem;
     QGraphicsRectItem *rectItem2;
     QRect *rect;
-    float width;
-    float height;
+    double m_width;
+    double m_height;
+    double m_scale = 1;
+    double m_box_size = 178;
+    double m_width_scaled;
+    double m_height_scaled;
+
     SuperItem *super;
+
+    POS_MONITORING *pos;
 
     float pointX = 0;
     float pointY = 0;
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
+    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
 
     float initRot = 0;
     float initTilt = 90;

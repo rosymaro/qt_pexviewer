@@ -10,7 +10,7 @@ FormHier::FormHier(QWidget *parent) :
     ui(new Ui::FormHier)
 {
     ui->setupUi(this);
-    // QTableWidget defalut ¬ê¸° ¤ì 
+    // QTableWidget defalut ¬ê¸° ¤ì 
     QStringList defalutTableHeader;
     defalutTableHeader << "LayerName" << "LayerNum" << "LayerType" << "Red" << "Green" << "Blue";
 
@@ -55,7 +55,7 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
     QStringList vectorTOqstringlist;
     QStringList vectorTOqstringlistHoriLabels;
 
-// QTableWidget ¬ê¸° ¤ì 
+// QTableWidget ¬ê¸° ¤ì 
     ui->tableWidget->setColumnCount(column);
     ui->tableWidget->setRowCount(row);
 
