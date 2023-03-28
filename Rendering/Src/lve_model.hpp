@@ -107,6 +107,8 @@ public:
     void changeLayerColor(float layernumber, glm::vec3 rgb);
     void changeLayerOpacity(float layernumber, float opacity);
     void changeLayerVisiblity(float layernumber, bool visiblity);
+    void demoVisiblityOff();
+    void demoVisiblityOn(std::vector<float> layernumbers);
     bool visible{true};
     float opacity{ 1.0f };
 

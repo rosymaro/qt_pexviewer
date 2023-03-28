@@ -96,7 +96,7 @@ void FormInfo::moveRender(float x, float y)
 bool FormInfo::checkNum(const QString &str)
 {
     if(str.toDouble() == 0 && str != "0")
-    // Â«Ã¬ÂÂÃ«Â¡Ã«Â°Â”ÃªÂ¿Â¨Â”Ã«Â‹Âˆ 0Â˜Ã¬Â—ÂˆÂ”Ã«ÂÂ° string  0 Â„Ã«Â‹Â ÃªÂ²Â½Ã¬ÂšÂ°ÂÃ«ÂŠÂ” Ã«Â¬Â¸Ã¬ÂÂ
+    // ¼ıÀÚ·Î ¹Ù²å´õ´Ï 0ÀÌ µÇ¾ú´Âµ¥ string Àº 0 ¾Æ´Ò °æ¿ì¿¡´Â ¹®ÀÚ
     {
         return false;
     }
@@ -109,7 +109,7 @@ bool FormInfo::checkNum(const QString &str)
 void FormInfo::checkText(double *point, const QString &arg1, double min_limit, double max_limit, int type)
 {
     double double_arg = arg1.toDouble();
-    if(checkNum(arg1)) // Â«Ã¬ÂÂÂ¸Ã¬ ÂŒÃ¬Â•Â…
+    if(checkNum(arg1)) // ¼ıÀÚÀÎÁö ÆÄ¾Ç
     {
         if(double_arg >= min_limit && double_arg <= max_limit) //tilt
         {
@@ -131,7 +131,7 @@ void FormInfo::checkText(double *point, const QString &arg1, double min_limit, d
     {
 
     }    
-    else // ÃªÂ¸Â°Ã¬Â¡Â´ ÃªÂ°Â’Ã¬ÂœÂ¼Ã«Â¡Â Ã¬
+    else // ±âÁ¸ °ªÀ¸·Î À¯Áö
     {
         outputText();
     }

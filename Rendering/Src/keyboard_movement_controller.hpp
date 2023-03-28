@@ -44,6 +44,13 @@ public:
         bool mouseLeft= false;
         bool mouseRight= false;
         bool mouseMiddle= false;
+        bool demoTrigger= false;
+        bool demoInitLayer= false;
+        bool tiltOn=false;
+        bool layerOn=false;
+        bool wave1 = false;
+        bool wave2 = false;
+        bool wave3 = false;
     };
 
     struct MousePosition {
@@ -69,6 +76,8 @@ public:
     void setMouseFlagOff();
     void setMousePosition(QPoint position, int mode);
     void setMouseScroll(QPoint position);
+    void triggerDemo();
+    void onDemo(float dt, LveCamera& camera, float render_scale,std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow);
     CameraMovingContinousFlags camera_moving_flag;
     POS_MONITORING monitor;
 
@@ -78,6 +87,8 @@ public:
     int xpos_prev;
     int ypos_prev;
     float perspectiveNear{ 0.1f };
+    int demoTime{0};
+    int demoCheckPoint{0};
 
 
 };

@@ -108,8 +108,6 @@ DISTFILES += \
 
 INCLUDEPATH += $$PWD/../../Library/glm-0.9.9.8
 
-
-
 unix:!macx|win32: LIBS += -L$$PWD/../../Library/VulkanSDK/1.3.239.0/Lib/ -lvulkan-1
 
 INCLUDEPATH += $$PWD/../../Library/VulkanSDK/1.3.239.0/Lib

@@ -3792,7 +3792,7 @@ FormHier::FormHier(QWidget *parent) :
     ui(new Ui::FormHier)
 {
     ui->setupUi(this);
-    // QTableWidget defalut 크기 설정
+    // QTableWidget defalut ??? ????
     QStringList defalutTableHeader;
     defalutTableHeader << "LayerName" << "LayerNum" << "LayerType" << "Red" << "Green" << "Blue";
 
@@ -3833,11 +3833,11 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
 //    qDebug() << "3rd" << inputDataVector.value(2);
 //    qDebug() << "1st_1st" << inputDataVector.value(0).value(0);
 
-// QTableWidget 에서 QStringList 로만 받기때문에 자료형변환
+// QTableWidget ???? QStringList ?��? ??????? ????????
     QStringList vectorTOqstringlist;
     QStringList vectorTOqstringlistHoriLabels;
 
-// QTableWidget 크기 설정
+// QTableWidget ??? ????
     ui->tableWidget->setColumnCount(column);
     ui->tableWidget->setRowCount(row);
 
@@ -3847,7 +3847,7 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
     font.setPointSize(10);
     ui->tableWidget->horizontalHeader()->setFont(font);
 
-// Table 채우기
+// Table a????
     for (int i=0; i<row ; i++)
     {
         for (int j=0; j<column ; j++)
@@ -3968,7 +3968,7 @@ void FormInfo::moveRender(float x, float y)
 bool FormInfo::checkNum(const QString &str)
 {
     if(str.toDouble() == 0 && str != "0")
-    // 숫자로 바꿨더니 0이 되었는데 string 은 0 아닐 경우에는 문자
+    // ????? ??????? 0?? ????��? string ?? 0 ??? ???��?? ????
     {
         return false;
     }
@@ -3981,7 +3981,7 @@ bool FormInfo::checkNum(const QString &str)
 void FormInfo::checkText(double *point, const QString &arg1, double min_limit, double max_limit, int type)
 {
     double double_arg = arg1.toDouble();
-    if(checkNum(arg1)) // 숫자인지 파악
+    if(checkNum(arg1)) // ???????? ???
     {
         if(double_arg >= min_limit && double_arg <= max_limit) //tilt
         {
@@ -4003,7 +4003,7 @@ void FormInfo::checkText(double *point, const QString &arg1, double min_limit, d
     {
 
     }    
-    else // 기존 값으로 유지
+    else // ???? ?????? ????
     {
         outputText();
     }
@@ -4166,12 +4166,12 @@ void FormLayer::ReceiveLayerInformation(T2D &t2d)
 
 void FormLayer::MakeLayerInformationTalbe()
 {
-    // QTableWidget 크기 설정
+    // QTableWidget ??? ????
     ui->tableWidget->setColumnCount(table_default_column);
     ui->tableWidget->setRowCount(t2d_layer_information->LayoutData10by10.size());
     ui->tableWidget->setColumnWidth(5,80);
 
-    // Table 채우기
+    // Table a????
     for (int i=1; i < t2d_layer_information->LayoutData10by10.size() ; i++)
     {
         MakeTableWidgetItemForText(i);
@@ -4181,7 +4181,7 @@ void FormLayer::MakeLayerInformationTalbe()
     }
     MakeHeaderCheckBoxAndSlider();
 
-    // Table Edit 금지, 다중 선택 금지
+    // Table Edit ????, ???? ???? ????
     ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
 }
@@ -4239,7 +4239,7 @@ void FormLayer::on_colorbutton_clicked()
 
 void FormLayer::on_opacityslider_valueChanged(int Opacity)
 {
-    // ui->tableWidget->currentRow() 로 찾으려고 하면, current row 가 -1 로 나옴
+    // ui->tableWidget->currentRow() ?? a?????? ???, current row ?? -1 ?? ????
     int sliderrow = -1;
     int sliderrow_for_t2d = -1;
     QString LayerColorname;
@@ -4309,7 +4309,7 @@ void FormLayer::MakeLayerInformationTableHeader(){
     ui->tableWidget->setColumnWidth(4,40);
     ui->tableWidget->setColumnWidth(5,60);
 
-    /// TableWidget Title Format 설정
+    /// TableWidget Title Format ????
     QBrush brush(QColor(255, 255, 255, 255));
     brush.setStyle(Qt::SolidPattern);
     QFont font;
@@ -4317,7 +4317,7 @@ void FormLayer::MakeLayerInformationTableHeader(){
     font.setBold(true);
     font.setWeight(55);
 
-    /// TableWidget Title 입력 및 반영
+    /// TableWidget Title ??? ?? ???
     for (int i=1; i<6; i++){
         QTableWidgetItem *TableHeaderItem = new QTableWidgetItem;
         TableHeaderItem->setText(TalbeHeader[i]);
@@ -4400,7 +4400,7 @@ void FormLayer::MakeColorButton(int table_row){
     LayerColorText = "background-color: rgba(" + LayerColorRed;
     LayerColorText = LayerColorText + "," + LayerColorGreen + "," + LayerColorBlue + "," + LayerColorAlpha + ")";
 
-    // color pushbutton 채우기
+    // color pushbutton a????
     QPushButton *colorbutton = new QPushButton();
     colorbutton->setStyleSheet(LayerColorText);
     ui->tableWidget->setCellWidget(table_row,1,colorbutton);
@@ -4408,7 +4408,7 @@ void FormLayer::MakeColorButton(int table_row){
 }
 
 void FormLayer::MakeHeaderCheckBoxAndSlider(){
-    //tableWidget title 에 checkbox
+    //tableWidget title ?? checkbox
     QCheckBox *checkBoxItem = new QCheckBox();
     checkBoxItem->setCheckState(Qt::Unchecked);
     QWidget *checkboxWidget = new QWidget();
@@ -4420,7 +4420,7 @@ void FormLayer::MakeHeaderCheckBoxAndSlider(){
     ui->tableWidget->setCellWidget(0,0,checkboxWidget);
     QObject::connect(checkBoxItem, SIGNAL(stateChanged(int)), this, SLOT(on_checkboxInTable_stateChanged()));
 
-    //tableWidget title 에 slider
+    //tableWidget title ?? slider
     QSpacerItem *HeaderVerticalSpacer = new QSpacerItem(0,20,QSizePolicy::Fixed, QSizePolicy::Fixed);
     QSlider *HeaderOpacitySlider = new QSlider();
     HeaderOpacitySlider->setOrientation(Qt::Horizontal);
@@ -4572,7 +4572,7 @@ void SuperItem::slotMove(POS_MONITORING *pos)
     QTransform trans;
     trans.rotate(rot);
     trans.scale(m_view_size*m_zoom_init/pos->zoom, (m_view_size*m_zoom_init/pos->zoom) * (pos->tilt / 90));
-      //zoom 초기가 25%면 ..
+      //zoom ??? 25%?? ..
     setTransform(trans);
 
 }
@@ -4623,7 +4623,7 @@ void FormMap::receiveFile(T2D &t2d)
     QGraphicsScene *scene = new QGraphicsScene(this);
     rectItem->setRect(-(m_width_scaled/2),-(m_height_scaled/2),m_width_scaled,m_height_scaled);
     rectItem->setBrush(QBrush(QColor(Qt::gray)));
-    rectItem->setPos(window_width/2,-window_height/2); //좌측 위 (0,0) 에서 부터 중앙으로 이동
+    rectItem->setPos(window_width/2,-window_height/2); //???? ?? (0,0) ???? ???? ??????? ???
     scene->addItem(rectItem);
             //
 
@@ -4683,7 +4683,7 @@ void FormMap::changePos()
     //}
     //if (funcName == "moveZoom")
     //{
-    //    infoZoom = infoZoom + infoZoom*value/1500;        //일정 높이를 100% 로 설정할 필요 있음, 결국 초기값은 GDS Size 에 따라 바뀔 수 있음.
+    //    infoZoom = infoZoom + infoZoom*value/1500;        //???? ????? 100% ?? ?????? ??? ????, ?? ????? GDS Size ?? ???? ??? ?? ????.
     //    if (infoZoom < 0.01)
     //        infoZoom = 0.01;
     //    if (infoZoom > 100)
@@ -4789,7 +4789,7 @@ void FormTop::drawing()
     areaFilterRect();
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment 와 비교하여 for skip
+        //layer_enviroment ?? ??????? for skip
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
         for(int row = m_begin_row ; row < m_end_row ; row++)
         {
@@ -4808,7 +4808,7 @@ void FormTop::drawing()
 
 void FormTop::drawingClear()
 {
-    // 기존에 있는 vector 를 남겨놔야 함 : delete 를 위해
+    // ?????? ??? vector ?? ??????? ?? : delete ?? ????
     for(auto cur_item : rectItemList)
     {
         delete cur_item;
@@ -4899,7 +4899,7 @@ int FormTop::extPos(double *pos, double *min, double *max)
     int max_col_row = (*max-*min)/m_block_size;
 
 
-    //block 으로 자른 경계면 근처에 있을 경우 external 을 추가
+    //block ???? ??? ?????? ??o?? ???? ???? external ?? ???
     if ((*pos - *min)<area && pos_col_row > 0) // 30.0413 - 3*10 = 0.0413 < 0.05
     {
         return pos_col_row - 1;
@@ -4921,7 +4921,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
 
     double minx, maxx, miny, maxy;
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size) //area 보다 넘어가면 자름
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size) //area ???? ????? ???
     {
         minx = m_min_x_size;
     }
@@ -4930,7 +4930,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         minx = rendering_full->LayoutData10by10[layer].xy[row][col][n].minx;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > m_max_x_size) //area 보다 넘어가면 자름
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > m_max_x_size) //area ???? ????? ???
     {
         maxx = m_max_x_size;
     }
@@ -4939,7 +4939,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         maxx = rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < m_min_y_size) //area 보다 넘어가면 자름
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < m_min_y_size) //area ???? ????? ???
     {
         miny = m_min_y_size;
     }
@@ -4948,7 +4948,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         miny = rendering_full->LayoutData10by10[layer].xy[row][col][n].miny;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_max_y_size) //area 보다 넘어가면 자름
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_max_y_size) //area ???? ????? ???
     {
         maxy = m_max_y_size;
     }
@@ -4981,7 +4981,7 @@ void FormTop::areaFilterRect()
         }
     }
 
-    int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //식이 필요한대   23.3841 / 10 = 2.33841 -> int 2
+    int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //???? ??????   23.3841 / 10 = 2.33841 -> int 2
     int ext_col = extPos(&pos->x, &rendering_full->LayoutMinMax.minx, &rendering_full->LayoutMinMax.maxx);
     m_begin_col = qMin(pos_col,ext_col);
     m_end_col = qMax(pos_col,ext_col)+1;
@@ -4995,7 +4995,7 @@ void FormTop::areaFilterRect()
     //layer
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment 와 비교하여 for skip
+        //layer_enviroment ?? ??????? for skip
 
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
 
@@ -5083,7 +5083,7 @@ void GitMerge::mergeFiles(QString &totalMerge)
 
         itemMerge = itemMerge.remove("\\");
         itemMerge = itemMerge.trimmed();
-        //주석을 처리해야 한다.
+        //????? o????? ???.
         if (itemMerge.contains(".cpp", Qt::CaseInsensitive) || itemMerge.contains(".h", Qt::CaseInsensitive) || itemMerge.contains(".ui", Qt::CaseInsensitive))
         {
             QFile codeFile(itemMerge.prepend("./"));
@@ -5226,7 +5226,7 @@ void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
                 }
                 break;
             }
-            if (j == codeList.size()-1) // 찾아봤는데 기존 파일이 없다.
+            if (j == codeList.size()-1) // a??o��? ???? ?????? ????.
             {
                 QFile file(fileListDivide[0]);
                 if(!file.open(QFile::WriteOnly | QFile::Text))
@@ -5461,7 +5461,7 @@ void MainWindow::slotInfoText(QString funcName, POS_MONITORING value)
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "파일 선택",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "???? ????",".","Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
@@ -5483,7 +5483,7 @@ void MainWindow::inputPosInformation()
 
 void MainWindow::on_actionOpen_Layout_triggered()
 {
-    QString file_name = QFileDialog::getOpenFileName(this, "파일 선택",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "???? ????",".","Files(*.*)");
     DtaoRenderSystem * renderer = this->m_window->getRenderer();
 
     //renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
@@ -5556,11 +5556,11 @@ void MainWindow::on_actionOpen_DB_triggered(){
 
 }
 
-void MainWindow::slotDirectlyInputPos() //point info 에서 직접 입력한 경우
+void MainWindow::slotDirectlyInputPos() //point info ???? ???? ????? ????
 {
     formMap->changePos();
     formTop->changePos();
-    //요청사항 230324 vulkan 에서도 수정을 여기서 실행
+    //??u???? 230324 vulkan ?????? ?????? ???? ????
 }
 
 
@@ -7078,7 +7078,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom 초기값에 대한 GDS size 를 갖고와 수정 필요
+    float infoZoom = 1; //Zoom ????? ???? GDS size ?? ?????? ???? ???
 
     float initRot = 0;
     float initTilt = 90;
@@ -7277,7 +7277,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom 초기값에 대한 GDS size 를 갖고와 수정 필요
+    float infoZoom = 1; //Zoom ????? ???? GDS size ?? ?????? ???? ???
 
     float initRot = 0;
     float initTilt = 90;

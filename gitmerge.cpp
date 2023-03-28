@@ -54,13 +54,12 @@ void GitMerge::mergeFiles(QString &totalMerge)
     QTextStream in(&file);
     QString merge = in.readAll();
     QStringList mergeList = merge.split("\n");
-    qDebug()<< "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
     for (auto &itemMerge : mergeList)
     {
 
         itemMerge = itemMerge.remove("\\");
         itemMerge = itemMerge.trimmed();
-        //ì£¼ìì²ë¦¬´ì¼ ë¤.
+        //�ּ��� ó���ؾ� �Ѵ�.
         if (itemMerge.contains(".cpp", Qt::CaseInsensitive) || itemMerge.contains(".h", Qt::CaseInsensitive) || itemMerge.contains(".ui", Qt::CaseInsensitive))
         {
             QFile codeFile(itemMerge.prepend("./"));
@@ -70,7 +69,9 @@ void GitMerge::mergeFiles(QString &totalMerge)
                 return;
             }
             QTextStream codeIn(&codeFile);
+            codeIn.setCodec("UTF-8");
             QString codeText = codeIn.readAll();
+            codeText = codeText.toUtf8();
 
             totalMerge.append(split1);
             totalMerge.append(itemMerge);
@@ -155,6 +156,7 @@ void GitMerge::writeMergeFile(QString fileName, QString &originFile)
     }
     QTextStream out(&file);
     out << originFile;
+    out.setCodec("UTF-8");
     file.flush();
     file.close();
 
@@ -200,7 +202,7 @@ void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
                 }
                 break;
             }
-            if (j == codeList.size()-1) // ì°¾ìë´¤ëê¸°ì¡´ ì¼ë¤.
+            if (j == codeList.size()-1) // ã�ƺôµ� ���� ������ ����.
             {
                 QFile file(fileListDivide[0]);
                 if(!file.open(QFile::WriteOnly | QFile::Text))
@@ -208,7 +210,7 @@ void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
                     qDebug() << " Could not open the file for writing ";
                     return;
                 }
-                QTextStream out(&file);
+                QTextStream out(&file);                
                 out << fileListDivide[1];
                 file.flush();
                 file.close();

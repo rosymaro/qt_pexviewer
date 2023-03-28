@@ -50,6 +50,7 @@
      <string>Camera</string>
     </property>
     <addaction name="actionTop"/>
+    <addaction name="actionDemo"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
@@ -97,6 +98,11 @@
   <action name="actionTop">
    <property name="text">
     <string>Top</string>
+   </property>
+  </action>
+  <action name="actionDemo">
+   <property name="text">
+    <string>Demo</string>
    </property>
   </action>
   <action name="docker_Map">

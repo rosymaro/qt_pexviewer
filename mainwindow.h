@@ -54,6 +54,7 @@ private slots:
     void slotDirectlyInputPos();
 
     void on_actionTop_triggered();
+    void on_actionDemo_triggered();
     void on_docker_TopView_triggered();
     void on_docker_Map_triggered();
     void on_docker_Info_triggered();

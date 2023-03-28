@@ -15,12 +15,11 @@ class SuperItem : public QObject, public QGraphicsItem
     Q_OBJECT
 public:
     SuperItem(QGraphicsItem* parent = NULL);
-    void receivePointPos(POS_MONITORING *pos);
 public slots:
-    void slotMove();
-    void slotInitMove(double x, double y, double scale);
+    void slotMove(POS_MONITORING *pos);
+    void slotInitMove(double x, double y);
 
-protected:    
+protected:
     void paint(QPainter *painter,
                const QStyleOptionGraphicsItem *option,
                QWidget *widget);    
@@ -30,14 +29,11 @@ protected:
 //    virtual void keyPressEvent(QKeyEvent *evnet);
 
 private:
-    POS_MONITORING *m_pos;
     double m_pos_past_x = 0;
     double m_pos_past_y = 0;
     double m_view_size = 1;
     double m_zoom_init = 1;
-    double m_init_x = 0;
-    double m_init_y = 0;
-    double m_scale = 1;
+
 };
 
 class FormMap : public QDialog
@@ -52,9 +48,8 @@ public:
     void changePos();
 
 signals:
-    void signalMove();
-    void signalInitMove(double x, double y, double m_scale);
-
+    void signalMove(POS_MONITORING *pos);
+    void signalInitMove(double x, double y);
 
 private:    
     Ui::FormMap *ui;
@@ -77,7 +72,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom Ã¬Â´ÂˆÃªÂ¸Â°ÃªÂ°Â’Ã¬Â—Â GDS size Ã«Â¥ÃªÂ°Â–ÃªÂ³Â  Â˜Ã¬Â Â• Â„Ã¬ÂšÂ”
+    float infoZoom = 1; //Zoom ÃÊ±â°ª¿¡ ´ëÇÑ GDS size ¸¦ °®°í¿Í ¼öÁ¤ ÇÊ¿ä
 
     float initRot = 0;
     float initTilt = 90;

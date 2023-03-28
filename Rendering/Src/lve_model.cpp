@@ -294,3 +294,17 @@ void LveModel::changeLayerVisiblity(float layernumber, bool visiblity){
 
 }
 
+void LveModel::demoVisiblityOff(){
+    for(auto const& [key, val] : layerList){
+        layerList[key].visiblity = false;
+    }
+    layerList[4].visiblity = true;
+
+}
+
+void LveModel::demoVisiblityOn(std::vector<float> layernumbers){
+    for(auto layer : layernumbers){
+        layerList[layer].visiblity = true;
+    }
+}
+
