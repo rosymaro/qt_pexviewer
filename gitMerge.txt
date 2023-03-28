@@ -562,7 +562,7 @@ void PEXCapacitorModel::attachCapToPattern() {
     makeLayerToPatternCapMap();
 
     /*
-        //º´·ÄÃ³¸®·Î º¯°æÇØ¾ß ÇÔ
+        //????o???? ??????? ??
         //matchCapWithPattern(this->cap_layer_map, this->pattern_layer_map, 17, 0);
         for (auto& cur_layer : this->layers) {
             string layer = getLayerString(cur_layer.first, cur_layer.second);
@@ -1069,7 +1069,7 @@ void PEXResistorDataManager::loadData(const std::string file_path) {
 
         description = line[PEXINFO_INDEX::PEXINFO_INDEX_DESCRIPTION];
         PEXResDirection resistor_direction = PEXResistor::checkDirectionFromDescription(description);
-        if (value > 0) updateMinMaxRes(value, resistor_direction); //ÓÇÇ ÄÚµå, 0º¸´Ù Ûº úÇ×º ¹«½Ã
+        if (value > 0) updateMinMaxRes(value, resistor_direction); //?????? ???, 0???? ???? ?????? ????
         this->resistors.push_back(PEXResistor(item_name, node1, node2, value, resistor_direction));
     }
 }
@@ -1437,7 +1437,7 @@ void DtaoRenderSystem::startNextFrame(){
                 aspect, this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
     this->cameraController.moveCameraMouse(
                 this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
-    //this->cameraController.setPerspective(this->camera, aspect);
+    this->cameraController.onDemo(aspect, this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
 
 
     VkCommandBuffer command_buffer = this->lveWindow->currentCommandBuffer();
@@ -2111,6 +2111,109 @@ void KeyboardMovementController::setPerspective(LveCamera& camera, float aspect)
         }
         camera.setPerspectiveProjection(glm::radians(50.f), aspect, perspectiveNear, 100.f);
         mouse_position.scrollClicked.setY(0);
+}
+
+void KeyboardMovementController::triggerDemo(){
+    camera_moving_flag.demoTrigger = true;
+};
+
+void KeyboardMovementController::onDemo(float dt, LveCamera &camera, float render_scale, std::vector<LveGameObject> &gameObjects, LveWindow *lvewindow){
+    if (camera_moving_flag.demoTrigger){
+        float scale = 0.0f;
+        float rotate_lr = 0.0f;
+        float rotate_ud = 0.0f;
+        float rotate_toggle = 0.0f;
+        float rotate_toggle_xy = 0.0f;
+        float obj_scale = 2.0f / render_scale;
+        demoTime = demoTime + 1;
+
+        //if (camera_moving_flag.moveForward) scale = 1.0f + 0.01f * obj_scale;
+        //else if (camera_moving_flag.moveBackward) scale = 1.0f - 0.01f * obj_scale;
+        if(!camera_moving_flag.demoInitLayer){
+            gameObjects[0].model->demoVisiblityOff();
+            camera_moving_flag.demoInitLayer = true;
+        }
+
+        rotate_lr = 1.6f * obj_scale;
+
+        glm::vec3 forward = {camera.viewMatrix[0][2], camera.viewMatrix[1][2], camera.viewMatrix[2][2]};
+        float tilt = asin(forward.z/(sqrt(forward.x*forward.x +forward.y*forward.y+forward.z*forward.z)))*(180/3.141592653589793238463);
+        camera.decomposeView(camera.getView());
+        camera.rotation_d = glm::conjugate(camera.rotation_d);
+        // yaw / z
+        double siny_cosp = 2 * (camera.rotation_d.w * camera.rotation_d.z + camera.rotation_d.x * camera.rotation_d.y);
+        double cosy_cosp = 1 - 2 * (camera.rotation_d.y * camera.rotation_d.y + camera.rotation_d.z * camera.rotation_d.z);
+        float rotation = (float)atan2(siny_cosp, cosy_cosp)*(180/3.141592653589793238463);
+
+        if(rotation <0 ){
+            rotation = rotation + 360;
+        }
+
+        if(rotation>350 && !camera_moving_flag.layerOn){
+            camera_moving_flag.tiltOn = true;
+
+        }
+
+        if(camera_moving_flag.tiltOn){
+            rotate_toggle = - 0.1f;
+            glm::vec3 right{camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]};
+            camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_toggle), right);
+            if(tilt<30) {
+                camera_moving_flag.tiltOn = false;
+                camera_moving_flag.layerOn = true;
+            }
+        }
+
+        if(camera_moving_flag.layerOn && !camera_moving_flag.wave1){
+            demoCheckPoint = demoTime;
+            std::vector<float> on_layer = {2,7,15};
+            gameObjects[0].model->demoVisiblityOn(on_layer);
+            camera_moving_flag.wave1 = true;
+        }
+
+        if(demoCheckPoint < demoTime-50 && !camera_moving_flag.wave2 && camera_moving_flag.wave1){
+            demoCheckPoint = demoTime;
+            std::vector<float> on_layer = {177,16,17};
+            gameObjects[0].model->demoVisiblityOn(on_layer);
+            camera_moving_flag.wave2 = true;
+        }
+
+        if(demoCheckPoint < demoTime-50 && !camera_moving_flag.wave3 && camera_moving_flag.wave2){
+            demoCheckPoint = demoTime;
+            std::vector<float> on_layer = {714,19,18,17,16,15,686,685,245,72914,502,247};
+            gameObjects[0].model->demoVisiblityOn(on_layer);
+            camera_moving_flag.wave3 = true;
+        }
+
+        if(demoCheckPoint < demoTime-5000 && camera_moving_flag.wave2){
+            camera_moving_flag.demoTrigger = false;
+            camera_moving_flag.demoInitLayer = false;
+            camera_moving_flag.tiltOn = false;
+            camera_moving_flag.layerOn = false;
+            camera_moving_flag.wave1 = false;
+            camera_moving_flag.wave2 = false;
+            camera_moving_flag.wave3 = false;
+
+        }
+
+
+        if (camera_moving_flag.rotateForward ) rotate_ud = -0.1f * obj_scale;
+        else if (camera_moving_flag.rotateBackward) rotate_ud = 0.1f * obj_scale;
+
+        if (camera_moving_flag.toggleDemension && !camera.isperspective) {
+            camera.setPerspectiveProjection(glm::radians(50.f), dt, 0.1f, 100.f);
+            camera_moving_flag.toggleDemension = false;
+        }
+        else if (camera_moving_flag.toggleDemension)rotate_toggle = 0.1f;
+
+        if (camera_moving_flag.toggleDemensionXY) rotate_toggle_xy = -0.1f;
+
+        if (glm::dot(rotate_lr, rotate_lr) > std::numeric_limits<float>::epsilon()) {
+            camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_lr), glm::vec3(0.0f, 0.0f, 1.0f));
+        }
+
+    }
+
 }
 
 
@@ -2911,6 +3014,20 @@ void LveModel::changeLayerVisiblity(float layernumber, bool visiblity){
 
 }
 
+void LveModel::demoVisiblityOff(){
+    for(auto const& [key, val] : layerList){
+        layerList[key].visiblity = false;
+    }
+    layerList[4].visiblity = true;
+
+}
+
+void LveModel::demoVisiblityOn(std::vector<float> layernumbers){
+    for(auto layer : layernumbers){
+        layerList[layer].visiblity = true;
+    }
+}
+
 !@hash[]!@file[]./Rendering/Src/lve_pipeline.cpp!@hash[]!@code[]#include <vulkan/vulkan.h>
 
 #include "lve_pipeline.hpp"
@@ -3675,7 +3792,7 @@ FormHier::FormHier(QWidget *parent) :
     ui(new Ui::FormHier)
 {
     ui->setupUi(this);
-    // QTableWidget defalut ¬ê¸° ¤ì 
+    // QTableWidget defalut 크기 설정
     QStringList defalutTableHeader;
     defalutTableHeader << "LayerName" << "LayerNum" << "LayerType" << "Red" << "Green" << "Blue";
 
@@ -3716,11 +3833,11 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
 //    qDebug() << "3rd" << inputDataVector.value(2);
 //    qDebug() << "1st_1st" << inputDataVector.value(0).value(0);
 
-// QTableWidget ì QStringList ë¡ë§ ë°ê¸°ë¬¸ë£ë
+// QTableWidget 에서 QStringList 로만 받기때문에 자료형변환
     QStringList vectorTOqstringlist;
     QStringList vectorTOqstringlistHoriLabels;
 
-// QTableWidget ¬ê¸° ¤ì 
+// QTableWidget 크기 설정
     ui->tableWidget->setColumnCount(column);
     ui->tableWidget->setRowCount(row);
 
@@ -3730,7 +3847,7 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
     font.setPointSize(10);
     ui->tableWidget->horizontalHeader()->setFont(font);
 
-// Table ì±ì°ê¸
+// Table 채우기
     for (int i=0; i<row ; i++)
     {
         for (int j=0; j<column ; j++)
@@ -3851,7 +3968,7 @@ void FormInfo::moveRender(float x, float y)
 bool FormInfo::checkNum(const QString &str)
 {
     if(str.toDouble() == 0 && str != "0")
-    // «ìë¡ë°ê¿¨ë 0ìë° string  0 ë ê²½ì°ë ë¬¸ì
+    // 숫자로 바꿨더니 0이 되었는데 string 은 0 아닐 경우에는 문자
     {
         return false;
     }
@@ -3864,7 +3981,7 @@ bool FormInfo::checkNum(const QString &str)
 void FormInfo::checkText(double *point, const QString &arg1, double min_limit, double max_limit, int type)
 {
     double double_arg = arg1.toDouble();
-    if(checkNum(arg1)) // «ì¸ì ì
+    if(checkNum(arg1)) // 숫자인지 파악
     {
         if(double_arg >= min_limit && double_arg <= max_limit) //tilt
         {
@@ -3886,7 +4003,7 @@ void FormInfo::checkText(double *point, const QString &arg1, double min_limit, d
     {
 
     }    
-    else // ê¸°ì¡´ ê°ì¼ë¡ ì
+    else // 기존 값으로 유지
     {
         outputText();
     }
@@ -4049,12 +4166,12 @@ void FormLayer::ReceiveLayerInformation(T2D &t2d)
 
 void FormLayer::MakeLayerInformationTalbe()
 {
-    // QTableWidget ¬ê¸° ¤ì 
+    // QTableWidget 크기 설정
     ui->tableWidget->setColumnCount(table_default_column);
     ui->tableWidget->setRowCount(t2d_layer_information->LayoutData10by10.size());
     ui->tableWidget->setColumnWidth(5,80);
 
-    // Table ì±ì°ê¸
+    // Table 채우기
     for (int i=1; i < t2d_layer_information->LayoutData10by10.size() ; i++)
     {
         MakeTableWidgetItemForText(i);
@@ -4064,7 +4181,7 @@ void FormLayer::MakeLayerInformationTalbe()
     }
     MakeHeaderCheckBoxAndSlider();
 
-    // Table Edit ê¸ì, ¤ì¤  í ê¸ì
+    // Table Edit 금지, 다중 선택 금지
     ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
 }
@@ -4122,7 +4239,7 @@ void FormLayer::on_colorbutton_clicked()
 
 void FormLayer::on_opacityslider_valueChanged(int Opacity)
 {
-    // ui->tableWidget->currentRow() ë¡ì°¾ì¼¤ê³  ë©´, current row ê° -1 ë¡ì´
+    // ui->tableWidget->currentRow() 로 찾으려고 하면, current row 가 -1 로 나옴
     int sliderrow = -1;
     int sliderrow_for_t2d = -1;
     QString LayerColorname;
@@ -4192,7 +4309,7 @@ void FormLayer::MakeLayerInformationTableHeader(){
     ui->tableWidget->setColumnWidth(4,40);
     ui->tableWidget->setColumnWidth(5,60);
 
-    /// TableWidget Title Format ¤ì 
+    /// TableWidget Title Format 설정
     QBrush brush(QColor(255, 255, 255, 255));
     brush.setStyle(Qt::SolidPattern);
     QFont font;
@@ -4200,7 +4317,7 @@ void FormLayer::MakeLayerInformationTableHeader(){
     font.setBold(true);
     font.setWeight(55);
 
-    /// TableWidget Title ë ¥ ë°ë°ì
+    /// TableWidget Title 입력 및 반영
     for (int i=1; i<6; i++){
         QTableWidgetItem *TableHeaderItem = new QTableWidgetItem;
         TableHeaderItem->setText(TalbeHeader[i]);
@@ -4283,7 +4400,7 @@ void FormLayer::MakeColorButton(int table_row){
     LayerColorText = "background-color: rgba(" + LayerColorRed;
     LayerColorText = LayerColorText + "," + LayerColorGreen + "," + LayerColorBlue + "," + LayerColorAlpha + ")";
 
-    // color pushbutton ì±ì°ê¸
+    // color pushbutton 채우기
     QPushButton *colorbutton = new QPushButton();
     colorbutton->setStyleSheet(LayerColorText);
     ui->tableWidget->setCellWidget(table_row,1,colorbutton);
@@ -4291,7 +4408,7 @@ void FormLayer::MakeColorButton(int table_row){
 }
 
 void FormLayer::MakeHeaderCheckBoxAndSlider(){
-    //tableWidget title checkbox
+    //tableWidget title 에 checkbox
     QCheckBox *checkBoxItem = new QCheckBox();
     checkBoxItem->setCheckState(Qt::Unchecked);
     QWidget *checkboxWidget = new QWidget();
@@ -4303,7 +4420,7 @@ void FormLayer::MakeHeaderCheckBoxAndSlider(){
     ui->tableWidget->setCellWidget(0,0,checkboxWidget);
     QObject::connect(checkBoxItem, SIGNAL(stateChanged(int)), this, SLOT(on_checkboxInTable_stateChanged()));
 
-    //tableWidget title slider
+    //tableWidget title 에 slider
     QSpacerItem *HeaderVerticalSpacer = new QSpacerItem(0,20,QSizePolicy::Fixed, QSizePolicy::Fixed);
     QSlider *HeaderOpacitySlider = new QSlider();
     HeaderOpacitySlider->setOrientation(Qt::Horizontal);
@@ -4436,43 +4553,32 @@ SuperItem::SuperItem(QGraphicsItem* parent) : QGraphicsItem(parent)
     setFlag(QGraphicsItem::ItemIsMovable);
 }
 
-void SuperItem::receivePointPos(POS_MONITORING *pos)
+void SuperItem::slotMove(POS_MONITORING *pos)
 {
-    this->m_pos = pos;
-}
+    double delta_x = pos->x - m_pos_past_x;
+    double delta_y = pos->y - m_pos_past_y;
+    double rot = 360 - pos->rotation;
 
-void SuperItem::slotMove()
-{
-    qDebug() << "1 pos delta x :" << m_pos->x << " || delta y :" << m_pos->y;
-    qDebug() << "2 pas delta x :" << m_pos_past_x << " || delta y :" << m_pos_past_y;
-    double delta_x = m_scale*(m_pos->x - m_pos_past_x);
-    double delta_y = m_scale*(m_pos->y - m_pos_past_y);
-    double rot = 360 - m_pos->rotation;
-
-    if (delta_x !=0 || delta_y !=0)
+    if (delta_x !=0 && delta_y !=0)
     {
         qDebug() << "delta x :" << delta_x << " || delta y :" << delta_y;
         moveBy(delta_x, -1 * delta_y);
-        m_pos_past_x = m_pos->x;
-        m_pos_past_y = m_pos->y;
+        m_pos_past_x = this->x();
+        m_pos_past_y = this->y();
     }
 
 
 
     QTransform trans;
     trans.rotate(rot);
-    trans.scale(m_view_size*m_zoom_init/m_pos->zoom, (m_view_size*m_zoom_init/m_pos->zoom) * (m_pos->tilt / 90));
-      //zoom ì´ê¸°ê° 25%ë©..
+    trans.scale(m_view_size*m_zoom_init/pos->zoom, (m_view_size*m_zoom_init/pos->zoom) * (pos->tilt / 90));
+      //zoom 초기가 25%면 ..
     setTransform(trans);
 
 }
 
-
-void SuperItem::slotInitMove(double x, double y, double scale)
+void SuperItem::slotInitMove(double x, double y)
 {
-    m_pos_past_x = m_pos->x;
-    m_pos_past_y = m_pos->y;
-    m_scale = scale;
     moveBy(x,y);
 }
 
@@ -4495,7 +4601,6 @@ FormMap::FormMap(QWidget *parent) :
     ui(new Ui::FormMap)
 {
     ui->setupUi(this);
-    super = new SuperItem;
 
 }
 
@@ -4518,33 +4623,29 @@ void FormMap::receiveFile(T2D &t2d)
     QGraphicsScene *scene = new QGraphicsScene(this);
     rectItem->setRect(-(m_width_scaled/2),-(m_height_scaled/2),m_width_scaled,m_height_scaled);
     rectItem->setBrush(QBrush(QColor(Qt::gray)));
-    rectItem->setPos(window_width/2,-window_height/2); //ì¢ì¸¡ (0,0) ì ë¶ì¤ì¼ë¡ ´ë
+    rectItem->setPos(window_width/2,-window_height/2); //좌측 위 (0,0) 에서 부터 중앙으로 이동
     scene->addItem(rectItem);
-    scene->setSceneRect(0,-m_box_size,m_box_size,m_box_size);
-
             //
 
+    SuperItem *super = new SuperItem;
     scene->addItem(super);
 
     QObject::connect(this,&FormMap::signalMove,super,&SuperItem::slotMove);
     QObject::connect(this,&FormMap::signalInitMove,super,&SuperItem::slotInitMove);
 
-    emit signalInitMove(window_width/2,-window_height/2,m_scale);
+    emit signalInitMove(window_width/2,-window_height/2);
 
     ui->graphicsView->setScene(scene);
-    ui->graphicsView->setFixedSize(m_box_size,m_box_size);
-    ui->graphicsView->setRenderHint(QPainter::Antialiasing);
 
 }
 
 void FormMap::receivePointPos(POS_MONITORING &pos)
 {
     this->pos = &pos;
-    super->receivePointPos(this->pos);
 }
 void FormMap::changePos()
 {
-    emit signalMove();
+    emit signalMove(pos);
 }
 
 
@@ -4582,7 +4683,7 @@ void FormMap::changePos()
     //}
     //if (funcName == "moveZoom")
     //{
-    //    infoZoom = infoZoom + infoZoom*value/1500;        //¼ì  ì´ë¥100% ë¡¤ì ì ì, ê²°êµ­ ì´ê¸°ê°ì GDS Size °ë¼ ë°ëì.
+    //    infoZoom = infoZoom + infoZoom*value/1500;        //일정 높이를 100% 로 설정할 필요 있음, 결국 초기값은 GDS Size 에 따라 바뀔 수 있음.
     //    if (infoZoom < 0.01)
     //        infoZoom = 0.01;
     //    if (infoZoom > 100)
@@ -4686,15 +4787,9 @@ void FormTop::receiveFile(T2D &t2d)
 void FormTop::drawing()
 {
     areaFilterRect();
-    if(m_begin_row == 0 && m_begin_col ==0 && zero_point)
-    {
-        addZeroPoint();
-        zero_point = false;
-    }
-
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment  ë¹êµì¬ for skip
+        //layer_enviroment 와 비교하여 for skip
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
         for(int row = m_begin_row ; row < m_end_row ; row++)
         {
@@ -4713,13 +4808,12 @@ void FormTop::drawing()
 
 void FormTop::drawingClear()
 {
-    // ê¸°ì¡´ë vector ë¥¨ê²¨ì¼ : delete ë¥í´
+    // 기존에 있는 vector 를 남겨놔야 함 : delete 를 위해
     for(auto cur_item : rectItemList)
     {
         delete cur_item;
     }
     rectItemList.clear();
-    zero_point = true;
 
 }
 
@@ -4744,8 +4838,6 @@ void FormTop::changePos()
 
         drawingClear();
         drawing();
-        ui->graphicsView->setTransform(QTransform().translate(m_scale*pos->x, -1*m_scale*pos->y));
-        qDebug() << "transpose : "<<QTransform().transposed();
     }
 }
 
@@ -4775,20 +4867,9 @@ void FormTop::on_horizontalSlider_valueChanged(int value)
     }
 }
 
-void FormTop::addZeroPoint()
-{
-    qDebug() << "drawing or not?";
-    QGraphicsRectItem *zeroItem = new QGraphicsRectItem;
-    rectItemList.push_back(zeroItem);
-    zeroItem->setRect(m_scale*rendering_full->LayoutMinMax.minx,m_scale*rendering_full->LayoutMinMax.miny,m_scale*0.01,m_scale*0.01);
-    zeroItem->setBrush(QBrush(QColor(Qt::red)));
-    zeroItem->setZValue(9999);
-    m_scene->addItem(zeroItem);
-}
-
-
 void FormTop::addRectItem(int layer, int row, int col, int n, QTransform trans)
 {
+
     QGraphicsRectItem *rectItem = new QGraphicsRectItem;
     rectItemList.push_back(rectItem);
 
@@ -4802,7 +4883,9 @@ void FormTop::addRectItem(int layer, int row, int col, int n, QTransform trans)
 
     rectItem->setRect(x,y,w,h);
     rectItem->setBrush(QBrush(QColor(rendering_full->LayoutData10by10[layer].color.r,rendering_full->LayoutData10by10[layer].color.g,rendering_full->LayoutData10by10[layer].color.b,rendering_full->LayoutData10by10[layer].color.a)));
-    rectItem->setOpacity(opacity); 
+    rectItem->setOpacity(opacity);
+    qDebug()<< " rect    : " << rectItem->rect() << ":: row/col : " << row << "/" << col << " " << n;
+    qDebug()<< " opacity : " << rendering_full->LayoutData10by10[layer].color.a << " : " << opacity;
     rectItem->setZValue(rendering_full->LayoutData10by10[layer].bot);
 
     rectItem->setTransform(trans);
@@ -4816,7 +4899,7 @@ int FormTop::extPos(double *pos, double *min, double *max)
     int max_col_row = (*max-*min)/m_block_size;
 
 
-    //block ¼ë¡ ë¥¸ ê²½ê³ë©ê·¼ì²ì ê²½ì° external ì¶ê
+    //block 으로 자른 경계면 근처에 있을 경우 external 을 추가
     if ((*pos - *min)<area && pos_col_row > 0) // 30.0413 - 3*10 = 0.0413 < 0.05
     {
         return pos_col_row - 1;
@@ -4838,7 +4921,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
 
     double minx, maxx, miny, maxy;
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size) //area 보다 넘어가면 자름
     {
         minx = m_min_x_size;
     }
@@ -4847,7 +4930,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         minx = rendering_full->LayoutData10by10[layer].xy[row][col][n].minx;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > m_max_x_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > m_max_x_size) //area 보다 넘어가면 자름
     {
         maxx = m_max_x_size;
     }
@@ -4856,7 +4939,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         maxx = rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < m_min_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < m_min_y_size) //area 보다 넘어가면 자름
     {
         miny = m_min_y_size;
     }
@@ -4865,7 +4948,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         miny = rendering_full->LayoutData10by10[layer].xy[row][col][n].miny;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_max_y_size) //area ë³´ë¤ ì´ê°ë©ë¦
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_max_y_size) //area 보다 넘어가면 자름
     {
         maxy = m_max_y_size;
     }
@@ -4898,7 +4981,7 @@ void FormTop::areaFilterRect()
         }
     }
 
-    int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //ì´ ìë   23.3841 / 10 = 2.33841 -> int 2
+    int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //식이 필요한대   23.3841 / 10 = 2.33841 -> int 2
     int ext_col = extPos(&pos->x, &rendering_full->LayoutMinMax.minx, &rendering_full->LayoutMinMax.maxx);
     m_begin_col = qMin(pos_col,ext_col);
     m_end_col = qMax(pos_col,ext_col)+1;
@@ -4912,7 +4995,7 @@ void FormTop::areaFilterRect()
     //layer
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment  ë¹êµì¬ for skip
+        //layer_enviroment 와 비교하여 for skip
 
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
 
@@ -4995,13 +5078,12 @@ void GitMerge::mergeFiles(QString &totalMerge)
     QTextStream in(&file);
     QString merge = in.readAll();
     QStringList mergeList = merge.split("\n");
-    qDebug()<< "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
     for (auto &itemMerge : mergeList)
     {
 
         itemMerge = itemMerge.remove("\\");
         itemMerge = itemMerge.trimmed();
-        //ì£¼ìì²ë¦¬´ì¼ ë¤.
+        //주석을 처리해야 한다.
         if (itemMerge.contains(".cpp", Qt::CaseInsensitive) || itemMerge.contains(".h", Qt::CaseInsensitive) || itemMerge.contains(".ui", Qt::CaseInsensitive))
         {
             QFile codeFile(itemMerge.prepend("./"));
@@ -5011,7 +5093,9 @@ void GitMerge::mergeFiles(QString &totalMerge)
                 return;
             }
             QTextStream codeIn(&codeFile);
+            codeIn.setCodec("UTF-8");
             QString codeText = codeIn.readAll();
+            codeText = codeText.toUtf8();
 
             totalMerge.append(split1);
             totalMerge.append(itemMerge);
@@ -5096,6 +5180,7 @@ void GitMerge::writeMergeFile(QString fileName, QString &originFile)
     }
     QTextStream out(&file);
     out << originFile;
+    out.setCodec("UTF-8");
     file.flush();
     file.close();
 
@@ -5141,7 +5226,7 @@ void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
                 }
                 break;
             }
-            if (j == codeList.size()-1) // ì°¾ìë´¤ëê¸°ì¡´ ì¼ë¤.
+            if (j == codeList.size()-1) // 찾아봤는데 기존 파일이 없다.
             {
                 QFile file(fileListDivide[0]);
                 if(!file.open(QFile::WriteOnly | QFile::Text))
@@ -5149,7 +5234,7 @@ void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
                     qDebug() << " Could not open the file for writing ";
                     return;
                 }
-                QTextStream out(&file);
+                QTextStream out(&file);                
                 out << fileListDivide[1];
                 file.flush();
                 file.close();
@@ -5376,7 +5461,7 @@ void MainWindow::slotInfoText(QString funcName, POS_MONITORING value)
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "ì¼  í",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "파일 선택",".","Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
@@ -5398,7 +5483,7 @@ void MainWindow::inputPosInformation()
 
 void MainWindow::on_actionOpen_Layout_triggered()
 {
-    QString file_name = QFileDialog::getOpenFileName(this, "ì¼  í",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "파일 선택",".","Files(*.*)");
     DtaoRenderSystem * renderer = this->m_window->getRenderer();
 
     //renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
@@ -5442,8 +5527,8 @@ void MainWindow::on_actionOpen_DB_triggered(){
 
 
 
-        pos.x = (t2d.LayoutMinMax.maxx - t2d.LayoutMinMax.minx)/2;
-        pos.y = (t2d.LayoutMinMax.maxy - t2d.LayoutMinMax.miny)/2;
+        pos.x = t2d.LayoutMinMax.minx;
+        pos.y = t2d.LayoutMinMax.miny;
         pos.z = 0;
         pos.tilt = 90;
         pos.rotation = 0;
@@ -5471,12 +5556,23 @@ void MainWindow::on_actionOpen_DB_triggered(){
 
 }
 
-void MainWindow::slotDirectlyInputPos() //point info ì ì§ì  ë ¥ê²½ì°
+void MainWindow::slotDirectlyInputPos() //point info 에서 직접 입력한 경우
 {
     formMap->changePos();
     formTop->changePos();
-    //ì²­¬í­ 230324 vulkan ìì ¬ê¸°¤í
+    //요청사항 230324 vulkan 에서도 수정을 여기서 실행
 }
+
+
+void MainWindow::on_actionDemo_triggered()
+{
+    qDebug() << "go?";
+    DtaoRenderSystem * renderer = this->m_window->getRenderer();
+    renderer->cameraController.triggerDemo();
+}
+
+
+
 
 void MainWindow::on_actionTop_triggered()
 {
@@ -6168,6 +6264,13 @@ public:
         bool mouseLeft= false;
         bool mouseRight= false;
         bool mouseMiddle= false;
+        bool demoTrigger= false;
+        bool demoInitLayer= false;
+        bool tiltOn=false;
+        bool layerOn=false;
+        bool wave1 = false;
+        bool wave2 = false;
+        bool wave3 = false;
     };
 
     struct MousePosition {
@@ -6193,6 +6296,8 @@ public:
     void setMouseFlagOff();
     void setMousePosition(QPoint position, int mode);
     void setMouseScroll(QPoint position);
+    void triggerDemo();
+    void onDemo(float dt, LveCamera& camera, float render_scale,std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow);
     CameraMovingContinousFlags camera_moving_flag;
     POS_MONITORING monitor;
 
@@ -6202,6 +6307,8 @@ public:
     int xpos_prev;
     int ypos_prev;
     float perspectiveNear{ 0.1f };
+    int demoTime{0};
+    int demoCheckPoint{0};
 
 
 };
@@ -6570,6 +6677,8 @@ public:
     void changeLayerColor(float layernumber, glm::vec3 rgb);
     void changeLayerOpacity(float layernumber, float opacity);
     void changeLayerVisiblity(float layernumber, bool visiblity);
+    void demoVisiblityOff();
+    void demoVisiblityOn(std::vector<float> layernumbers);
     bool visible{true};
     float opacity{ 1.0f };
 
@@ -6969,7 +7078,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
+    float infoZoom = 1; //Zoom 초기값에 대한 GDS size 를 갖고와 수정 필요
 
     float initRot = 0;
     float initTilt = 90;
@@ -7111,12 +7220,11 @@ class SuperItem : public QObject, public QGraphicsItem
     Q_OBJECT
 public:
     SuperItem(QGraphicsItem* parent = NULL);
-    void receivePointPos(POS_MONITORING *pos);
 public slots:
-    void slotMove();
-    void slotInitMove(double x, double y, double scale);
+    void slotMove(POS_MONITORING *pos);
+    void slotInitMove(double x, double y);
 
-protected:    
+protected:
     void paint(QPainter *painter,
                const QStyleOptionGraphicsItem *option,
                QWidget *widget);    
@@ -7126,14 +7234,11 @@ protected:
 //    virtual void keyPressEvent(QKeyEvent *evnet);
 
 private:
-    POS_MONITORING *m_pos;
     double m_pos_past_x = 0;
     double m_pos_past_y = 0;
     double m_view_size = 1;
     double m_zoom_init = 1;
-    double m_init_x = 0;
-    double m_init_y = 0;
-    double m_scale = 1;
+
 };
 
 class FormMap : public QDialog
@@ -7148,9 +7253,8 @@ public:
     void changePos();
 
 signals:
-    void signalMove();
-    void signalInitMove(double x, double y, double m_scale);
-
+    void signalMove(POS_MONITORING *pos);
+    void signalInitMove(double x, double y);
 
 private:    
     Ui::FormMap *ui;
@@ -7173,7 +7277,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom ì´ê¸°ê°ì GDS size ë¥ê°ê³  ì  ì
+    float infoZoom = 1; //Zoom 초기값에 대한 GDS size 를 갖고와 수정 필요
 
     float initRot = 0;
     float initTilt = 90;
@@ -7221,7 +7325,6 @@ private slots:
     void on_horizontalSlider_valueChanged(int value);
 
 private:
-    void addZeroPoint();
     void addRectItem(int layer, int row, int col, int n, QTransform trans);    
     int extPos(double *pos, double *min, double *max);
     void filterRenderingData(int layer, int row, int col, int n);
@@ -7236,7 +7339,6 @@ private:
     int m_begin_x = 0, m_begin_y = 0, m_end_x = 1, m_end_y = 1, m_scale = 500;
     float m_min_x = 0, m_min_y =0, m_max_x =0, m_max_y=0;
     bool init_check = true;
-    bool zero_point = true;
 
     int m_begin_row = 0, m_end_row = 1, m_begin_col = 0, m_end_col = 1;
     int m_block_size = 10; //10um
@@ -7327,6 +7429,7 @@ private slots:
     void slotDirectlyInputPos();
 
     void on_actionTop_triggered();
+    void on_actionDemo_triggered();
     void on_docker_TopView_triggered();
     void on_docker_Map_triggered();
     void on_docker_Info_triggered();
@@ -7883,6 +7986,7 @@ private:
      <string>Camera</string>
     </property>
     <addaction name="actionTop"/>
+    <addaction name="actionDemo"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
@@ -7930,6 +8034,11 @@ private:
   <action name="actionTop">
    <property name="text">
     <string>Top</string>
+   </property>
+  </action>
+  <action name="actionDemo">
+   <property name="text">
+    <string>Demo</string>
    </property>
   </action>
   <action name="docker_Map">
@@ -8110,8 +8219,6 @@ DISTFILES += \
 
 
 INCLUDEPATH += $$PWD/../../Library/glm-0.9.9.8
-
-
 
 unix:!macx|win32: LIBS += -L$$PWD/../../Library/VulkanSDK/1.3.239.0/Lib/ -lvulkan-1
 
