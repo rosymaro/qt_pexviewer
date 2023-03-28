@@ -39,7 +39,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom Ã¬Â´ÂˆÃªÂ¸Â°ÃªÂ°Â’Ã¬Â—Â GDS size Ã«Â¥ÃªÂ°Â–ÃªÂ³Â  Â˜Ã¬Â Â• Â„Ã¬ÂšÂ”
+    float infoZoom = 1; //Zoom ÃÊ±â°ª¿¡ ´ëÇÑ GDS size ¸¦ °®°í¿Í ¼öÁ¤ ÇÊ¿ä
 
     float initRot = 0;
     float initTilt = 90;

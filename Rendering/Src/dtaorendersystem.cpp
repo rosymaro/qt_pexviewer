@@ -72,7 +72,7 @@ void DtaoRenderSystem::startNextFrame(){
                 aspect, this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
     this->cameraController.moveCameraMouse(
                 this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
-    //this->cameraController.setPerspective(this->camera, aspect);
+    this->cameraController.onDemo(aspect, this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
 
 
     VkCommandBuffer command_buffer = this->lveWindow->currentCommandBuffer();

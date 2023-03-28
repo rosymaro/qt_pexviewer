@@ -13,43 +13,32 @@ SuperItem::SuperItem(QGraphicsItem* parent) : QGraphicsItem(parent)
     setFlag(QGraphicsItem::ItemIsMovable);
 }
 
-void SuperItem::receivePointPos(POS_MONITORING *pos)
+void SuperItem::slotMove(POS_MONITORING *pos)
 {
-    this->m_pos = pos;
-}
+    double delta_x = pos->x - m_pos_past_x;
+    double delta_y = pos->y - m_pos_past_y;
+    double rot = 360 - pos->rotation;
 
-void SuperItem::slotMove()
-{
-    qDebug() << "1 pos delta x :" << m_pos->x << " || delta y :" << m_pos->y;
-    qDebug() << "2 pas delta x :" << m_pos_past_x << " || delta y :" << m_pos_past_y;
-    double delta_x = m_scale*(m_pos->x - m_pos_past_x);
-    double delta_y = m_scale*(m_pos->y - m_pos_past_y);
-    double rot = 360 - m_pos->rotation;
-
-    if (delta_x !=0 || delta_y !=0)
+    if (delta_x !=0 && delta_y !=0)
     {
         qDebug() << "delta x :" << delta_x << " || delta y :" << delta_y;
         moveBy(delta_x, -1 * delta_y);
-        m_pos_past_x = m_pos->x;
-        m_pos_past_y = m_pos->y;
+        m_pos_past_x = this->x();
+        m_pos_past_y = this->y();
     }
 
 
 
     QTransform trans;
     trans.rotate(rot);
-    trans.scale(m_view_size*m_zoom_init/m_pos->zoom, (m_view_size*m_zoom_init/m_pos->zoom) * (m_pos->tilt / 90));
-      //zoom Ã¬Â´ÂˆÃªÂ¸Â°ÃªÂ° 25%Ã«Â©..
+    trans.scale(m_view_size*m_zoom_init/pos->zoom, (m_view_size*m_zoom_init/pos->zoom) * (pos->tilt / 90));
+      //zoom ÃÊ±â°¡ 25%¸é ..
     setTransform(trans);
 
 }
 
-
-void SuperItem::slotInitMove(double x, double y, double scale)
+void SuperItem::slotInitMove(double x, double y)
 {
-    m_pos_past_x = m_pos->x;
-    m_pos_past_y = m_pos->y;
-    m_scale = scale;
     moveBy(x,y);
 }
 
@@ -72,7 +61,6 @@ FormMap::FormMap(QWidget *parent) :
     ui(new Ui::FormMap)
 {
     ui->setupUi(this);
-    super = new SuperItem;
 
 }
 
@@ -95,33 +83,29 @@ void FormMap::receiveFile(T2D &t2d)
     QGraphicsScene *scene = new QGraphicsScene(this);
     rectItem->setRect(-(m_width_scaled/2),-(m_height_scaled/2),m_width_scaled,m_height_scaled);
     rectItem->setBrush(QBrush(QColor(Qt::gray)));
-    rectItem->setPos(window_width/2,-window_height/2); //Ã¬Â¢ÂŒÃ¬Â¸Â¡ (0,0) ÂÃ¬Â„Âœ Ã«Â¶Ã¬Â¤Â‘Ã¬Â•Â™Â¼Ã«Â¡Âœ Â´Ã«ÂÂ™
+    rectItem->setPos(window_width/2,-window_height/2); //ÁÂÃø À§ (0,0) ¿¡¼­ ºÎÅÍ Áß¾ÓÀ¸·Î ÀÌµ¿
     scene->addItem(rectItem);
-    scene->setSceneRect(0,-m_box_size,m_box_size,m_box_size);
-
             //
 
+    SuperItem *super = new SuperItem;
     scene->addItem(super);
 
     QObject::connect(this,&FormMap::signalMove,super,&SuperItem::slotMove);
     QObject::connect(this,&FormMap::signalInitMove,super,&SuperItem::slotInitMove);
 
-    emit signalInitMove(window_width/2,-window_height/2,m_scale);
+    emit signalInitMove(window_width/2,-window_height/2);
 
     ui->graphicsView->setScene(scene);
-    ui->graphicsView->setFixedSize(m_box_size,m_box_size);
-    ui->graphicsView->setRenderHint(QPainter::Antialiasing);
 
 }
 
 void FormMap::receivePointPos(POS_MONITORING &pos)
 {
     this->pos = &pos;
-    super->receivePointPos(this->pos);
 }
 void FormMap::changePos()
 {
-    emit signalMove();
+    emit signalMove(pos);
 }
 
 
@@ -159,7 +143,7 @@ void FormMap::changePos()
     //}
     //if (funcName == "moveZoom")
     //{
-    //    infoZoom = infoZoom + infoZoom*value/1500;        //Â¼Ã¬Â Â• Â’Ã¬ÂÂ´Ã«Â¥100% Ã«Â¡Â¤Ã¬Â Â•Â„Ã¬ÂšÂ” ÂˆÃ¬ÂÂŒ, ÃªÂ²Â°ÃªÂµÂ­ Ã¬Â´ÂˆÃªÂ¸Â°ÃªÂ°Â’Ã¬ GDS Size Â°Ã«ÂÂ¼ Ã«Â°Â”Ã«ÂˆÃ¬ÂÂŒ.
+    //    infoZoom = infoZoom + infoZoom*value/1500;        //ÀÏÁ¤ ³ôÀÌ¸¦ 100% ·Î ¼³Á¤ÇÒ ÇÊ¿ä ÀÖÀ½, °á±¹ ÃÊ±â°ªÀº GDS Size ¿¡ µû¶ó ¹Ù²ğ ¼ö ÀÖÀ½.
     //    if (infoZoom < 0.01)
     //        infoZoom = 0.01;
     //    if (infoZoom > 100)

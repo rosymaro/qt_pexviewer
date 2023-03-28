@@ -363,5 +363,108 @@ void KeyboardMovementController::setPerspective(LveCamera& camera, float aspect)
         mouse_position.scrollClicked.setY(0);
 }
 
+void KeyboardMovementController::triggerDemo(){
+    camera_moving_flag.demoTrigger = true;
+};
+
+void KeyboardMovementController::onDemo(float dt, LveCamera &camera, float render_scale, std::vector<LveGameObject> &gameObjects, LveWindow *lvewindow){
+    if (camera_moving_flag.demoTrigger){
+        float scale = 0.0f;
+        float rotate_lr = 0.0f;
+        float rotate_ud = 0.0f;
+        float rotate_toggle = 0.0f;
+        float rotate_toggle_xy = 0.0f;
+        float obj_scale = 2.0f / render_scale;
+        demoTime = demoTime + 1;
+
+        //if (camera_moving_flag.moveForward) scale = 1.0f + 0.01f * obj_scale;
+        //else if (camera_moving_flag.moveBackward) scale = 1.0f - 0.01f * obj_scale;
+        if(!camera_moving_flag.demoInitLayer){
+            gameObjects[0].model->demoVisiblityOff();
+            camera_moving_flag.demoInitLayer = true;
+        }
+
+        rotate_lr = 1.6f * obj_scale;
+
+        glm::vec3 forward = {camera.viewMatrix[0][2], camera.viewMatrix[1][2], camera.viewMatrix[2][2]};
+        float tilt = asin(forward.z/(sqrt(forward.x*forward.x +forward.y*forward.y+forward.z*forward.z)))*(180/3.141592653589793238463);
+        camera.decomposeView(camera.getView());
+        camera.rotation_d = glm::conjugate(camera.rotation_d);
+        // yaw / z
+        double siny_cosp = 2 * (camera.rotation_d.w * camera.rotation_d.z + camera.rotation_d.x * camera.rotation_d.y);
+        double cosy_cosp = 1 - 2 * (camera.rotation_d.y * camera.rotation_d.y + camera.rotation_d.z * camera.rotation_d.z);
+        float rotation = (float)atan2(siny_cosp, cosy_cosp)*(180/3.141592653589793238463);
+
+        if(rotation <0 ){
+            rotation = rotation + 360;
+        }
+
+        if(rotation>350 && !camera_moving_flag.layerOn){
+            camera_moving_flag.tiltOn = true;
+
+        }
+
+        if(camera_moving_flag.tiltOn){
+            rotate_toggle = - 0.1f;
+            glm::vec3 right{camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]};
+            camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_toggle), right);
+            if(tilt<30) {
+                camera_moving_flag.tiltOn = false;
+                camera_moving_flag.layerOn = true;
+            }
+        }
+
+        if(camera_moving_flag.layerOn && !camera_moving_flag.wave1){
+            demoCheckPoint = demoTime;
+            std::vector<float> on_layer = {2,7,15};
+            gameObjects[0].model->demoVisiblityOn(on_layer);
+            camera_moving_flag.wave1 = true;
+        }
+
+        if(demoCheckPoint < demoTime-50 && !camera_moving_flag.wave2 && camera_moving_flag.wave1){
+            demoCheckPoint = demoTime;
+            std::vector<float> on_layer = {177,16,17};
+            gameObjects[0].model->demoVisiblityOn(on_layer);
+            camera_moving_flag.wave2 = true;
+        }
+
+        if(demoCheckPoint < demoTime-50 && !camera_moving_flag.wave3 && camera_moving_flag.wave2){
+            demoCheckPoint = demoTime;
+            std::vector<float> on_layer = {714,19,18,17,16,15,686,685,245,72914,502,247};
+            gameObjects[0].model->demoVisiblityOn(on_layer);
+            camera_moving_flag.wave3 = true;
+        }
+
+        if(demoCheckPoint < demoTime-5000 && camera_moving_flag.wave2){
+            camera_moving_flag.demoTrigger = false;
+            camera_moving_flag.demoInitLayer = false;
+            camera_moving_flag.tiltOn = false;
+            camera_moving_flag.layerOn = false;
+            camera_moving_flag.wave1 = false;
+            camera_moving_flag.wave2 = false;
+            camera_moving_flag.wave3 = false;
+
+        }
+
+
+        if (camera_moving_flag.rotateForward ) rotate_ud = -0.1f * obj_scale;
+        else if (camera_moving_flag.rotateBackward) rotate_ud = 0.1f * obj_scale;
+
+        if (camera_moving_flag.toggleDemension && !camera.isperspective) {
+            camera.setPerspectiveProjection(glm::radians(50.f), dt, 0.1f, 100.f);
+            camera_moving_flag.toggleDemension = false;
+        }
+        else if (camera_moving_flag.toggleDemension)rotate_toggle = 0.1f;
+
+        if (camera_moving_flag.toggleDemensionXY) rotate_toggle_xy = -0.1f;
+
+        if (glm::dot(rotate_lr, rotate_lr) > std::numeric_limits<float>::epsilon()) {
+            camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_lr), glm::vec3(0.0f, 0.0f, 1.0f));
+        }
+
+    }
+
+}
+
 
 

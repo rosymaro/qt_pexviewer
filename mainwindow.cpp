@@ -159,7 +159,7 @@ void MainWindow::slotInfoText(QString funcName, POS_MONITORING value)
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "ÂŒÃ¬ÂÂ¼ Â Ã­ÂƒÂ",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "ÆÄÀÏ ¼±ÅÃ",".","Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
@@ -181,7 +181,7 @@ void MainWindow::inputPosInformation()
 
 void MainWindow::on_actionOpen_Layout_triggered()
 {
-    QString file_name = QFileDialog::getOpenFileName(this, "ÂŒÃ¬ÂÂ¼ Â Ã­ÂƒÂ",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "ÆÄÀÏ ¼±ÅÃ",".","Files(*.*)");
     DtaoRenderSystem * renderer = this->m_window->getRenderer();
 
     //renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
@@ -225,8 +225,8 @@ void MainWindow::on_actionOpen_DB_triggered(){
 
 
 
-        pos.x = (t2d.LayoutMinMax.maxx - t2d.LayoutMinMax.minx)/2;
-        pos.y = (t2d.LayoutMinMax.maxy - t2d.LayoutMinMax.miny)/2;
+        pos.x = t2d.LayoutMinMax.minx;
+        pos.y = t2d.LayoutMinMax.miny;
         pos.z = 0;
         pos.tilt = 90;
         pos.rotation = 0;
@@ -254,12 +254,23 @@ void MainWindow::on_actionOpen_DB_triggered(){
 
 }
 
-void MainWindow::slotDirectlyInputPos() //point info ÂÃ¬Â„Âœ Ã¬Â§ÂÃ¬Â Â‘ Â…Ã«Â Â¥ÃªÂ²Â½Ã¬ÂšÂ°
+void MainWindow::slotDirectlyInputPos() //point info ¿¡¼­ Á÷Á¢ ÀÔ·ÂÇÑ °æ¿ì
 {
     formMap->changePos();
     formTop->changePos();
-    //Â”Ã¬Â²Â­Â¬Ã­Â•Â­ 230324 vulkan ÂÃ¬Â„ÂœÂ˜Ã¬Â Â•Â¬ÃªÂ¸Â°Â¤Ã­Â–Â‰
+    //¿äÃ»»çÇ× 230324 vulkan ¿¡¼­µµ ¼öÁ¤À» ¿©±â¼­ ½ÇÇà
 }
+
+
+void MainWindow::on_actionDemo_triggered()
+{
+    qDebug() << "go?";
+    DtaoRenderSystem * renderer = this->m_window->getRenderer();
+    renderer->cameraController.triggerDemo();
+}
+
+
+
 
 void MainWindow::on_actionTop_triggered()
 {

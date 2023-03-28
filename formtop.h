@@ -31,7 +31,6 @@ private slots:
     void on_horizontalSlider_valueChanged(int value);
 
 private:
-    void addZeroPoint();
     void addRectItem(int layer, int row, int col, int n, QTransform trans);    
     int extPos(double *pos, double *min, double *max);
     void filterRenderingData(int layer, int row, int col, int n);
@@ -46,7 +45,6 @@ private:
     int m_begin_x = 0, m_begin_y = 0, m_end_x = 1, m_end_y = 1, m_scale = 500;
     float m_min_x = 0, m_min_y =0, m_max_x =0, m_max_y=0;
     bool init_check = true;
-    bool zero_point = true;
 
     int m_begin_row = 0, m_end_row = 1, m_begin_col = 0, m_end_col = 1;
     int m_block_size = 10; //10um

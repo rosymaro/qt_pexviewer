@@ -54,15 +54,9 @@ void FormTop::receiveFile(T2D &t2d)
 void FormTop::drawing()
 {
     areaFilterRect();
-    if(m_begin_row == 0 && m_begin_col ==0 && zero_point)
-    {
-        addZeroPoint();
-        zero_point = false;
-    }
-
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment  Ã«Â¹Â„ÃªÂµÂÂ˜Ã¬Â—Â¬ for skip
+        //layer_enviroment ¿Í ºñ±³ÇÏ¿© for skip
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
         for(int row = m_begin_row ; row < m_end_row ; row++)
         {
@@ -81,13 +75,12 @@ void FormTop::drawing()
 
 void FormTop::drawingClear()
 {
-    // ÃªÂ¸Â°Ã¬Â¡Â´ÂˆÃ«ÂŠÂ” vector Ã«Â¥Â¨ÃªÂ²Â¨Â”Ã¬Â•Â¼ : delete Ã«Â¥Â„Ã­Â•Â´
+    // ±âÁ¸¿¡ ÀÖ´Â vector ¸¦ ³²°Ü³ö¾ß ÇÔ : delete ¸¦ À§ÇØ
     for(auto cur_item : rectItemList)
     {
         delete cur_item;
     }
     rectItemList.clear();
-    zero_point = true;
 
 }
 
@@ -112,8 +105,6 @@ void FormTop::changePos()
 
         drawingClear();
         drawing();
-        ui->graphicsView->setTransform(QTransform().translate(m_scale*pos->x, -1*m_scale*pos->y));
-        qDebug() << "transpose : "<<QTransform().transposed();
     }
 }
 
@@ -143,20 +134,9 @@ void FormTop::on_horizontalSlider_valueChanged(int value)
     }
 }
 
-void FormTop::addZeroPoint()
-{
-    qDebug() << "drawing or not?";
-    QGraphicsRectItem *zeroItem = new QGraphicsRectItem;
-    rectItemList.push_back(zeroItem);
-    zeroItem->setRect(m_scale*rendering_full->LayoutMinMax.minx,m_scale*rendering_full->LayoutMinMax.miny,m_scale*0.01,m_scale*0.01);
-    zeroItem->setBrush(QBrush(QColor(Qt::red)));
-    zeroItem->setZValue(9999);
-    m_scene->addItem(zeroItem);
-}
-
-
 void FormTop::addRectItem(int layer, int row, int col, int n, QTransform trans)
 {
+
     QGraphicsRectItem *rectItem = new QGraphicsRectItem;
     rectItemList.push_back(rectItem);
 
@@ -170,7 +150,9 @@ void FormTop::addRectItem(int layer, int row, int col, int n, QTransform trans)
 
     rectItem->setRect(x,y,w,h);
     rectItem->setBrush(QBrush(QColor(rendering_full->LayoutData10by10[layer].color.r,rendering_full->LayoutData10by10[layer].color.g,rendering_full->LayoutData10by10[layer].color.b,rendering_full->LayoutData10by10[layer].color.a)));
-    rectItem->setOpacity(opacity); 
+    rectItem->setOpacity(opacity);
+    qDebug()<< " rect    : " << rectItem->rect() << ":: row/col : " << row << "/" << col << " " << n;
+    qDebug()<< " opacity : " << rendering_full->LayoutData10by10[layer].color.a << " : " << opacity;
     rectItem->setZValue(rendering_full->LayoutData10by10[layer].bot);
 
     rectItem->setTransform(trans);
@@ -184,7 +166,7 @@ int FormTop::extPos(double *pos, double *min, double *max)
     int max_col_row = (*max-*min)/m_block_size;
 
 
-    //block Â¼Ã«Â¡Âœ ÂÃ«Â¥Â¸ ÃªÂ²Â½ÃªÂ³Â„Ã«Â©ÃªÂ·Â¼Ã¬Â²Â˜ÂˆÃ¬ÂÂ„ ÃªÂ²Â½Ã¬ÂšÂ° external Ã¬Â¶Â”Ãª
+    //block À¸·Î ÀÚ¸¥ °æ°è¸é ±ÙÃ³¿¡ ÀÖÀ» °æ¿ì external À» Ãß°¡
     if ((*pos - *min)<area && pos_col_row > 0) // 30.0413 - 3*10 = 0.0413 < 0.05
     {
         return pos_col_row - 1;
@@ -206,7 +188,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
 
     double minx, maxx, miny, maxy;
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size) //area Ã«Â³Â´Ã«Â‹Â¤ Â˜Ã¬Â–Â´ÃªÂ°Ã«Â©ÂÃ«Â¦Â„
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size) //area º¸´Ù ³Ñ¾î°¡¸é ÀÚ¸§
     {
         minx = m_min_x_size;
     }
@@ -215,7 +197,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         minx = rendering_full->LayoutData10by10[layer].xy[row][col][n].minx;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > m_max_x_size) //area Ã«Â³Â´Ã«Â‹Â¤ Â˜Ã¬Â–Â´ÃªÂ°Ã«Â©ÂÃ«Â¦Â„
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > m_max_x_size) //area º¸´Ù ³Ñ¾î°¡¸é ÀÚ¸§
     {
         maxx = m_max_x_size;
     }
@@ -224,7 +206,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         maxx = rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < m_min_y_size) //area Ã«Â³Â´Ã«Â‹Â¤ Â˜Ã¬Â–Â´ÃªÂ°Ã«Â©ÂÃ«Â¦Â„
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < m_min_y_size) //area º¸´Ù ³Ñ¾î°¡¸é ÀÚ¸§
     {
         miny = m_min_y_size;
     }
@@ -233,7 +215,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         miny = rendering_full->LayoutData10by10[layer].xy[row][col][n].miny;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_max_y_size) //area Ã«Â³Â´Ã«Â‹Â¤ Â˜Ã¬Â–Â´ÃªÂ°Ã«Â©ÂÃ«Â¦Â„
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_max_y_size) //area º¸´Ù ³Ñ¾î°¡¸é ÀÚ¸§
     {
         maxy = m_max_y_size;
     }
@@ -266,7 +248,7 @@ void FormTop::areaFilterRect()
         }
     }
 
-    int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //ÂÃ¬ÂÂ´ Â„Ã¬ÂšÂ”ÂœÃ«   23.3841 / 10 = 2.33841 -> int 2
+    int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //½ÄÀÌ ÇÊ¿äÇÑ´ë   23.3841 / 10 = 2.33841 -> int 2
     int ext_col = extPos(&pos->x, &rendering_full->LayoutMinMax.minx, &rendering_full->LayoutMinMax.maxx);
     m_begin_col = qMin(pos_col,ext_col);
     m_end_col = qMax(pos_col,ext_col)+1;
@@ -280,7 +262,7 @@ void FormTop::areaFilterRect()
     //layer
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment  Ã«Â¹Â„ÃªÂµÂÂ˜Ã¬Â—Â¬ for skip
+        //layer_enviroment ¿Í ºñ±³ÇÏ¿© for skip
 
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
 

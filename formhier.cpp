@@ -10,7 +10,7 @@ FormHier::FormHier(QWidget *parent) :
     ui(new Ui::FormHier)
 {
     ui->setupUi(this);
-    // QTableWidget defalut Â¬ÃªÂ¸Â° Â¤Ã¬Â Â•
+    // QTableWidget defalut Å©±â ¼³Á¤
     QStringList defalutTableHeader;
     defalutTableHeader << "LayerName" << "LayerNum" << "LayerType" << "Red" << "Green" << "Blue";
 
@@ -51,11 +51,11 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
 //    qDebug() << "3rd" << inputDataVector.value(2);
 //    qDebug() << "1st_1st" << inputDataVector.value(0).value(0);
 
-// QTableWidget ÂÃ¬Â„Âœ QStringList Ã«Â¡ÂœÃ«Â§ÂŒ Ã«Â°Â›ÃªÂ¸Â°ÂŒÃ«Â¬Â¸ÂÃ«Â£ÂŒÂ•Ã«
+// QTableWidget ¿¡¼­ QStringList ·Î¸¸ ¹Þ±â¶§¹®¿¡ ÀÚ·áÇüº¯È¯
     QStringList vectorTOqstringlist;
     QStringList vectorTOqstringlistHoriLabels;
 
-// QTableWidget Â¬ÃªÂ¸Â° Â¤Ã¬Â Â•
+// QTableWidget Å©±â ¼³Á¤
     ui->tableWidget->setColumnCount(column);
     ui->tableWidget->setRowCount(row);
 
@@ -65,7 +65,7 @@ void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QSt
     font.setPointSize(10);
     ui->tableWidget->horizontalHeader()->setFont(font);
 
-// Table Ã¬Â±Â„Ã¬ÂšÂ°ÃªÂ¸
+// Table Ã¤¿ì±â
     for (int i=0; i<row ; i++)
     {
         for (int j=0; j<column ; j++)
