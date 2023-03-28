@@ -54,6 +54,11 @@ void FormTop::receiveFile(T2D &t2d)
 void FormTop::drawing()
 {
     areaFilterRect();
+    if(m_begin_row == 0 && m_begin_col ==0 && zero_point)
+    {
+        addZeroPoint();
+        zero_point = false;
+    }
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
         //layer_enviroment 와 비교하여 for skip
@@ -81,7 +86,7 @@ void FormTop::drawingClear()
         delete cur_item;
     }
     rectItemList.clear();
-
+    zero_point = true;
 }
 
 void FormTop::receivePointPos(POS_MONITORING &pos)
@@ -105,6 +110,8 @@ void FormTop::changePos()
 
         drawingClear();
         drawing();
+        ui->graphicsView->setTransform(QTransform().translate(m_scale*pos->x, -1*m_scale*pos->y));
+        qDebug() << "transpose : "<<QTransform().transposed();
     }
 }
 
@@ -134,6 +141,17 @@ void FormTop::on_horizontalSlider_valueChanged(int value)
     }
 }
 
+void FormTop::addZeroPoint()
+{
+    qDebug() << "drawing or not?";
+    QGraphicsRectItem *zeroItem = new QGraphicsRectItem;
+    rectItemList.push_back(zeroItem);
+    zeroItem->setRect(m_scale*rendering_full->LayoutMinMax.minx,m_scale*rendering_full->LayoutMinMax.miny,m_scale*0.01,m_scale*0.01);
+    zeroItem->setBrush(QBrush(QColor(Qt::red)));
+    zeroItem->setZValue(9999);
+    m_scene->addItem(zeroItem);
+}
+
 void FormTop::addRectItem(int layer, int row, int col, int n, QTransform trans)
 {
 
@@ -151,8 +169,6 @@ void FormTop::addRectItem(int layer, int row, int col, int n, QTransform trans)
     rectItem->setRect(x,y,w,h);
     rectItem->setBrush(QBrush(QColor(rendering_full->LayoutData10by10[layer].color.r,rendering_full->LayoutData10by10[layer].color.g,rendering_full->LayoutData10by10[layer].color.b,rendering_full->LayoutData10by10[layer].color.a)));
     rectItem->setOpacity(opacity);
-    qDebug()<< " rect    : " << rectItem->rect() << ":: row/col : " << row << "/" << col << " " << n;
-    qDebug()<< " opacity : " << rendering_full->LayoutData10by10[layer].color.a << " : " << opacity;
     rectItem->setZValue(rendering_full->LayoutData10by10[layer].bot);
 
     rectItem->setTransform(trans);

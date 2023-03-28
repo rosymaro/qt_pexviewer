@@ -15,9 +15,10 @@ class SuperItem : public QObject, public QGraphicsItem
     Q_OBJECT
 public:
     SuperItem(QGraphicsItem* parent = NULL);
+    void receivePointPos(POS_MONITORING *pos);
 public slots:
-    void slotMove(POS_MONITORING *pos);
-    void slotInitMove(double x, double y);
+    void slotMove();
+    void slotInitMove(double x, double y, double scale);
 
 protected:
     void paint(QPainter *painter,
@@ -29,11 +30,14 @@ protected:
 //    virtual void keyPressEvent(QKeyEvent *evnet);
 
 private:
+    POS_MONITORING *m_pos;
     double m_pos_past_x = 0;
     double m_pos_past_y = 0;
     double m_view_size = 1;
     double m_zoom_init = 1;
-
+    double m_init_x = 0;
+    double m_init_y = 0;
+    double m_scale = 1;
 };
 
 class FormMap : public QDialog
@@ -48,8 +52,8 @@ public:
     void changePos();
 
 signals:
-    void signalMove(POS_MONITORING *pos);
-    void signalInitMove(double x, double y);
+    void signalMove();
+    void signalInitMove(double x, double y, double m_scale);
 
 private:    
     Ui::FormMap *ui;

@@ -225,8 +225,8 @@ void MainWindow::on_actionOpen_DB_triggered(){
 
 
 
-        pos.x = t2d.LayoutMinMax.minx;
-        pos.y = t2d.LayoutMinMax.miny;
+        pos.x = (t2d.LayoutMinMax.maxx - t2d.LayoutMinMax.minx)/2;
+        pos.y = (t2d.LayoutMinMax.maxy - t2d.LayoutMinMax.miny)/2;
         pos.z = 0;
         pos.tilt = 90;
         pos.rotation = 0;
