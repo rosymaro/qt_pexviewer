@@ -1069,7 +1069,7 @@ void PEXResistorDataManager::loadData(const std::string file_path) {
 
         description = line[PEXINFO_INDEX::PEXINFO_INDEX_DESCRIPTION];
         PEXResDirection resistor_direction = PEXResistor::checkDirectionFromDescription(description);
-        if (value > 0) updateMinMaxRes(value, resistor_direction); //?????? ???, 0???? ???? ?????? ????
+        if (value > 0) updateMinMaxRes(value, resistor_direction); //임의의 코드, 0보다 작은 저항은 무시
         this->resistors.push_back(PEXResistor(item_name, node1, node2, value, resistor_direction));
     }
 }
@@ -3622,6 +3622,7 @@ bool T2D::text2data(std::string file_name){
     cout << LayoutMinMax.maxz << endl;*/
     LayoutData10by10.clear();
     while(getline(readfile, line)){
+        if(line == "~!@#$%^&*()_++_)(*&^%$#@!~") break;
         split = T2D::string_split(line, ' ');
         int row = atoi(split[9].c_str());
         int col = atoi(split[10].c_str());
@@ -3663,6 +3664,20 @@ bool T2D::text2data(std::string file_name){
         }
         buf_ldata10by10.xy = buf_xy10by10;
         LayoutData10by10.push_back(buf_ldata10by10);
+    }
+    HierarchyInstance.clear();
+    while(getline(readfile, line)){
+        split = T2D::string_split(line, ' ');
+        Instance buf_instance;
+        buf_instance.level = atoi(split[0].c_str());
+        buf_instance.name = split[1];
+        buf_instance.num = split[2];
+        buf_instance.box.minx = atof(split[3].c_str());
+        buf_instance.box.miny = atof(split[4].c_str());
+        buf_instance.box.maxx = atof(split[5].c_str());
+        buf_instance.box.maxy = atof(split[6].c_str());
+        HierarchyInstance.push_back(buf_instance);
+        //cout << buf_instance.name << endl;
     }
 }
 
@@ -3783,33 +3798,12 @@ void FileDb::openFile(QString fileNameInfo,QVector<QList<float>> &vecList,
 !@hash[]!@file[]./formhier.cpp!@hash[]!@code[]#include "formhier.h"
 #include "ui_formhier.h"
 #include "mainwindow.h"
-#include <QTableWidget>
-#include <QDebug>
-
 
 FormHier::FormHier(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::FormHier)
 {
     ui->setupUi(this);
-    // QTableWidget defalut ??? ????
-    QStringList defalutTableHeader;
-    defalutTableHeader << "LayerName" << "LayerNum" << "LayerType" << "Red" << "Green" << "Blue";
-
-    ui->tableWidget->setColumnCount(6);
-    ui->tableWidget->setRowCount(10);
-    ui->tableWidget->setColumnWidth(0,80);
-    ui->tableWidget->setColumnWidth(1,80);
-    ui->tableWidget->setColumnWidth(2,80);
-    ui->tableWidget->setColumnWidth(3,50);
-    ui->tableWidget->setColumnWidth(4,50);
-    ui->tableWidget->setColumnWidth(5,50);
-    ui->tableWidget->setHorizontalHeaderLabels(defalutTableHeader);
-
-    ui->tableWidget->horizontalHeader()->setStyleSheet("QHeaderView::section {background-color:#404040;color:#FFFFFF;}");
-
-//    tempcolor = ui->tableWidget->setBackgroundRole();
-//    ui->tableWidget->setHorizontalHeaderItem(0,QColor(128,128,128));
 
 }
 
@@ -3818,58 +3812,123 @@ FormHier::~FormHier()
     delete ui;
 }
 
-//void FormHier::testMyData(){
-//    this->dataset->split_datas[0][0] = QString("No, I'm not fool!!!");
-//}
+void FormHier::createHierarchyTree(T2D *t2d){
 
-//void FormHier::ReceiveSplitData(QStringList list, int row, int column,  QVector <QVector <QString>> &inputDataVector)
-void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QString>> &inputDataVector)
-{
-//    qDebug() << "xxxxxxxxxxxxxxxxxxxxxxxxx";
-//    qDebug() << "row" << row;
-//    qDebug() << "column" << column;
-//    qDebug() << "1st" << inputDataVector.value(0);
-//    qDebug() << "2nd" << inputDataVector.value(1);
-//    qDebug() << "3rd" << inputDataVector.value(2);
-//    qDebug() << "1st_1st" << inputDataVector.value(0).value(0);
+    this->t2d = t2d;
+    vector<QTreeWidgetItem*> m_buf_tree_item;
+    QTreeWidgetItem* m_top_tree = new QTreeWidgetItem(ui->hierarchy_tree);
+    m_buf_tree_item.resize(99);
+    m_buf_tree_item[0] = m_top_tree;
+    string m_top_cell_name = this->t2d->HierarchyInstance[0].name + " (" + this->t2d->HierarchyInstance[0].num + ") ";
+    m_top_tree->setText(0, QString::fromStdString(m_top_cell_name));
+    m_top_tree->setText(1, QString::fromStdString(to_string(0)));
+    ui->hierarchy_tree->addTopLevelItem(m_top_tree);
 
-// QTableWidget ???? QStringList ?��? ??????? ????????
-    QStringList vectorTOqstringlist;
-    QStringList vectorTOqstringlistHoriLabels;
+    for(int i = 1 ; i < t2d->HierarchyInstance.size() ; i++){
+        int m_level = t2d->HierarchyInstance[i].level;
+        string m_cell_name = t2d->HierarchyInstance[i].name + " (" + t2d->HierarchyInstance[i].num + ") ";
 
-// QTableWidget ??? ????
-    ui->tableWidget->setColumnCount(column);
-    ui->tableWidget->setRowCount(row);
+        QTreeWidgetItem* m_child_tree = new QTreeWidgetItem();
+        m_child_tree->setText(0, QString::fromStdString(m_cell_name));
+        m_child_tree->setText(1, QString::fromStdString(to_string(i)));
+        m_buf_tree_item[m_level] = m_child_tree;
 
-// Table Header Font size/bold change
-    QFont font = ui->tableWidget->horizontalHeader()->font();
-    font.setBold(true);
-    font.setPointSize(10);
-    ui->tableWidget->horizontalHeader()->setFont(font);
-
-// Table a????
-    for (int i=0; i<row ; i++)
-    {
-        for (int j=0; j<column ; j++)
-        {
-            vectorTOqstringlist << inputDataVector.value(i+1).value(j);
-            vectorTOqstringlistHoriLabels << inputDataVector.value(0).value(j);
-            ui->tableWidget->setItem(i,j,new QTableWidgetItem(vectorTOqstringlist[i*column+j]));
-            ui->tableWidget->setHorizontalHeaderLabels(vectorTOqstringlistHoriLabels);
-        }
-
+        m_buf_tree_item[m_level - 1]->addChild(m_child_tree);
     }
-//    ui->tableWidget->set;
-//    ui->tableWidget->setColumnWidth(0,80);
-//    ui->tableWidget->setColumnWidth(1,80);
-//    ui->tableWidget->setColumnWidth(2,80);
-//    ui->tableWidget->setColumnWidth(3,50);
-//    ui->tableWidget->setColumnWidth(4,50);
-//    ui->tableWidget->setColumnWidth(5,50);
+}
 
-
+void FormHier::on_hierarchy_tree_itemDoubleClicked(QTreeWidgetItem *item, int column)
+{
+    cout << "minx : " << this->t2d->HierarchyInstance[atoi(item->text(column+1).toStdString().c_str())].box.minx;
+    cout << " miny : " << this->t2d->HierarchyInstance[atoi(item->text(column+1).toStdString().c_str())].box.miny;
+    cout << " maxx : " << this->t2d->HierarchyInstance[atoi(item->text(column+1).toStdString().c_str())].box.maxx;
+    cout << " maxy : " << this->t2d->HierarchyInstance[atoi(item->text(column+1).toStdString().c_str())].box.maxy << endl;
 
 }
+
+void FormHier::on_hierarchy_searching_textEdited(const QString &arg1)
+{
+//    QString m_input_text = ui->hierarchy_searching->text();
+//    QList<QTreeWidgetItem*> m_all_list = ui->hierarchy_tree->findItems("", Qt::MatchContains | Qt::MatchRecursive, 0);
+//    if(m_input_text != ""){
+//        for (QTreeWidgetItem *item : m_all_list) {
+//            item->setTextColor(0, Qt::black);
+//        }
+//        QList<QTreeWidgetItem*> clist = ui->hierarchy_tree->findItems(m_input_text, Qt::MatchContains | Qt::MatchRecursive, 0);
+//        ui->hierarchy_tree->clear();
+//        for (QTreeWidgetItem *item : clist) {
+//            item->setTextColor(0, Qt::red);
+//        }
+//    }else{
+//        for (QTreeWidgetItem *item : m_all_list) {
+//            item->setTextColor(0, Qt::black);
+//        }
+//    }
+
+//    QTreeWidgetItemIterator it(ui->hierarchy_tree);
+//    while(*it){
+//        if((*it)->text(0).contains(arg1, Qt::CaseInsensitive)){
+//            (*it)->setHidden(false);
+//        }else{
+//            (*it)->setHidden(true);
+//        }
+//        ++it;
+//    }
+
+//    QSortFilterProxyModel* m_tree_model = new QSortFilterProxyModel(this);
+//    m_tree_model->setFilterCaseSensitivity(Qt::CaseInsensitive);
+//    m_tree_model->setSourceModel(ui->hierarchy_tree->model());
+//    ui->hierarchy_tree->setModel(m_tree_model);
+
+//    m_tree_model->setFilterRegExp(QRegExp(arg1, Qt::CaseInsensitive, QRegExp::FixedString));
+    QString m_hierarchy_searching_text = arg1;
+
+    if(m_hierarchy_searching_text.contains('*')){
+        m_hierarchy_searching_text.replace("*", ".*", Qt::CaseInsensitive);
+        QRegExp m_regex(m_hierarchy_searching_text, Qt::CaseInsensitive);
+        QTreeWidgetItemIterator it(ui->hierarchy_tree);
+        while(*it){
+            if(m_regex.exactMatch((*it)->text(0))){
+                QTreeWidgetItem* item = *it;
+                while(item){
+                    item->setExpanded(true);
+                    item->setHidden(false);
+                    item = item->parent();
+                }
+            }else{
+                (*it)->setHidden(true);
+            }
+            ++it;
+        }
+    } else{
+        QTreeWidgetItemIterator it(ui->hierarchy_tree);
+        while(*it){
+            if((*it)->text(0).contains(m_hierarchy_searching_text, Qt::CaseInsensitive)){
+                QTreeWidgetItem* item = *it;
+                while(item){
+                    item->setExpanded(true);
+                    item->setHidden(false);
+                    item = item->parent();
+                }
+            }else{
+                (*it)->setHidden(true);
+            }
+            ++it;
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
 !@hash[]!@file[]./forminfo.cpp!@hash[]!@code[]#include "forminfo.h"
 #include "ui_forminfo.h"
 #include <QDebug>
@@ -3968,7 +4027,7 @@ void FormInfo::moveRender(float x, float y)
 bool FormInfo::checkNum(const QString &str)
 {
     if(str.toDouble() == 0 && str != "0")
-    // ????? ??????? 0?? ????��? string ?? 0 ??? ???��?? ????
+    // 숫자로 바꿨더니 0이 되었는데 string 은 0 아닐 경우에는 문자
     {
         return false;
     }
@@ -3981,7 +4040,7 @@ bool FormInfo::checkNum(const QString &str)
 void FormInfo::checkText(double *point, const QString &arg1, double min_limit, double max_limit, int type)
 {
     double double_arg = arg1.toDouble();
-    if(checkNum(arg1)) // ???????? ???
+    if(checkNum(arg1)) // 숫자인지 파악
     {
         if(double_arg >= min_limit && double_arg <= max_limit) //tilt
         {
@@ -4003,7 +4062,7 @@ void FormInfo::checkText(double *point, const QString &arg1, double min_limit, d
     {
 
     }    
-    else // ???? ?????? ????
+    else // 기존 값으로 유지
     {
         outputText();
     }
@@ -4166,12 +4225,12 @@ void FormLayer::ReceiveLayerInformation(T2D &t2d)
 
 void FormLayer::MakeLayerInformationTalbe()
 {
-    // QTableWidget ??? ????
+    // QTableWidget 크기 설정
     ui->tableWidget->setColumnCount(table_default_column);
     ui->tableWidget->setRowCount(t2d_layer_information->LayoutData10by10.size());
     ui->tableWidget->setColumnWidth(5,80);
 
-    // Table a????
+    // Table 채우기
     for (int i=1; i < t2d_layer_information->LayoutData10by10.size() ; i++)
     {
         MakeTableWidgetItemForText(i);
@@ -4181,7 +4240,7 @@ void FormLayer::MakeLayerInformationTalbe()
     }
     MakeHeaderCheckBoxAndSlider();
 
-    // Table Edit ????, ???? ???? ????
+    // Table Edit 금지, 다중 선택 금지
     ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
 }
@@ -4239,7 +4298,7 @@ void FormLayer::on_colorbutton_clicked()
 
 void FormLayer::on_opacityslider_valueChanged(int Opacity)
 {
-    // ui->tableWidget->currentRow() ?? a?????? ???, current row ?? -1 ?? ????
+    // ui->tableWidget->currentRow() 로 찾으려고 하면, current row 가 -1 로 나옴
     int sliderrow = -1;
     int sliderrow_for_t2d = -1;
     QString LayerColorname;
@@ -4309,7 +4368,7 @@ void FormLayer::MakeLayerInformationTableHeader(){
     ui->tableWidget->setColumnWidth(4,40);
     ui->tableWidget->setColumnWidth(5,60);
 
-    /// TableWidget Title Format ????
+    /// TableWidget Title Format 설정
     QBrush brush(QColor(255, 255, 255, 255));
     brush.setStyle(Qt::SolidPattern);
     QFont font;
@@ -4317,7 +4376,7 @@ void FormLayer::MakeLayerInformationTableHeader(){
     font.setBold(true);
     font.setWeight(55);
 
-    /// TableWidget Title ??? ?? ???
+    /// TableWidget Title 입력 및 반영
     for (int i=1; i<6; i++){
         QTableWidgetItem *TableHeaderItem = new QTableWidgetItem;
         TableHeaderItem->setText(TalbeHeader[i]);
@@ -4400,7 +4459,7 @@ void FormLayer::MakeColorButton(int table_row){
     LayerColorText = "background-color: rgba(" + LayerColorRed;
     LayerColorText = LayerColorText + "," + LayerColorGreen + "," + LayerColorBlue + "," + LayerColorAlpha + ")";
 
-    // color pushbutton a????
+    // color pushbutton 채우기
     QPushButton *colorbutton = new QPushButton();
     colorbutton->setStyleSheet(LayerColorText);
     ui->tableWidget->setCellWidget(table_row,1,colorbutton);
@@ -4408,7 +4467,7 @@ void FormLayer::MakeColorButton(int table_row){
 }
 
 void FormLayer::MakeHeaderCheckBoxAndSlider(){
-    //tableWidget title ?? checkbox
+    //tableWidget title 에 checkbox
     QCheckBox *checkBoxItem = new QCheckBox();
     checkBoxItem->setCheckState(Qt::Unchecked);
     QWidget *checkboxWidget = new QWidget();
@@ -4420,7 +4479,7 @@ void FormLayer::MakeHeaderCheckBoxAndSlider(){
     ui->tableWidget->setCellWidget(0,0,checkboxWidget);
     QObject::connect(checkBoxItem, SIGNAL(stateChanged(int)), this, SLOT(on_checkboxInTable_stateChanged()));
 
-    //tableWidget title ?? slider
+    //tableWidget title 에 slider
     QSpacerItem *HeaderVerticalSpacer = new QSpacerItem(0,20,QSizePolicy::Fixed, QSizePolicy::Fixed);
     QSlider *HeaderOpacitySlider = new QSlider();
     HeaderOpacitySlider->setOrientation(Qt::Horizontal);
@@ -4553,42 +4612,32 @@ SuperItem::SuperItem(QGraphicsItem* parent) : QGraphicsItem(parent)
     setFlag(QGraphicsItem::ItemIsMovable);
 }
 
-void SuperItem::receivePointPos(POS_MONITORING *pos)
+void SuperItem::slotMove(POS_MONITORING *pos)
 {
-    this->m_pos = pos;
-}
+    double delta_x = pos->x - m_pos_past_x;
+    double delta_y = pos->y - m_pos_past_y;
+    double rot = 360 - pos->rotation;
 
-void SuperItem::slotMove()
-{
-    qDebug() << "1 pos delta x :" << m_pos->x << " || delta y :" << m_pos->y;
-    qDebug() << "2 pas delta x :" << m_pos_past_x << " || delta y :" << m_pos_past_y;
-    double delta_x = m_scale*(m_pos->x - m_pos_past_x);
-    double delta_y = m_scale*(m_pos->y - m_pos_past_y);
-    double rot = 360 - m_pos->rotation;
-
-    if (delta_x !=0 || delta_y !=0)
+    if (delta_x !=0 && delta_y !=0)
     {
         qDebug() << "delta x :" << delta_x << " || delta y :" << delta_y;
         moveBy(delta_x, -1 * delta_y);
-        m_pos_past_x = m_pos->x;
-        m_pos_past_y = m_pos->y;
+        m_pos_past_x = this->x();
+        m_pos_past_y = this->y();
     }
 
 
 
     QTransform trans;
     trans.rotate(rot);
-    trans.scale(m_view_size*m_zoom_init/m_pos->zoom, (m_view_size*m_zoom_init/m_pos->zoom) * (m_pos->tilt / 90));
-      //zoom ??? 25%?? ..
+    trans.scale(m_view_size*m_zoom_init/pos->zoom, (m_view_size*m_zoom_init/pos->zoom) * (pos->tilt / 90));
+      //zoom 초기가 25%면 ..
     setTransform(trans);
 
 }
 
-void SuperItem::slotInitMove(double x, double y, double scale)
+void SuperItem::slotInitMove(double x, double y)
 {
-    m_pos_past_x = m_pos->x;
-    m_pos_past_y = m_pos->y;
-    m_scale = scale;
     moveBy(x,y);
 }
 
@@ -4611,7 +4660,7 @@ FormMap::FormMap(QWidget *parent) :
     ui(new Ui::FormMap)
 {
     ui->setupUi(this);
-    super = new SuperItem;
+
 }
 
 FormMap::~FormMap()
@@ -4633,34 +4682,29 @@ void FormMap::receiveFile(T2D &t2d)
     QGraphicsScene *scene = new QGraphicsScene(this);
     rectItem->setRect(-(m_width_scaled/2),-(m_height_scaled/2),m_width_scaled,m_height_scaled);
     rectItem->setBrush(QBrush(QColor(Qt::gray)));
-    rectItem->setPos(window_width/2,-window_height/2); //???? ?? (0,0) ???? ???? ??????? ???
+    rectItem->setPos(window_width/2,-window_height/2); //좌측 위 (0,0) 에서 부터 중앙으로 이동
     scene->addItem(rectItem);
-    scene->setSceneRect(0,-m_box_size,m_box_size,m_box_size);
             //
 
-    super = new SuperItem;
+    SuperItem *super = new SuperItem;
     scene->addItem(super);
 
     QObject::connect(this,&FormMap::signalMove,super,&SuperItem::slotMove);
     QObject::connect(this,&FormMap::signalInitMove,super,&SuperItem::slotInitMove);
 
-    emit signalInitMove(window_width/2,-window_height/2,m_scale);
+    emit signalInitMove(window_width/2,-window_height/2);
 
     ui->graphicsView->setScene(scene);
-    ui->graphicsView->setFixedSize(m_box_size,m_box_size);
-    ui->graphicsView->setRenderHint(QPainter::Antialiasing);
 
 }
 
 void FormMap::receivePointPos(POS_MONITORING &pos)
 {
     this->pos = &pos;
-    super->receivePointPos(this->pos);
 }
 void FormMap::changePos()
 {
-    emit signalMove();
-
+    emit signalMove(pos);
 }
 
 
@@ -4698,7 +4742,7 @@ void FormMap::changePos()
     //}
     //if (funcName == "moveZoom")
     //{
-    //    infoZoom = infoZoom + infoZoom*value/1500;        //???? ????? 100% ?? ?????? ??? ????, ?? ????? GDS Size ?? ???? ??? ?? ????.
+    //    infoZoom = infoZoom + infoZoom*value/1500;        //일정 높이를 100% 로 설정할 필요 있음, 결국 초기값은 GDS Size 에 따라 바뀔 수 있음.
     //    if (infoZoom < 0.01)
     //        infoZoom = 0.01;
     //    if (infoZoom > 100)
@@ -4802,14 +4846,9 @@ void FormTop::receiveFile(T2D &t2d)
 void FormTop::drawing()
 {
     areaFilterRect();
-    if(m_begin_row == 0 && m_begin_col ==0 && zero_point)
-    {
-        addZeroPoint();
-        zero_point = false;
-    }
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment ?? ??????? for skip
+        //layer_enviroment 와 비교하여 for skip
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
         for(int row = m_begin_row ; row < m_end_row ; row++)
         {
@@ -4828,13 +4867,13 @@ void FormTop::drawing()
 
 void FormTop::drawingClear()
 {
-    // ?????? ??? vector ?? ??????? ?? : delete ?? ????
+    // 기존에 있는 vector 를 남겨놔야 함 : delete 를 위해
     for(auto cur_item : rectItemList)
     {
         delete cur_item;
     }
     rectItemList.clear();
-    zero_point = true;
+
 }
 
 void FormTop::receivePointPos(POS_MONITORING &pos)
@@ -4858,8 +4897,6 @@ void FormTop::changePos()
 
         drawingClear();
         drawing();
-        ui->graphicsView->setTransform(QTransform().translate(m_scale*pos->x, -1*m_scale*pos->y));
-        qDebug() << "transpose : "<<QTransform().transposed();
     }
 }
 
@@ -4889,17 +4926,6 @@ void FormTop::on_horizontalSlider_valueChanged(int value)
     }
 }
 
-void FormTop::addZeroPoint()
-{
-    qDebug() << "drawing or not?";
-    QGraphicsRectItem *zeroItem = new QGraphicsRectItem;
-    rectItemList.push_back(zeroItem);
-    zeroItem->setRect(m_scale*rendering_full->LayoutMinMax.minx,m_scale*rendering_full->LayoutMinMax.miny,m_scale*0.01,m_scale*0.01);
-    zeroItem->setBrush(QBrush(QColor(Qt::red)));
-    zeroItem->setZValue(9999);
-    m_scene->addItem(zeroItem);
-}
-
 void FormTop::addRectItem(int layer, int row, int col, int n, QTransform trans)
 {
 
@@ -4917,6 +4943,8 @@ void FormTop::addRectItem(int layer, int row, int col, int n, QTransform trans)
     rectItem->setRect(x,y,w,h);
     rectItem->setBrush(QBrush(QColor(rendering_full->LayoutData10by10[layer].color.r,rendering_full->LayoutData10by10[layer].color.g,rendering_full->LayoutData10by10[layer].color.b,rendering_full->LayoutData10by10[layer].color.a)));
     rectItem->setOpacity(opacity);
+    qDebug()<< " rect    : " << rectItem->rect() << ":: row/col : " << row << "/" << col << " " << n;
+    qDebug()<< " opacity : " << rendering_full->LayoutData10by10[layer].color.a << " : " << opacity;
     rectItem->setZValue(rendering_full->LayoutData10by10[layer].bot);
 
     rectItem->setTransform(trans);
@@ -4930,7 +4958,7 @@ int FormTop::extPos(double *pos, double *min, double *max)
     int max_col_row = (*max-*min)/m_block_size;
 
 
-    //block ???? ??? ?????? ??o?? ???? ???? external ?? ???
+    //block 으로 자른 경계면 근처에 있을 경우 external 을 추가
     if ((*pos - *min)<area && pos_col_row > 0) // 30.0413 - 3*10 = 0.0413 < 0.05
     {
         return pos_col_row - 1;
@@ -4952,7 +4980,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
 
     double minx, maxx, miny, maxy;
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size) //area ???? ????? ???
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < m_min_x_size) //area 보다 넘어가면 자름
     {
         minx = m_min_x_size;
     }
@@ -4961,7 +4989,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         minx = rendering_full->LayoutData10by10[layer].xy[row][col][n].minx;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > m_max_x_size) //area ???? ????? ???
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > m_max_x_size) //area 보다 넘어가면 자름
     {
         maxx = m_max_x_size;
     }
@@ -4970,7 +4998,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         maxx = rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < m_min_y_size) //area ???? ????? ???
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < m_min_y_size) //area 보다 넘어가면 자름
     {
         miny = m_min_y_size;
     }
@@ -4979,7 +5007,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
         miny = rendering_full->LayoutData10by10[layer].xy[row][col][n].miny;
     }
 
-    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_max_y_size) //area ???? ????? ???
+    if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > m_max_y_size) //area 보다 넘어가면 자름
     {
         maxy = m_max_y_size;
     }
@@ -5012,7 +5040,7 @@ void FormTop::areaFilterRect()
         }
     }
 
-    int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //???? ??????   23.3841 / 10 = 2.33841 -> int 2
+    int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //식이 필요한대   23.3841 / 10 = 2.33841 -> int 2
     int ext_col = extPos(&pos->x, &rendering_full->LayoutMinMax.minx, &rendering_full->LayoutMinMax.maxx);
     m_begin_col = qMin(pos_col,ext_col);
     m_end_col = qMax(pos_col,ext_col)+1;
@@ -5026,7 +5054,7 @@ void FormTop::areaFilterRect()
     //layer
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment ?? ??????? for skip
+        //layer_enviroment 와 비교하여 for skip
 
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
 
@@ -5068,36 +5096,91 @@ GitMerge::GitMerge()
     split1.append(file);
     split2.append(code);
 
-    QString totalMerge;
-    QString preMergeFile;
-    QString updateMergeFile;
-    this->mergeFiles(totalMerge);
-    this->openPreMergeFile(preMergeFile);
-    this->openUpdateMergeFile(updateMergeFile);
-    this->writeMergeFile("./gitMerge.txt", totalMerge);
-    //    if (compareFiles(preMergeFile, updateMergeFile))
-    //    {
-    //        if(compareFiles(preMergeFile, totalMerge))
-    //        {
-    //            qDebug() << "gitMerge file and code files are not changed " ;
-    //            return;
-    //        }
-    //        else
-    //        {
-    //            this->writeMergeFile("./gitMerge.txt", totalMerge);
-    ////            this->writeMergeFile("./gitMerge.back", totalMerge);
-    //        }
-    //    }
-    //    else
-    //    {
-    //        this->writeMergeFile("./gitMerge.back", updateMergeFile);
-    //        this->makeCodeFiles(totalMerge, updateMergeFile);
-    //    }
+    readCodeFiles();
+    readTxtFile();
+    if(write_code_files)
+    {
+        makeCodeFiles();
+    }
+    else
+    {
+        makeTxtFile();
+    }
+
 }
 
-void GitMerge::mergeFiles(QString &totalMerge)
+void GitMerge::readTxtFile()
 {
-    QFile file("./IInterface.pro");
+    QString fileName = txt_file;
+    QFile file(fileName);
+    if(!file.open(QFile::ReadOnly | QFile::Text))
+    {
+        qDebug() << " Could not open the file for reading ";
+        based_on_reading_txt = "";
+        if(!file.open(QFile::WriteOnly | QFile::Text))
+        {
+            return;
+        }
+        QTextStream out(&file);
+        out << "";
+        file.close();
+        return;
+    }
+    QTextStream in(&file);
+//    in.setCodec("UTF-8");
+    based_on_reading_txt = in.readAll();
+    file.close();
+
+//////////////////////////////////////////////
+    qDebug() << "";
+    qDebug() << "codec UTF8";
+    QStringList test1 = based_on_reading_txt.split("\n");
+    QFile file1("./test1.cpp");
+    if(!file1.open(QFile::WriteOnly | QFile::Text))
+    {
+        qDebug() << " Could not open the file for writing ";
+        return;
+    }
+    QTextStream out1(&file1);
+    QString str1;
+    for (int i = 4027; i< 4057; i++){
+        str1.append(test1[i]);
+        str1.append("\n");
+    }
+    out1 << str1;
+    out1.setCodec("UTF-8");
+    file1.flush();
+    file1.close();
+
+    qDebug() << "";
+    qDebug() << "codec nothing";
+
+
+    QStringList test2 = based_on_reading_txt.split("\n");
+    QFile file2("./test2.cpp");
+    if(!file2.open(QFile::WriteOnly | QFile::Text))
+    {
+        qDebug() << " Could not open the file for writing ";
+        return;
+    }
+    QTextStream out2(&file2);
+    QString str2;
+    for (int i = 4027; i< 4057; i++){
+        str2.append(test2[i]);
+        str2.append("\n");
+    }
+    out2 << str2;
+    file2.flush();
+    file2.close();
+
+
+////////////////////////////////////////////////////////
+
+}
+
+void GitMerge::readCodeFiles()
+{
+    QFile file(pro_file);
 
 
     if(!file.open(QFile::ReadOnly | QFile::Text))
@@ -5107,6 +5190,7 @@ void GitMerge::mergeFiles(QString &totalMerge)
     }
 
     QTextStream in(&file);
+    in.setCodec("UTF-8");
     QString merge = in.readAll();
     QStringList mergeList = merge.split("\n");
     for (auto &itemMerge : mergeList)
@@ -5114,7 +5198,7 @@ void GitMerge::mergeFiles(QString &totalMerge)
 
         itemMerge = itemMerge.remove("\\");
         itemMerge = itemMerge.trimmed();
-        //????? o????? ???.
+
         if (itemMerge.contains(".cpp", Qt::CaseInsensitive) || itemMerge.contains(".h", Qt::CaseInsensitive) || itemMerge.contains(".ui", Qt::CaseInsensitive))
         {
             QFile codeFile(itemMerge.prepend("./"));
@@ -5128,67 +5212,24 @@ void GitMerge::mergeFiles(QString &totalMerge)
             QString codeText = codeIn.readAll();
             codeText = codeText.toUtf8();
 
-            totalMerge.append(split1);
-            totalMerge.append(itemMerge);
-            totalMerge.append(split2);
-            totalMerge.append(codeText);
+            merged_code_files.append(split1);
+            merged_code_files.append(itemMerge);
+            merged_code_files.append(split2);
+            merged_code_files.append(codeText);
             codeFile.close();
 
         }
 
     }
-    totalMerge.append(split1);
-    totalMerge.append("./IInterface.pro");
-    totalMerge.append(split2);
-    totalMerge.append(merge);
+    merged_code_files.append(split1);
+    merged_code_files.append("./IInterface.pro");
+    merged_code_files.append(split2);
+    merged_code_files.append(merge);
 
     file.close();
 }
 
-void GitMerge::openPreMergeFile(QString &preMergeFile)
-{
-    QString fileName = "./gitMerge.back";
-    QFile file(fileName);
-    if(!file.open(QFile::ReadOnly | QFile::Text))
-    {
-        qDebug() << " Could not open the file for reading ";
-        preMergeFile = "";
-        if(!file.open(QFile::WriteOnly | QFile::Text))
-        {
-            return;
-        }
-        QTextStream out(&file);
-        out << "";
-        file.close();
-        return;
-    }
-    QTextStream in(&file);
-    preMergeFile = in.readAll();
-    file.close();
-}
-void GitMerge::openUpdateMergeFile(QString &updateMergeFile)
-{
-    QString fileName = "./gitMerge.txt";
-    QFile file(fileName);
-    if(!file.open(QFile::ReadOnly | QFile::Text))
-    {
-        qDebug() << " Could not open the file for reading ";
-        updateMergeFile = "";
-        if(!file.open(QFile::WriteOnly | QFile::Text))
-        {
-            return;
-        }
-        QTextStream out(&file);
-        out << "";
-        file.close();
-        return;
-    }
-    QTextStream in(&file);
-    updateMergeFile = in.readAll();
-    file.close();
-}
-
-bool GitMerge::compareFiles(QString &A, QString &B)
+bool GitMerge::compareCodeFile(QString &A, QString &B)
 {
     if (A==B)
     {
@@ -5201,26 +5242,26 @@ bool GitMerge::compareFiles(QString &A, QString &B)
 
 }
 
-void GitMerge::writeMergeFile(QString fileName, QString &originFile)
+void GitMerge::makeTxtFile()
 {
-    QFile file(fileName);
+    QFile file(txt_file);
     if(!file.open(QFile::WriteOnly | QFile::Text))
     {
         qDebug() << " Could not open the file for writing ";
         return;
     }
     QTextStream out(&file);
-    out << originFile;
+    out << merged_code_files;
     out.setCodec("UTF-8");
     file.flush();
     file.close();
 
 }
 
-void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
+void GitMerge::makeCodeFiles()
 {
-    QStringList codeList = codeFile.split(split1);
-    QStringList fileList = gitMergeFile.split(split1);
+    QStringList codeList = merged_code_files.split(split1);
+    QStringList fileList = based_on_reading_txt.split(split1);
     QStringList codeListDivide;
     QStringList fileListDivide;
     for (int i = 1; i < fileList.size(); i++)
@@ -5241,6 +5282,7 @@ void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
                     }
                     QTextStream out_gitback(&file_gitback);
                     out_gitback << codeListDivide[1];
+                    out_gitback.setCodec("UTF-8");
                     file_gitback.flush();
                     file_gitback.close();
 
@@ -5252,12 +5294,13 @@ void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
                     }
                     QTextStream out(&file);
                     out << fileListDivide[1];
+                    out.setCodec("UTF-8");
                     file.flush();
                     file.close();
                 }
                 break;
             }
-            if (j == codeList.size()-1) // a??o��? ???? ?????? ????.
+            if (j == codeList.size()-1) // 찾아봤는데 기존 파일이 없다.
             {
                 QFile file(fileListDivide[0]);
                 if(!file.open(QFile::WriteOnly | QFile::Text))
@@ -5265,16 +5308,14 @@ void GitMerge::makeCodeFiles(QString &codeFile, QString &gitMergeFile)
                     qDebug() << " Could not open the file for writing ";
                     return;
                 }
-                QTextStream out(&file);                
+                QTextStream out(&file);
                 out << fileListDivide[1];
+                out.setCodec("UTF-8");
                 file.flush();
                 file.close();
             }
-
-
         }
     }
-
 }
 !@hash[]!@file[]./main.cpp!@hash[]!@code[]#include "mainwindow.h"
 #include "gitmerge.h"
@@ -5492,7 +5533,7 @@ void MainWindow::slotInfoText(QString funcName, POS_MONITORING value)
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "???? ????",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "파일 선택",".","Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
@@ -5514,7 +5555,7 @@ void MainWindow::inputPosInformation()
 
 void MainWindow::on_actionOpen_Layout_triggered()
 {
-    QString file_name = QFileDialog::getOpenFileName(this, "???? ????",".","Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "파일 선택",".","Files(*.*)");
     DtaoRenderSystem * renderer = this->m_window->getRenderer();
 
     //renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
@@ -5555,11 +5596,21 @@ void MainWindow::on_actionOpen_DB_triggered(){
 //            }
 //        }
         //to map data
+//        for(int i = 0 ; i < t2d.HierarchyInstance.size() ; i++){
+//            printf("\n%-3d %-19s %-9s %-9f %-9f %-9f %-9f",
+//                                t2d.HierarchyInstance[i].level,
+//                                t2d.HierarchyInstance[i].name.c_str(),
+//                                t2d.HierarchyInstance[i].num.c_str(),
+//                                t2d.HierarchyInstance[i].box.minx,
+//                                t2d.HierarchyInstance[i].box.miny,
+//                                t2d.HierarchyInstance[i].box.maxx,
+//                                t2d.HierarchyInstance[i].box.maxy);
+//        }
 
+        formHier->createHierarchyTree(&t2d);
 
-
-        pos.x = (t2d.LayoutMinMax.maxx - t2d.LayoutMinMax.minx)/2;
-        pos.y = (t2d.LayoutMinMax.maxy - t2d.LayoutMinMax.miny)/2;
+        pos.x = t2d.LayoutMinMax.minx;
+        pos.y = t2d.LayoutMinMax.miny;
         pos.z = 0;
         pos.tilt = 90;
         pos.rotation = 0;
@@ -5587,11 +5638,11 @@ void MainWindow::on_actionOpen_DB_triggered(){
 
 }
 
-void MainWindow::slotDirectlyInputPos() //point info ???? ???? ????? ????
+void MainWindow::slotDirectlyInputPos() //point info 에서 직접 입력한 경우
 {
     formMap->changePos();
     formTop->changePos();
-    //??u???? 230324 vulkan ?????? ?????? ???? ????
+    //요청사항 230324 vulkan 에서도 수정을 여기서 실행
 }
 
 
@@ -5679,6 +5730,13 @@ void MainWindow::on_docker_Layer_triggered()
         dock_widget_state = MainWindow::saveState();
         dockLayer->hide();
     }
+}
+
+void MainWindow::on_toggle_top_triggered()
+{
+    DtaoRenderSystem * renderer = this->m_window->getRenderer();
+    renderer->cameraController.camera_moving_flag.toggleDemension = true;
+    renderer->cameraController.camera_moving_flag.toggleDemensionXY = true;
 }
 !@hash[]!@file[]./Rendering/Src/LayoutModel.h!@hash[]!@code[]#pragma once
 
@@ -6916,6 +6974,13 @@ private:
 
 using namespace std;
 
+struct Instance{
+    int level;
+    string name;
+    string num;
+    B_BOX box;
+};
+
 class T2D{
     public:
         bool text2data(std::string file_name);
@@ -6927,6 +6992,8 @@ class T2D{
         vector<vector<vector<B_BOX>>> buf_xy10by10;
         vector<B_BOX> buf_xy;
         static std::vector<std::string> string_split(std::string input, char delimiter);
+
+        vector<Instance> HierarchyInstance;
 };
 
 #endif // T2D_H
@@ -7039,6 +7106,14 @@ public:
 //#include "all_data.h"
 //#include "mainwindow.h"
 
+#include <QTreeWidget>
+#include <QTreeWidgetItem>
+#include <QSortFilterProxyModel>
+#include <vector>
+#include <iostream>
+
+#include "T2D.h"
+
 namespace Ui {
 class FormHier;
 }
@@ -7047,22 +7122,17 @@ class FormHier : public QDialog
 {
     Q_OBJECT
 
-public slots:
-    void ReceiveSplitData(int row, int column, const QVector <QVector <QString>> &inputDataVector);
-//    void ReceiveSplitData(QStringList list, int row, int column);
-
 public:
     FormHier(QWidget *parent = nullptr);
     ~FormHier();
     Ui::FormHier *ui;
 
-public:
-    //MyDataSet *dataset = nullptr;
+    T2D *t2d;
 
-public:
-    //void setMyDataSet(MyDataSet * dataset_){ this->dataset = dataset_;}
-    //void testMyData();
-
+    void createHierarchyTree(T2D *t2d);
+private slots:
+    void on_hierarchy_tree_itemDoubleClicked(QTreeWidgetItem *item, int column);
+    void on_hierarchy_searching_textEdited(const QString &arg1);
 };
 
 #endif // FORMHIER_H
@@ -7109,7 +7179,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom ????? ???? GDS size ?? ?????? ???? ???
+    float infoZoom = 1; //Zoom 초기값에 대한 GDS size 를 갖고와 수정 필요
 
     float initRot = 0;
     float initTilt = 90;
@@ -7251,10 +7321,9 @@ class SuperItem : public QObject, public QGraphicsItem
     Q_OBJECT
 public:
     SuperItem(QGraphicsItem* parent = NULL);
-    void receivePointPos(POS_MONITORING *pos);
 public slots:
-    void slotMove();
-    void slotInitMove(double x, double y, double scale);
+    void slotMove(POS_MONITORING *pos);
+    void slotInitMove(double x, double y);
 
 protected:
     void paint(QPainter *painter,
@@ -7266,14 +7335,11 @@ protected:
 //    virtual void keyPressEvent(QKeyEvent *evnet);
 
 private:
-    POS_MONITORING *m_pos;
     double m_pos_past_x = 0;
     double m_pos_past_y = 0;
     double m_view_size = 1;
     double m_zoom_init = 1;
-    double m_init_x = 0;
-    double m_init_y = 0;
-    double m_scale = 1;
+
 };
 
 class FormMap : public QDialog
@@ -7288,8 +7354,8 @@ public:
     void changePos();
 
 signals:
-    void signalMove();
-    void signalInitMove(double x, double y, double m_scale);
+    void signalMove(POS_MONITORING *pos);
+    void signalInitMove(double x, double y);
 
 private:    
     Ui::FormMap *ui;
@@ -7312,7 +7378,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom ????? ???? GDS size ?? ?????? ???? ???
+    float infoZoom = 1; //Zoom 초기값에 대한 GDS size 를 갖고와 수정 필요
 
     float initRot = 0;
     float initTilt = 90;
@@ -7360,7 +7426,6 @@ private slots:
     void on_horizontalSlider_valueChanged(int value);
 
 private:
-    void addZeroPoint();
     void addRectItem(int layer, int row, int col, int n, QTransform trans);    
     int extPos(double *pos, double *min, double *max);
     void filterRenderingData(int layer, int row, int col, int n);
@@ -7375,7 +7440,6 @@ private:
     int m_begin_x = 0, m_begin_y = 0, m_end_x = 1, m_end_y = 1, m_scale = 500;
     float m_min_x = 0, m_min_y =0, m_max_x =0, m_max_y=0;
     bool init_check = true;
-    bool zero_point = true;
 
     int m_begin_row = 0, m_end_row = 1, m_begin_col = 0, m_end_col = 1;
     int m_block_size = 10; //10um
@@ -7395,15 +7459,19 @@ class GitMerge
 public:
     GitMerge();
 private:
-    void mergeFiles(QString &totalMerge);
-    void openPreMergeFile(QString &preMergeFile);
-    void openUpdateMergeFile(QString &updateMergeFile);
-    bool compareFiles(QString &A, QString &B);
-    void writeMergeFile(QString fileName, QString &originFile);
-    void makeCodeFiles(QString &codeFile, QString &gitMergeFile);
+    void readTxtFile();
+    void readCodeFiles();
+    bool compareCodeFile(QString &A, QString &B);
+    void makeTxtFile();
+    void makeCodeFiles();
 
+    bool write_code_files = false;
     QString split1;
     QString split2;
+    QString merged_code_files;    //각종 cpp, h 등에서 읽어온 내용
+    QString based_on_reading_txt; //gitMerge.txt 에서 읽어온 내용
+    QString txt_file = "./gitMerge.txt";
+    QString pro_file = "./IInterface.pro";
     QString hash = "!@hash[]";
     QString file = "!@file[]";
     QString code = "!@code[]";
@@ -7472,6 +7540,7 @@ private slots:
     void on_docker_Info_triggered();
     void on_docker_Hier_triggered();
     void on_docker_Layer_triggered();
+    void on_toggle_top_triggered();
 
 private:
     LveWindow *m_window;
@@ -7526,47 +7595,30 @@ private:
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <layout class="QGridLayout" name="gridLayout">
+     <item row="1" column="0">
+      <widget class="QTreeWidget" name="hierarchy_tree">
+       <property name="verticalScrollBarPolicy">
+        <enum>Qt::ScrollBarAsNeeded</enum>
+       </property>
+       <property name="horizontalScrollBarPolicy">
+        <enum>Qt::ScrollBarAlwaysOff</enum>
+       </property>
+       <property name="expandsOnDoubleClick">
+        <bool>false</bool>
+       </property>
+       <attribute name="headerVisible">
+        <bool>false</bool>
+       </attribute>
+      </widget>
+     </item>
      <item row="0" column="0">
-      <widget class="QTableWidget" name="tableWidget">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
+      <widget class="QLineEdit" name="hierarchy_searching">
+       <property name="text">
+        <string/>
        </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>0</height>
-        </size>
+       <property name="placeholderText">
+        <string>Searching...</string>
        </property>
-       <property name="baseSize">
-        <size>
-         <width>300</width>
-         <height>100</height>
-        </size>
-       </property>
-       <property name="sizeAdjustPolicy">
-        <enum>QAbstractScrollArea::AdjustToContents</enum>
-       </property>
-       <property name="editTriggers">
-        <set>QAbstractItemView::NoEditTriggers</set>
-       </property>
-       <property name="alternatingRowColors">
-        <bool>true</bool>
-       </property>
-       <property name="gridStyle">
-        <enum>Qt::SolidLine</enum>
-       </property>
-       <attribute name="horizontalHeaderCascadingSectionResizes">
-        <bool>false</bool>
-       </attribute>
-       <attribute name="horizontalHeaderStretchLastSection">
-        <bool>false</bool>
-       </attribute>
-       <attribute name="verticalHeaderVisible">
-        <bool>false</bool>
-       </attribute>
       </widget>
      </item>
     </layout>
@@ -8040,7 +8092,7 @@ private:
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionTop"/>
+   <addaction name="toggle_top"/>
    <addaction name="separator"/>
    <addaction name="docker_Map"/>
    <addaction name="docker_TopView"/>
@@ -8081,8 +8133,7 @@ private:
   <action name="docker_Map">
    <property name="icon">
     <iconset>
-     <normaloff>ImageFile/Map_Icon_50by50.png</normaloff>
-     <normalon>ImageFile/box-shadow.png</normalon>ImageFile/Map_Icon_50by50.png</iconset>
+     <normaloff>ImageFile/Map_Icon_50by50.png</normaloff>ImageFile/Map_Icon_50by50.png</iconset>
    </property>
    <property name="text">
     <string>docker_Map</string>
@@ -8141,6 +8192,18 @@ private:
    </property>
    <property name="toolTip">
     <string>docker_Layer</string>
+   </property>
+  </action>
+  <action name="toggle_top">
+   <property name="icon">
+    <iconset>
+     <normaloff>ImageFile/Top_toggle_Icon_50by50.png</normaloff>ImageFile/Top_toggle_Icon_50by50.png</iconset>
+   </property>
+   <property name="text">
+    <string>toggle_top</string>
+   </property>
+   <property name="toolTip">
+    <string>toggle_top</string>
    </property>
   </action>
  </widget>
@@ -8228,7 +8291,6 @@ RESOURCES += \
     Resources.qrc
 
 DISTFILES += \
-    ImageFile/box-shadow.png \
     Rendering/Data/MVP_PEX_RC_r1_0130.csv \
     Rendering/Data/MVP_PEX_RC_r1_0130_0208version.csv \
     Rendering/Data/big_test_espin.csv \
