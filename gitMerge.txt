@@ -5127,54 +5127,8 @@ void GitMerge::readTxtFile()
         return;
     }
     QTextStream in(&file);
-//    in.setCodec("UTF-8");
     based_on_reading_txt = in.readAll();
     file.close();
-
-//////////////////////////////////////////////
-    qDebug() << "";
-    qDebug() << "codec UTF8";
-    QStringList test1 = based_on_reading_txt.split("\n");
-    QFile file1("./test1.cpp");
-    if(!file1.open(QFile::WriteOnly | QFile::Text))
-    {
-        qDebug() << " Could not open the file for writing ";
-        return;
-    }
-    QTextStream out1(&file1);
-    QString str1;
-    for (int i = 4027; i< 4057; i++){
-        str1.append(test1[i]);
-        str1.append("\n");
-    }
-    out1 << str1;
-    out1.setCodec("UTF-8");
-    file1.flush();
-    file1.close();
-
-    qDebug() << "";
-    qDebug() << "codec nothing";
-
-
-    QStringList test2 = based_on_reading_txt.split("\n");
-    QFile file2("./test2.cpp");
-    if(!file2.open(QFile::WriteOnly | QFile::Text))
-    {
-        qDebug() << " Could not open the file for writing ";
-        return;
-    }
-    QTextStream out2(&file2);
-    QString str2;
-    for (int i = 4027; i< 4057; i++){
-        str2.append(test2[i]);
-        str2.append("\n");
-    }
-    out2 << str2;
-    file2.flush();
-    file2.close();
-
-
-////////////////////////////////////////////////////////
 
 }
 
