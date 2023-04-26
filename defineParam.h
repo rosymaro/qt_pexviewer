@@ -16,6 +16,12 @@ struct POS_MONITORING{
     double window_zoom;
 };
 
+struct POS_SET
+{
+    std::string name;
+    POS_MONITORING position;
+};
+
 struct B_BOX{
     double minx;
     double miny;

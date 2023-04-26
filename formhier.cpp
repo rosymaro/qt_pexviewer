@@ -1,33 +1,12 @@
 #include "formhier.h"
 #include "ui_formhier.h"
 #include "mainwindow.h"
-#include <QTableWidget>
-#include <QDebug>
-
 
 FormHier::FormHier(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::FormHier)
 {
     ui->setupUi(this);
-    // QTableWidget defalut 크기 설정
-    QStringList defalutTableHeader;
-    defalutTableHeader << "LayerName" << "LayerNum" << "LayerType" << "Red" << "Green" << "Blue";
-
-    ui->tableWidget->setColumnCount(6);
-    ui->tableWidget->setRowCount(10);
-    ui->tableWidget->setColumnWidth(0,80);
-    ui->tableWidget->setColumnWidth(1,80);
-    ui->tableWidget->setColumnWidth(2,80);
-    ui->tableWidget->setColumnWidth(3,50);
-    ui->tableWidget->setColumnWidth(4,50);
-    ui->tableWidget->setColumnWidth(5,50);
-    ui->tableWidget->setHorizontalHeaderLabels(defalutTableHeader);
-
-    ui->tableWidget->horizontalHeader()->setStyleSheet("QHeaderView::section {background-color:#404040;color:#FFFFFF;}");
-
-//    tempcolor = ui->tableWidget->setBackgroundRole();
-//    ui->tableWidget->setHorizontalHeaderItem(0,QColor(128,128,128));
 
 }
 
@@ -36,55 +15,120 @@ FormHier::~FormHier()
     delete ui;
 }
 
-//void FormHier::testMyData(){
-//    this->dataset->split_datas[0][0] = QString("No, I'm not fool!!!");
-//}
+void FormHier::createHierarchyTree(T2D *t2d){
 
-//void FormHier::ReceiveSplitData(QStringList list, int row, int column,  QVector <QVector <QString>> &inputDataVector)
-void FormHier::ReceiveSplitData(int row, int column, const QVector <QVector <QString>> &inputDataVector)
-{
-//    qDebug() << "xxxxxxxxxxxxxxxxxxxxxxxxx";
-//    qDebug() << "row" << row;
-//    qDebug() << "column" << column;
-//    qDebug() << "1st" << inputDataVector.value(0);
-//    qDebug() << "2nd" << inputDataVector.value(1);
-//    qDebug() << "3rd" << inputDataVector.value(2);
-//    qDebug() << "1st_1st" << inputDataVector.value(0).value(0);
+    this->t2d = t2d;
+    vector<QTreeWidgetItem*> m_buf_tree_item;
+    QTreeWidgetItem* m_top_tree = new QTreeWidgetItem(ui->hierarchy_tree);
+    m_buf_tree_item.resize(99);
+    m_buf_tree_item[0] = m_top_tree;
+    string m_top_cell_name = this->t2d->HierarchyInstance[0].name + " (" + this->t2d->HierarchyInstance[0].num + ") ";
+    m_top_tree->setText(0, QString::fromStdString(m_top_cell_name));
+    m_top_tree->setText(1, QString::fromStdString(to_string(0)));
+    ui->hierarchy_tree->addTopLevelItem(m_top_tree);
 
-// QTableWidget 에서 QStringList 로만 받기때문에 자료형변환
-    QStringList vectorTOqstringlist;
-    QStringList vectorTOqstringlistHoriLabels;
+    for(int i = 1 ; i < t2d->HierarchyInstance.size() ; i++){
+        int m_level = t2d->HierarchyInstance[i].level;
+        string m_cell_name = t2d->HierarchyInstance[i].name + " (" + t2d->HierarchyInstance[i].num + ") ";
 
-// QTableWidget 크기 설정
-    ui->tableWidget->setColumnCount(column);
-    ui->tableWidget->setRowCount(row);
+        QTreeWidgetItem* m_child_tree = new QTreeWidgetItem();
+        m_child_tree->setText(0, QString::fromStdString(m_cell_name));
+        m_child_tree->setText(1, QString::fromStdString(to_string(i)));
+        m_buf_tree_item[m_level] = m_child_tree;
 
-// Table Header Font size/bold change
-    QFont font = ui->tableWidget->horizontalHeader()->font();
-    font.setBold(true);
-    font.setPointSize(10);
-    ui->tableWidget->horizontalHeader()->setFont(font);
-
-// Table 채우기
-    for (int i=0; i<row ; i++)
-    {
-        for (int j=0; j<column ; j++)
-        {
-            vectorTOqstringlist << inputDataVector.value(i+1).value(j);
-            vectorTOqstringlistHoriLabels << inputDataVector.value(0).value(j);
-            ui->tableWidget->setItem(i,j,new QTableWidgetItem(vectorTOqstringlist[i*column+j]));
-            ui->tableWidget->setHorizontalHeaderLabels(vectorTOqstringlistHoriLabels);
-        }
-
+        m_buf_tree_item[m_level - 1]->addChild(m_child_tree);
     }
-//    ui->tableWidget->set;
-//    ui->tableWidget->setColumnWidth(0,80);
-//    ui->tableWidget->setColumnWidth(1,80);
-//    ui->tableWidget->setColumnWidth(2,80);
-//    ui->tableWidget->setColumnWidth(3,50);
-//    ui->tableWidget->setColumnWidth(4,50);
-//    ui->tableWidget->setColumnWidth(5,50);
+}
 
-
+void FormHier::on_hierarchy_tree_itemDoubleClicked(QTreeWidgetItem *item, int column)
+{
+    cout << "minx : " << this->t2d->HierarchyInstance[atoi(item->text(column+1).toStdString().c_str())].box.minx;
+    cout << " miny : " << this->t2d->HierarchyInstance[atoi(item->text(column+1).toStdString().c_str())].box.miny;
+    cout << " maxx : " << this->t2d->HierarchyInstance[atoi(item->text(column+1).toStdString().c_str())].box.maxx;
+    cout << " maxy : " << this->t2d->HierarchyInstance[atoi(item->text(column+1).toStdString().c_str())].box.maxy << endl;
 
 }
+
+void FormHier::on_hierarchy_searching_textEdited(const QString &arg1)
+{
+//    QString m_input_text = ui->hierarchy_searching->text();
+//    QList<QTreeWidgetItem*> m_all_list = ui->hierarchy_tree->findItems("", Qt::MatchContains | Qt::MatchRecursive, 0);
+//    if(m_input_text != ""){
+//        for (QTreeWidgetItem *item : m_all_list) {
+//            item->setTextColor(0, Qt::black);
+//        }
+//        QList<QTreeWidgetItem*> clist = ui->hierarchy_tree->findItems(m_input_text, Qt::MatchContains | Qt::MatchRecursive, 0);
+//        ui->hierarchy_tree->clear();
+//        for (QTreeWidgetItem *item : clist) {
+//            item->setTextColor(0, Qt::red);
+//        }
+//    }else{
+//        for (QTreeWidgetItem *item : m_all_list) {
+//            item->setTextColor(0, Qt::black);
+//        }
+//    }
+
+//    QTreeWidgetItemIterator it(ui->hierarchy_tree);
+//    while(*it){
+//        if((*it)->text(0).contains(arg1, Qt::CaseInsensitive)){
+//            (*it)->setHidden(false);
+//        }else{
+//            (*it)->setHidden(true);
+//        }
+//        ++it;
+//    }
+
+//    QSortFilterProxyModel* m_tree_model = new QSortFilterProxyModel(this);
+//    m_tree_model->setFilterCaseSensitivity(Qt::CaseInsensitive);
+//    m_tree_model->setSourceModel(ui->hierarchy_tree->model());
+//    ui->hierarchy_tree->setModel(m_tree_model);
+
+//    m_tree_model->setFilterRegExp(QRegExp(arg1, Qt::CaseInsensitive, QRegExp::FixedString));
+    QString m_hierarchy_searching_text = arg1;
+
+    if(m_hierarchy_searching_text.contains('*')){
+        m_hierarchy_searching_text.replace("*", ".*", Qt::CaseInsensitive);
+        QRegExp m_regex(m_hierarchy_searching_text, Qt::CaseInsensitive);
+        QTreeWidgetItemIterator it(ui->hierarchy_tree);
+        while(*it){
+            if(m_regex.exactMatch((*it)->text(0))){
+                QTreeWidgetItem* item = *it;
+                while(item){
+                    item->setExpanded(true);
+                    item->setHidden(false);
+                    item = item->parent();
+                }
+            }else{
+                (*it)->setHidden(true);
+            }
+            ++it;
+        }
+    } else{
+        QTreeWidgetItemIterator it(ui->hierarchy_tree);
+        while(*it){
+            if((*it)->text(0).contains(m_hierarchy_searching_text, Qt::CaseInsensitive)){
+                QTreeWidgetItem* item = *it;
+                while(item){
+                    item->setExpanded(true);
+                    item->setHidden(false);
+                    item = item->parent();
+                }
+            }else{
+                (*it)->setHidden(true);
+            }
+            ++it;
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+

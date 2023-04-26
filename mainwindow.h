@@ -11,10 +11,13 @@
 #include "formtop.h"
 #include "forminfo.h"
 #include "formmap.h"
+#include "pexdialog.h"
 #include "filedb.h"
 #include "all_data.h"
 #include <QVector>
 #include "defineParam.h"
+
+#include "dev_dialog.h"
 
 #include "T2D.h"
 
@@ -33,6 +36,7 @@ public:
     ~MainWindow();
 
     void shareGeo(QRect size);
+    void devDialog();
 
     T2D t2d;
 
@@ -48,20 +52,34 @@ signals:
     void sendSelectFileName(QString file_name);
 
 
+
 private slots:
     void on_actionOpen_Layout_triggered();
     void on_actionOpen_DB_triggered();
+    void on_actionOpen_PEX_triggered();
     void slotDirectlyInputPos();
+    void slotStatusBarMsg(QString msg);
 
     void on_actionTop_triggered();
     void on_actionDemo_triggered();
     void on_docker_TopView_triggered();
+    void on_docker_TopView_stateChanged(bool);
     void on_docker_Map_triggered();
+    void on_docker_Map_stateChanged(bool);
     void on_docker_Info_triggered();
+    void on_docker_Info_stateChanged(bool);
     void on_docker_Hier_triggered();
+    void on_docker_Hier_stateChanged(bool);
     void on_docker_Layer_triggered();
+    void on_docker_Layer_stateChanged(bool);
+    void on_toggle_top_triggered();
+
+    void on_PEX_window_triggered();
+
+    void on_actionDialog_on_off_triggered();
 
 private:
+    void sendPositionDataToDocker();
     LveWindow *m_window;
     Ui::MainWindow *ui;
     QString statusText;
@@ -70,6 +88,7 @@ private:
     FormTop *formTop;
     FormInfo *formInfo;
     FormMap *formMap;
+    PexDialog *pexdialog;
     QDockWidget *dockHier;
     QDockWidget *dockLayer;
     QDockWidget *dockMap;
@@ -85,7 +104,9 @@ private:
     QByteArray dock_widget_geometry;
     QByteArray dock_widget_state;
 
-
+//dev_dialog
+    DevDialog *dev_dialog;
+    bool is_pos_checked = true;
 
 };
 

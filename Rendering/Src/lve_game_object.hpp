@@ -24,8 +24,9 @@ struct TransformComponent {
         //glm_mat4 = glm::rotate(glm_mat4,  rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
         //glm_mat4 = glm::rotate(glm_mat4, rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
         //glm_mat4 = glm::rotate(glm_mat4, rotation.z, glm::vec3(1.0f, 0.0f, 1.0f));
-        glm_mat4 = glm::scale(glm_mat4, scale);
         glm_mat4 = glm::translate(glm_mat4, translation);
+        glm_mat4 = glm::scale(glm_mat4, scale);
+
 
 
         return glm_mat4;

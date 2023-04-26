@@ -38,6 +38,8 @@
     <addaction name="actionOpen_Layout"/>
     <addaction name="separator"/>
     <addaction name="actionOpen_DB"/>
+    <addaction name="separator"/>
+    <addaction name="actionOpen_PEX"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -52,9 +54,16 @@
     <addaction name="actionTop"/>
     <addaction name="actionDemo"/>
    </widget>
+   <widget class="QMenu" name="menudevopt">
+    <property name="title">
+     <string>devopt</string>
+    </property>
+    <addaction name="actionDialog_on_off"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
    <addaction name="menuCamera"/>
+   <addaction name="menudevopt"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
@@ -67,13 +76,14 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionTop"/>
+   <addaction name="toggle_top"/>
    <addaction name="separator"/>
    <addaction name="docker_Map"/>
    <addaction name="docker_TopView"/>
    <addaction name="docker_Info"/>
    <addaction name="docker_Hier"/>
    <addaction name="docker_Layer"/>
+   <addaction name="PEX_window"/>
   </widget>
   <action name="actionOpen_file">
    <property name="text">
@@ -106,10 +116,15 @@
    </property>
   </action>
   <action name="docker_Map">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset>
-     <normaloff>ImageFile/Map_Icon_50by50.png</normaloff>
-     <normalon>ImageFile/box-shadow.png</normalon>ImageFile/Map_Icon_50by50.png</iconset>
+     <normaloff>ImageFile/Map_Icon_50by50.png</normaloff>ImageFile/Map_Icon_50by50.png</iconset>
    </property>
    <property name="text">
     <string>docker_Map</string>
@@ -119,6 +134,12 @@
    </property>
   </action>
   <action name="docker_TopView">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normalon>ImageFile/Top_View_Icon_50by50.png</normalon>
@@ -132,6 +153,12 @@
    </property>
   </action>
   <action name="docker_Info">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normalon>ImageFile/Info_Icon_50by50.png</normalon>
@@ -145,6 +172,12 @@
    </property>
   </action>
   <action name="docker_Hier">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normalon>ImageFile/Hier_Icon_50by50.png</normalon>
@@ -158,6 +191,12 @@
    </property>
   </action>
   <action name="docker_Layer">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normalon>ImageFile/Layer_Icon_50by50.png</normalon>
@@ -168,6 +207,50 @@
    </property>
    <property name="toolTip">
     <string>docker_Layer</string>
+   </property>
+  </action>
+  <action name="toggle_top">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>ImageFile/Top_toggle_Icon_50by50.png</normaloff>ImageFile/Top_toggle_Icon_50by50.png</iconset>
+   </property>
+   <property name="text">
+    <string>toggle_top</string>
+   </property>
+   <property name="toolTip">
+    <string>toggle_top</string>
+   </property>
+  </action>
+  <action name="PEX_window">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normalon>ImageFile/PEX_Icon_50by50.png</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>PEX_window</string>
+   </property>
+  </action>
+  <action name="actionOpen_PEX">
+   <property name="text">
+    <string>Open PEX</string>
+   </property>
+  </action>
+  <action name="actionDialog_on_off">
+   <property name="text">
+    <string>Dialog on/off</string>
    </property>
   </action>
  </widget>

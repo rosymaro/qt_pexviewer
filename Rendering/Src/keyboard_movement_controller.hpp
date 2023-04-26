@@ -5,12 +5,26 @@
 #include "lve_game_object.hpp"
 #include "lve_window.hpp"
 #include "lve_camera.hpp"
+#include "PEXResistorModel.h"
 //#include "defineParam.h"
 
 
 
 class KeyboardMovementController {
 public:
+    struct ModelVisibleSet {
+        int resistor_key = Qt::Key_R;
+        int capacitor_key = Qt::Key_C;
+        int resistor_up_key = Qt::Key_M;
+        int resistor_down_key = Qt::Key_N;
+        int resistor_horizontal_key = Qt::Key_Comma;
+        int resistor_vertical_key = Qt::Key_Period;
+        bool resistor_up_key_pressed = false;
+        bool resistor_down_key_pressed = false;
+        bool resistor_horizontal_key_pressed = false;
+        bool resistor_vertical_key_pressed = false;
+    };
+
     struct CameraMoveKeyMappings {
         int rotateLeft = Qt::Key_A;
         int rotateRight = Qt::Key_D;
@@ -61,6 +75,8 @@ public:
         QPoint scrollClicked;
     };
 
+    void visibleSetting(std::vector<LveGameObject>& gameObjects, Qt::Key key);
+    ModelVisibleSet model_visible_set;
     void moveCamera(Qt::Key key, float dt, LveCamera& camera, float render_scale);
     CameraMoveKeyMappings camera_move_key;
     MousePosition mouse_position;
@@ -76,10 +92,14 @@ public:
     void setMouseFlagOff();
     void setMousePosition(QPoint position, int mode);
     void setMouseScroll(QPoint position);
+    void PEXSetting(std::shared_ptr< PEXResistorModel>& pexResistorModel, Qt::Key key);
     void triggerDemo();
+    //void translateLayerPosition(std::vector<LveGameObject>& gameObjects);
     void onDemo(float dt, LveCamera& camera, float render_scale,std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow);
     CameraMovingContinousFlags camera_moving_flag;
     POS_MONITORING monitor;
+
+    glm::vec3 translationOnPressed;
 
 
     float moveSpeed{ 0.05f };

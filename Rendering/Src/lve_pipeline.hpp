@@ -30,10 +30,12 @@ struct PipelineConfigInfo {
 class LvePipeline {
 public:
     LvePipeline(
-            LveDevice& device,
-            const std::string& vertFilepath,
-            const std::string& fragFilepath,
-            const PipelineConfigInfo& configInfo);
+        LveDevice& device,
+        const std::string& vertFilepath,
+        const std::string& fragFilepath,
+        const PipelineConfigInfo& configInfo,
+        const std::vector<VkVertexInputBindingDescription> bindingDescription_,
+        const  std::vector<VkVertexInputAttributeDescription> attributeDescription_);
     ~LvePipeline();
 
     LvePipeline(const LvePipeline&) = delete;
@@ -47,9 +49,11 @@ private:
     static std::vector<char> readFile(const std::string& filepath);
 
     void createGraphicsPipeline(
-            const std::string& vertFilepath,
-            const std::string& fragFilepath,
-            const PipelineConfigInfo& configInfo);
+        const std::string& vertFilepath,
+        const std::string& fragFilepath,
+        const PipelineConfigInfo& configInfo,
+        const std::vector<VkVertexInputBindingDescription> bindingDescription_,
+        const  std::vector<VkVertexInputAttributeDescription> attributeDescription_);
 
     void createShaderModule(const std::vector<char>& code, VkShaderModule* shaderModule);
 

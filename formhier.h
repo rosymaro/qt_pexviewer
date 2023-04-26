@@ -5,6 +5,14 @@
 //#include "all_data.h"
 //#include "mainwindow.h"
 
+#include <QTreeWidget>
+#include <QTreeWidgetItem>
+#include <QSortFilterProxyModel>
+#include <vector>
+#include <iostream>
+
+#include "T2D.h"
+
 namespace Ui {
 class FormHier;
 }
@@ -13,22 +21,17 @@ class FormHier : public QDialog
 {
     Q_OBJECT
 
-public slots:
-    void ReceiveSplitData(int row, int column, const QVector <QVector <QString>> &inputDataVector);
-//    void ReceiveSplitData(QStringList list, int row, int column);
-
 public:
     FormHier(QWidget *parent = nullptr);
     ~FormHier();
     Ui::FormHier *ui;
 
-public:
-    //MyDataSet *dataset = nullptr;
+    T2D *t2d;
 
-public:
-    //void setMyDataSet(MyDataSet * dataset_){ this->dataset = dataset_;}
-    //void testMyData();
-
+    void createHierarchyTree(T2D *t2d);
+private slots:
+    void on_hierarchy_tree_itemDoubleClicked(QTreeWidgetItem *item, int column);
+    void on_hierarchy_searching_textEdited(const QString &arg1);
 };
 
 #endif // FORMHIER_H

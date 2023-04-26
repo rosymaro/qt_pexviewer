@@ -15,10 +15,10 @@ class SuperItem : public QObject, public QGraphicsItem
     Q_OBJECT
 public:
     SuperItem(QGraphicsItem* parent = NULL);
-    void receivePointPos(POS_MONITORING *pos);
+    void getScaleValue(double *m_scale_, double *m_from_window_to_box_x_, double *m_from_window_to_box_y_, double *m_min_x_, double *m_min_y_, double *m_zoom_init_);
 public slots:
-    void slotMove();
-    void slotInitMove(double x, double y, double scale);
+    void slotMove(POS_MONITORING *pos);
+    virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
 
 protected:
     void paint(QPainter *painter,
@@ -30,14 +30,23 @@ protected:
 //    virtual void keyPressEvent(QKeyEvent *evnet);
 
 private:
-    POS_MONITORING *m_pos;
+    bool init_check = true;
+    double convertPosX();
+    double convertPosY();
     double m_pos_past_x = 0;
     double m_pos_past_y = 0;
-    double m_view_size = 1;
-    double m_zoom_init = 1;
-    double m_init_x = 0;
-    double m_init_y = 0;
-    double m_scale = 1;
+    double m_view_size = 1;    
+    double m_gray_box_size = 120;
+    double *m_scale;
+    double *m_zoom_init;
+    double *m_from_window_to_box_x;
+    double *m_from_window_to_box_y;
+    double *m_min_x;
+    double *m_min_y;
+    double m_zero_point_x;
+    double m_zero_point_y;
+    double temp_x;      // ï§ë‰ìŠ¦ã…»ì¤ˆ box Â€ï§ê³¸ì”ª é†«ëš°ëª´ ëš¯ë¸˜è¹‚ë‹¿ë¦° ê¾ªë¸¿
+    double temp_y;
 };
 
 class FormMap : public QDialog
@@ -52,20 +61,25 @@ public:
     void changePos();
 
 signals:
-    void signalMove();
-    void signalInitMove(double x, double y, double m_scale);
+    void signalMove(POS_MONITORING *pos);
+    void signalInitMove(double x, double y);
 
 private:    
     Ui::FormMap *ui;
     QGraphicsRectItem *rectItem;
     QGraphicsRectItem *rectItem2;
     QRect *rect;
-    double m_width;
-    double m_height;
+    double m_min_x;
+    double m_min_y;
     double m_scale = 1;
-    double m_box_size = 178;
-    double m_width_scaled;
-    double m_height_scaled;
+    double m_zoom_init;
+    double m_gray_box_size = 120;
+    double m_window_width;
+    double m_window_height;
+    double m_box_width;
+    double m_box_height;
+    double m_from_window_to_box_x;
+    double m_from_window_to_box_y;
 
     SuperItem *super;
 
@@ -76,7 +90,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom ÃÊ±â°ª¿¡ ´ëÇÑ GDS size ¸¦ °®°í¿Í ¼öÁ¤ ÇÊ¿ä
+    float infoZoom = 1; //Zoom ç¥ë‡ë¦°åª›ë¯ªë¿‰ Â€GDS size ç‘œåª›ë½®í€¬Â€ ì„ì ™ ê¾©ìŠ‚
 
     float initRot = 0;
     float initTilt = 90;

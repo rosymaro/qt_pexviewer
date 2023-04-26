@@ -23,9 +23,10 @@ bool T2D::text2data(std::string file_name){
     cout << LayoutMinMax.maxz << endl;*/
     LayoutData10by10.clear();
     while(getline(readfile, line)){
+        if(line == "~!@#$%^&*()_++_)(*&^%$#@!~") break;
         split = T2D::string_split(line, ' ');
-        int row = atoi(split[9].c_str());
-        int col = atoi(split[10].c_str());
+        this->row = atoi(split[9].c_str());
+        this->col = atoi(split[10].c_str());
 
         buf_ldata10by10.checking = false;
         buf_ldata10by10.layername = split[0];
@@ -64,7 +65,25 @@ bool T2D::text2data(std::string file_name){
         }
         buf_ldata10by10.xy = buf_xy10by10;
         LayoutData10by10.push_back(buf_ldata10by10);
+
+        string m_key = to_string(buf_ldata10by10.layernum)+"."+to_string(buf_ldata10by10.datatype);
+        map_LayoutData10by10_.insert({m_key, buf_ldata10by10});
     }
+    HierarchyInstance.clear();
+    while(getline(readfile, line)){
+        split = T2D::string_split(line, ' ');
+        Instance buf_instance;
+        buf_instance.level = atoi(split[0].c_str());
+        buf_instance.name = split[1];
+        buf_instance.num = split[2];
+        buf_instance.box.minx = atof(split[3].c_str());
+        buf_instance.box.miny = atof(split[4].c_str());
+        buf_instance.box.maxx = atof(split[5].c_str());
+        buf_instance.box.maxy = atof(split[6].c_str());
+        HierarchyInstance.push_back(buf_instance);
+        //cout << buf_instance.name << endl;
+    }
+
 }
 
 vector<string> T2D::string_split(string input, char delimiter) {

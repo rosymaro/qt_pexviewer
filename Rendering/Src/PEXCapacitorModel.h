@@ -35,18 +35,12 @@ public:
         double cap_value;
         double normalized_cap_value;
         uint cap_count;
-        pattern_cap(cube_info& pattern_, uint number_, uint datatype_, double value_, double norm_value_, uint count_) :
-            pattern(pattern_), layer_number(number_),
-            layer_datatype(datatype_),
-            cap_value(value_), normalized_cap_value(norm_value_),
-            cap_count(count_) {}
-
     };
 
 public:
     PEXCapacitorModel(
             LveDevice& device, MODEL_TYPE model_type,
-            const std::string& data_file = "", LayoutDataManager* layout_data_ = nullptr);
+            const QString& data_file = "", T2D * layout_data_ =nullptr);
     ~PEXCapacitorModel();
 
     PEXCapacitorModel() = delete;
@@ -56,7 +50,7 @@ public:
 private:
     PEXCapacitorDataManager pex_data;
     std::map<std::string, size_t> cap_node_name_to_index_map;
-    LayoutDataManager* layout_data = nullptr;
+    T2D* layout_data =nullptr;
 
     std::vector<cap_node> cap_nodes;
     std::map<std::string, std::vector<cap_node*>> layer_to_cap_node_map;
@@ -74,8 +68,8 @@ private:
     std::mutex mutex_layers_queue;
 
 public:
-    virtual void makeRenderingData(const std::string& file_path = "");
-    virtual void loadData(const std::string& file_path = "");
+    virtual void makeRenderingData(const QString& file_path = "");
+    virtual void loadData(const QString& file_path = "");
     virtual void makeVertices();
     virtual void makeIndices();
 
@@ -97,7 +91,7 @@ private:
             uint target_layer_number, uint target_layer_datatype);
     bool isPatternIncludeCap(const pattern_cap& pattern, const cap_node& cap);
 
-    void setLayoutDataManager(LayoutDataManager* layout_data_) { this->layout_data = layout_data_; }
+    void setLayoutDataManager(T2D* layout_data_) { this->layout_data = layout_data_; }
     void addNewCapNode(pex_node& new_node, double value);
 
     std::string getLayerString(uint layer_number, uint layer_datatype);
@@ -105,7 +99,7 @@ private:
     void normalizePatternCap();
 
     void makeLayersQueueForThreadJob();
-
+    double percentileOfCapacitor(const pattern_cap& in_cap);
 
 
 

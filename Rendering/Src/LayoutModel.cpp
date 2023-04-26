@@ -21,12 +21,11 @@ LayoutModel::~LayoutModel() {
 }
 
 void LayoutModel::makeRenderingData(T2D &t2d) {
-    loadData(t2d);
     std::chrono::system_clock::time_point start, end;
     std::chrono::seconds run_time;
 
     start = std::chrono::system_clock::now();
-    //loadData(file_path);
+    loadData(t2d);
     end = std::chrono::system_clock::now();
     run_time = std::chrono::duration_cast<std::chrono::seconds>(end - start);
     std::cout << "Run Time / LayoutModel / loadData [sec] : "
@@ -62,15 +61,17 @@ void LayoutModel::makeCubeVertices() {
     std::vector<LDATA10BY10> &layout_items = this->layout_data.getPatterns_t2d();
     std::vector<LDATA10BY10>::iterator it = layout_items.begin();
     cube_vertex cur_cube_vertices;
-    std::unordered_set<int> checking_set;
+    std::unordered_set<string> checking_set;
 
 
     for (it = layout_items.begin(); it != layout_items.end(); ++it) {
-        cur_cube_vertices.layernum = it->layernum;
+        cur_cube_vertices.layernum = to_string(it->layernum) + "." + to_string(it->datatype);
+        qDebug() <<  QString::fromStdString(cur_cube_vertices.layernum);
         for(auto row : it->xy ){
             for (auto col : row){
-                if(col.size() == 0) break;
+                if(col.size() == 0) continue;
                 for(auto each_box : col){
+
                     cur_cube_vertices.vertex[0] = { each_box.minx, each_box.maxy, it->top };
                     cur_cube_vertices.vertex[1] = { each_box.minx, each_box.miny, it->top };
                     cur_cube_vertices.vertex[2] = { each_box.maxx, each_box.miny, it->top };
@@ -81,18 +82,19 @@ void LayoutModel::makeCubeVertices() {
                     cur_cube_vertices.vertex[6] = { each_box.maxx, each_box.miny, it->bot };
                     cur_cube_vertices.vertex[7] = { each_box.maxx, each_box.maxy, it->bot };
 
+
                     this->cube_vertices.push_back(cur_cube_vertices);
 
-                    if(checking_set.find(it->layernum) == checking_set.end()){
-                        checking_set.insert(it->layernum);
-                        drawing_order_layerby.push_back(it->layernum);
+                    if(checking_set.find(cur_cube_vertices.layernum) == checking_set.end()){
+                        checking_set.insert(cur_cube_vertices.layernum);
+                        drawing_order_layerby.push_back(cur_cube_vertices.layernum);
                     }
                 }
 
             }
-            layerList[it->layernum].color = glm::vec3 {it->color.r/(float)255,it->color.g/(float)255, it->color.b/(float)255};
-            layerList[it->layernum].opacity = it->color.a/(float)255;
-            layerList[it->layernum].visiblity = it->checking;
+            layerList[cur_cube_vertices.layernum].color = glm::vec3 {it->color.r/(float)255,it->color.g/(float)255, it->color.b/(float)255};
+            layerList[cur_cube_vertices.layernum].opacity = it->color.a/(float)255;
+            layerList[cur_cube_vertices.layernum].visiblity = it->checking;
 
         }
 
@@ -103,7 +105,6 @@ void LayoutModel::makeCubeVertices() {
 
 void LayoutModel::makeVertices() {
     std::vector<LDATA10BY10> &layout_items = this->layout_data.getPatterns_t2d();
-    std::vector<LDATA10BY10>::iterator it = layout_items.begin();
     Vertex temp_vertex;
 
     float up_color = 0.15f;
@@ -133,7 +134,7 @@ void LayoutModel::makeIndicesForFace_map() {
     //size_t layer_count = this->layerby_vertices.size();
 
     uint32_t start_idx = 0;
-    std::map<float, std::vector<uint32_t>>& indices = this->layerby_face;
+    std::map<string, std::vector<uint32_t>>& indices = this->layerby_face;
     for (auto const& [key, val] : layerby_vertices) {
         size_t cube_count_by_layer = val.size() / 8;
         for (size_t i = 0; i < cube_count_by_layer; ++i) {
@@ -165,7 +166,7 @@ void LayoutModel::makeIndicesForFace_map() {
 void LayoutModel::makeIndicesForEdge_map() {
     //size_t layer_count = this->layerby_vertices.size();
 
-    std::map<float, std::vector<uint32_t>>& indices = this->layerby_edge;
+    std::map<string, std::vector<uint32_t>>& indices = this->layerby_edge;
     uint32_t start_idx = 0;
     for (auto const& [key, val] : layerby_vertices) {
         size_t cube_count_by_layer = val.size() / 8;

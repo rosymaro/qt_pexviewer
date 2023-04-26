@@ -20,7 +20,7 @@ struct SimplePushConstantData {
     glm::float32 alpha;
 };
 
-SimpleRenderSystem::SimpleRenderSystem(LveDevice& device, VkRenderPass renderPass )
+SimpleRenderSystem::SimpleRenderSystem(LveDevice& device, VkRenderPass renderPass)
     : lveDevice{ device } {
     createPipelineLayout(this->pipelineLayoutForLayoutFace);
     createPipelineForFace(renderPass);
@@ -28,6 +28,8 @@ SimpleRenderSystem::SimpleRenderSystem(LveDevice& device, VkRenderPass renderPas
     createPipelineForEdge(renderPass);
     createPipelineLayout(this->pipelineLayoutForPEXResistor);
     createPipelineForPEXResistor(renderPass);
+    createPipelineLayout(this->pipelineLayoutForPEXResistorEdge);
+    createPipelineForPEXResistorEdge(renderPass);
     createPipelineLayout(this->pipelineLayoutForPEXCapacitor);
     createPipelineForPEXCapacitor(renderPass);
 }
@@ -36,11 +38,12 @@ SimpleRenderSystem::~SimpleRenderSystem() {
     vkDestroyPipelineLayout(lveDevice.device(), pipelineLayoutForLayoutFace, nullptr);
     vkDestroyPipelineLayout(lveDevice.device(), pipelineLayoutForLayoutEdge, nullptr);
     vkDestroyPipelineLayout(lveDevice.device(), pipelineLayoutForPEXResistor, nullptr);
+    vkDestroyPipelineLayout(lveDevice.device(), pipelineLayoutForPEXResistorEdge, nullptr);
     vkDestroyPipelineLayout(lveDevice.device(), pipelineLayoutForPEXCapacitor, nullptr);
 }
 
 
-void SimpleRenderSystem::createPipelineLayout(VkPipelineLayout & pipeline_layout) {
+void SimpleRenderSystem::createPipelineLayout(VkPipelineLayout& pipeline_layout) {
     VkPushConstantRange pushConstantRange{};
     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pushConstantRange.offset = 0;
@@ -53,7 +56,7 @@ void SimpleRenderSystem::createPipelineLayout(VkPipelineLayout & pipeline_layout
     pipelineLayoutInfo.pushConstantRangeCount = 1;
     pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
     if (vkCreatePipelineLayout(lveDevice.device(), &pipelineLayoutInfo, nullptr, &pipeline_layout) !=
-            VK_SUCCESS) {
+        VK_SUCCESS) {
         throw std::runtime_error("failed to create pipeline layout!");
     }
 }
@@ -71,10 +74,10 @@ void SimpleRenderSystem::createPipelineForFace(VkRenderPass renderPass) {
     pipelineConfig.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 
     this->lvePipelineForLayoutFace = std::make_unique<LvePipeline>(
-                lveDevice,
-                "Rendering/shaders/simple_shader.vert.spv",
-                "Rendering/shaders/simple_shader.frag.spv",
-                pipelineConfig);
+        lveDevice,
+        "Rendering/shaders/simple_shader.vert.spv",
+        "Rendering/shaders/simple_shader.frag.spv",
+        pipelineConfig, LveModel::Vertex::getBindingDescriptions(), LveModel::Vertex::getAttributeDescriptions());
 }
 
 void SimpleRenderSystem::createPipelineForEdge(VkRenderPass renderPass) {
@@ -88,10 +91,10 @@ void SimpleRenderSystem::createPipelineForEdge(VkRenderPass renderPass) {
     pipelineConfig.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 
     this->lvePipelineForLayoutEdge = std::make_unique<LvePipeline>(
-                lveDevice,
-                "Rendering/shaders/simple_shader.vert_edge.spv",
-                "Rendering/shaders/simple_shader.frag_edge.spv",
-                pipelineConfig);
+        lveDevice,
+        "Rendering/shaders/simple_shader.vert_edge.spv",
+        "Rendering/shaders/simple_shader.frag_edge.spv",
+        pipelineConfig, LveModel::Vertex::getBindingDescriptions(), LveModel::Vertex::getAttributeDescriptions());
 }
 
 void SimpleRenderSystem::createPipelineForPEXResistor(VkRenderPass renderPass) {
@@ -100,12 +103,51 @@ void SimpleRenderSystem::createPipelineForPEXResistor(VkRenderPass renderPass) {
     LvePipeline::defaultPipelineConfigInfo(pipelineConfigResistor);
     pipelineConfigResistor.renderPass = renderPass;
     pipelineConfigResistor.pipelineLayout = pipelineLayoutForPEXResistor;
+    pipelineConfigResistor.colorBlendAttachment.blendEnable = VK_TRUE;
+
+    pipelineConfigResistor.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    pipelineConfigResistor.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 
     this->lvePipelineForPEXResistor = std::make_unique<LvePipeline>(
-                lveDevice,
-                "Rendering/shaders/simple_shader.vert_pex.spv",
-                "Rendering/shaders/simple_shader.frag_pex.spv",
-                pipelineConfigResistor);
+        lveDevice,
+        "Rendering/shaders/simple_shader.vert_pex.spv",
+        "Rendering/shaders/simple_shader.frag_pex.spv",
+        pipelineConfigResistor, LveModel::VertexResistor::getBindingDescriptions(), LveModel::VertexResistor::getAttributeDescriptions());
+}
+
+
+void SimpleRenderSystem::createPipelineForPEXResistorEdge(VkRenderPass renderPass) {
+    assert(pipelineLayoutForPEXResistorEdge != nullptr && "Cannot create pipeline before pipeline layout");
+    PipelineConfigInfo pipelineConfigResistorEdge{};
+    LvePipeline::defaultPipelineConfigInfo(pipelineConfigResistorEdge);
+    pipelineConfigResistorEdge.renderPass = renderPass;
+    pipelineConfigResistorEdge.pipelineLayout = pipelineLayoutForPEXResistorEdge;
+
+    pipelineConfigResistorEdge.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+
+    this->lvePipelineForPEXResistorEdge = std::make_unique<LvePipeline>(
+        lveDevice,
+        "Rendering/shaders/simple_shader.vert_pex.spv",
+        "Rendering/shaders/simple_shader.frag_pex.spv",
+        pipelineConfigResistorEdge, LveModel::VertexResistor::getBindingDescriptions(), LveModel::VertexResistor::getAttributeDescriptions());
+}
+
+void SimpleRenderSystem::createPipelineForPEXCapacitorLine(VkRenderPass renderPass) {
+    assert(pipelineLayoutForPEXResistor != nullptr && "Cannot create pipeline before pipeline layout");
+    PipelineConfigInfo pipelineConfigCapacitorLine{};
+    LvePipeline::defaultPipelineConfigInfo(pipelineConfigCapacitorLine);
+    pipelineConfigCapacitorLine.renderPass = renderPass;
+    pipelineConfigCapacitorLine.pipelineLayout = pipelineLayoutForPEXCapacitorLine;
+    pipelineConfigCapacitorLine.colorBlendAttachment.blendEnable = VK_TRUE;
+
+    pipelineConfigCapacitorLine.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    pipelineConfigCapacitorLine.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+
+    this->lvePipelineForPEXCapacitorLine = std::make_unique<LvePipeline>(
+        lveDevice,
+        "Rendering/shaders/simple_shader.vert_pex.spv",
+        "Rendering/shaders/simple_shader.frag_pex.spv",
+        pipelineConfigCapacitorLine, LveModel::Vertex::getBindingDescriptions(), LveModel::Vertex::getAttributeDescriptions());
 }
 
 void SimpleRenderSystem::createPipelineForPEXCapacitor(VkRenderPass renderPass) {
@@ -118,16 +160,16 @@ void SimpleRenderSystem::createPipelineForPEXCapacitor(VkRenderPass renderPass) 
     pipelineConfigCapacitor.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 
     this->lvePipelineForPEXCapacitor = std::make_unique<LvePipeline>(
-                lveDevice,
-                "Rendering/shaders/simple_shader.vert_pex.spv",
-                "Rendering/shaders/simple_shader.frag_pex.spv",
-                pipelineConfigCapacitor);
+        lveDevice,
+        "Rendering/shaders/simple_shader.vert_pex.spv",
+        "Rendering/shaders/simple_shader.frag_pex.spv",
+        pipelineConfigCapacitor, LveModel::Vertex::getBindingDescriptions(), LveModel::Vertex::getAttributeDescriptions());
 }
 
 void SimpleRenderSystem::renderGameObjects(
-        VkCommandBuffer commandBuffer,
-        std::vector<LveGameObject>& gameObjects,
-        const LveCamera& camera) {
+    VkCommandBuffer commandBuffer,
+    std::vector<LveGameObject>& gameObjects,
+    const LveCamera& camera) {
 
     auto proj = camera.getProjection();
     proj[1][1] *= -1;
@@ -138,17 +180,17 @@ void SimpleRenderSystem::renderGameObjects(
         push.transform = projectionView * obj.transform.mat4();
 
         if (obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_LAYOUT && obj.model->getVisible()) {
-            std::map<float, LveModel::LayerProperty> layer_info = obj.model->getLayer();
+            std::map<string, LveModel::LayerProperty> layer_info = obj.model->getLayer();
 
-            for (auto ordered_key : obj.model->drawing_order_layerby ) {
-                if(layer_info[ordered_key].visiblity){
+            for (auto ordered_key : obj.model->drawing_order_layerby) {
+                if (layer_info[ordered_key].visiblity) {
                     lvePipelineForLayoutFace->bind(commandBuffer);
                     push.alpha = layer_info[ordered_key].opacity;
                     push.color = layer_info[ordered_key].color;
                     vkCmdPushConstants(
-                                commandBuffer, pipelineLayoutForLayoutFace,
-                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                                sizeof(SimplePushConstantData), &push);
+                        commandBuffer, pipelineLayoutForLayoutFace,
+                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                        sizeof(SimplePushConstantData), &push);
                     obj.model->bindDrawVertexIndexBufferForFace_layer(commandBuffer, ordered_key);
                     lvePipelineForLayoutEdge->bind(commandBuffer);
                     obj.model->bindDrawIndexBufferForEdge_layer(commandBuffer, ordered_key);
@@ -161,36 +203,46 @@ void SimpleRenderSystem::renderGameObjects(
             lvePipelineForLayoutEdge->bind(commandBuffer);
             push.color = glm::vec3(1.0f, 1.0f, 1.0f);
             vkCmdPushConstants(
-                        commandBuffer, pipelineLayoutForLayoutEdge,
-                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                        sizeof(SimplePushConstantData), &push);
+                commandBuffer, pipelineLayoutForLayoutEdge,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                sizeof(SimplePushConstantData), &push);
             obj.model->bindVertexBuffer(commandBuffer);
             obj.model->bindIndexBufferForEdge(commandBuffer);
             obj.model->drawForEdge(commandBuffer);
         }
 
-        if(obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_PEX_RESISTOR && obj.model->getVisible()) {
+        if (obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_PEX_RESISTOR && obj.model->getVisible()) {
             //*
-            push.alpha = 1.0f;
+
+            push.alpha = 0.1f;
             push.color = glm::vec3(1.0f, 1.0f, 1.0f);
             lvePipelineForPEXResistor->bind(commandBuffer);
             vkCmdPushConstants(
-                        commandBuffer, pipelineLayoutForPEXResistor,
-                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                        sizeof(SimplePushConstantData), &push);
+                commandBuffer, pipelineLayoutForPEXResistor,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                sizeof(SimplePushConstantData), &push);
             obj.model->bindVertexBuffer(commandBuffer);
             obj.model->bindIndexBufferForFace(commandBuffer);
             obj.model->drawForFace(commandBuffer);
-            //*/
+            obj.model->bindIndexBufferForEdge(commandBuffer);
+            lvePipelineForPEXResistorEdge->bind(commandBuffer);
+            vkCmdPushConstants(
+                commandBuffer, pipelineLayoutForPEXResistorEdge,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                sizeof(SimplePushConstantData), &push);
+
+
+            obj.model->drawForEdge(commandBuffer);
+
         }
 
         if (obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_PEX_CAPACITOR && obj.model->getVisible()) {
-            /*
+            //*
             lvePipelineForPEXCapacitor->bind(commandBuffer);
             vkCmdPushConstants(
-                        commandBuffer, pipelineLayoutForPEXCapacitor,
-                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                        sizeof(SimplePushConstantData), &push);
+                commandBuffer, pipelineLayoutForPEXCapacitor,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                sizeof(SimplePushConstantData), &push);
             obj.model->bindVertexBuffer(commandBuffer);
             obj.model->bindIndexBufferForEdge(commandBuffer);
             obj.model->drawForEdge(commandBuffer);

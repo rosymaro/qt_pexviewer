@@ -34,7 +34,7 @@ QVulkanWindowRenderer *LveWindow::createRenderer()
 void LveWindow::wheelEvent(QWheelEvent *e)
 {
     if( !this->m_renderer->isRenderModelLoaded() ) return;
-    const float amount = e->angleDelta().y() / 8;
+    //const float amount = e->angleDelta().y() / 8;
     QPoint scroll = e->angleDelta();
     this->m_renderer->cameraController.setMouseScroll(scroll);
 
@@ -42,7 +42,7 @@ void LveWindow::wheelEvent(QWheelEvent *e)
     {
         //      m_rendere->windowZoom(amount);
         QString funcName = "windowZoom";
-        float value = amount;
+        //float value = amount;
         //emit signalInfoText(funcName, value);
         //        qDebug()<<funcName << " : " << value;
     }
@@ -50,7 +50,7 @@ void LveWindow::wheelEvent(QWheelEvent *e)
     {
         //      m_renderer->moveZoom(amount);
         QString funcName = "moveZoom";
-        float value = amount;
+        //float value = amount;
         //emit signalInfoText(funcName, value);
         //        qDebug()<<funcName << " : " << value;
     }
@@ -61,10 +61,8 @@ void LveWindow::mousePressEvent(QMouseEvent *e)
     if( !this->m_renderer->isRenderModelLoaded() ) return;
     m_mouseButton = e->buttons();
     Qt::MouseButtons cur_button = e->buttons();
-    QString funcName = "mousePress";
     QPoint position = e->pos();
-    //emit signalInfoText(funcName, m_lastPos);
-    m_lastPos = e->pos();
+    //m_lastPos = e->pos();
     this->m_renderer->cameraController.moveButtonPressed(cur_button);
     this->m_renderer->cameraController.setMousePosition(position, 1);
 
@@ -83,10 +81,10 @@ void LveWindow::mouseReleaseEvent(QMouseEvent *e)
     QString funcName = "mouseRelease";
     Qt::MouseButtons cur_button = e->buttons();
     QPoint position = e->pos();
-    float value = 0;
+    //float value = 0;
     //emit signalInfoText(funcName, cur_button);
     this->m_renderer->cameraController.moveButtonReleased(cur_button);
-    this->m_renderer->cameraController.setMousePosition(position, 2);
+    this->m_renderer->cameraController.setMousePosition(position ,2);
 }
 
 void LveWindow::mouseMoveEvent(QMouseEvent *e)
@@ -96,49 +94,6 @@ void LveWindow::mouseMoveEvent(QMouseEvent *e)
     this->m_renderer->cameraController.setMousePosition(position, 0);
     if (m_mouseButton == 0)
         return;
-
-    int dx = e->pos().x() - m_lastPos.x();
-    int dy = e->pos().y() - m_lastPos.y();
-
-    if (dx)
-    {
-        if (m_mouseButton == 2)
-        {
-            //            m_renderer->rotateRenderY(dx / 10.0f);
-            QString funcName = "rotateRenderX";
-            float value = -dx / 10.0f;
-            //emit signalInfoText(funcName, value);
-            //qDebug()<< "mouseEvent "<<funcName << " : " << value;
-        }
-        else if (m_mouseButton == 4)
-        {
-            //            m_renderer->moveRenderX(dx / 10.0f);
-            QString funcName = "moveRenderX";
-            //float value = -dx / 10.0f;
-            //emit signalInfoText(funcName, value);
-            //            qDebug()<<funcName << " : " << value;
-        }
-    }
-
-    if (dy)
-    {
-        if (m_mouseButton == 2)
-        {
-            //            m_renderer->rotateRenderY(dy / 10.0f);
-            QString funcName = "rotateRenderY";
-            //float value = dy / 10.0f;
-            //emit signalInfoText(funcName, value);
-            //            qDebug()<<funcName << " : " << value;
-        }
-        else if (m_mouseButton == 4)
-        {
-            //            m_renderer->moveRenderY(dy / 10.0f);
-            QString funcName = "moveRenderY";
-            //float value = dy / 10.0f;
-            //emit signalInfoText(funcName, value);
-            //            qDebug()<<funcName << " : " << value;
-        }
-    }
 }
 
 void LveWindow::keyPressEvent(QKeyEvent *e)
@@ -150,6 +105,8 @@ void LveWindow::keyPressEvent(QKeyEvent *e)
     //emit signalInfoText(funcName, value);
 
     this->m_renderer->cameraController.moveKeyPressed(cur_key);
+    this->m_renderer->cameraController.visibleSetting(this->m_renderer->getGameObjects(), cur_key);
+    this->m_renderer->cameraController.PEXSetting(this->m_renderer->getResistorModel(), cur_key);
 
 }
 void LveWindow::keyReleaseEvent(QKeyEvent *e)

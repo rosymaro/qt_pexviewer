@@ -25,6 +25,7 @@ SOURCES += \
     Rendering/Src/simple_render_system.cpp \
     T2D.cpp \
     all_data.cpp \
+    dev_dialog.cpp \
     filedb.cpp \
     formhier.cpp \
     forminfo.cpp \
@@ -33,7 +34,8 @@ SOURCES += \
     formtop.cpp \
     gitmerge.cpp \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    pexdialog.cpp
 
 HEADERS += \
     Rendering/Src/LayoutModel.h \
@@ -52,6 +54,7 @@ HEADERS += \
     T2D.h \
     all_data.h \
     defineParam.h \
+    dev_dialog.h \
     filedb.h \
     formhier.h \
     forminfo.h \
@@ -59,15 +62,18 @@ HEADERS += \
     formmap.h \
     formtop.h \
     gitmerge.h \
-    mainwindow.h
+    mainwindow.h \
+    pexdialog.h
 
 FORMS += \
+    dev_dialog.ui \
     formhier.ui \
     forminfo.ui \
     formlayer.ui \
     formmap.ui \
     formtop.ui \
-    mainwindow.ui
+    mainwindow.ui \
+    pexdialog.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
@@ -79,7 +85,6 @@ RESOURCES += \
     Resources.qrc
 
 DISTFILES += \
-    ImageFile/box-shadow.png \
     Rendering/Data/MVP_PEX_RC_r1_0130.csv \
     Rendering/Data/MVP_PEX_RC_r1_0130_0208version.csv \
     Rendering/Data/big_test_espin.csv \
@@ -115,4 +120,4 @@ DEPENDPATH += $$PWD/../../Library/VulkanSDK/1.3.239.0/Lib
 
 INCLUDEPATH += $$PWD/../../Library/glm-0.9.9.8/glm
 
-
+#쒓 ㅽ뿕

@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 #include "T2D.h"
+#include <QString>
+#include <defineParam.h>
 
 
 void testPEXData();
@@ -75,7 +77,7 @@ struct coord3d {
 };
 
 struct cube_vertex {
-    float layernum;
+    string layernum;
     coord3d vertex[8];
 };
 
@@ -220,9 +222,11 @@ public:
     ~PEXResistorDataManager();
 
 private:
-    std::string file_path;
+    QString file_path;
 
+    std::vector<PEXResistor> resistors_ref;
     std::vector<PEXResistor> resistors;
+    std::vector<std::vector<PEXResistor>> resistors_of_node;
 
     double max_resistor_vertical;
     double min_resistor_vertical;
@@ -231,10 +235,25 @@ private:
 
 public:
     std::vector<PEXResistor>& getResistors() { return this->resistors; }
+    std::vector<std::vector<PEXResistor>>& getResistorsOfNode() { return this->resistors_of_node; }
+    void setDriectionOfResistor(PEXResDirection _direction);
 
-    void loadData(const std::string file_path);
+    void loadData(const QString file_path);
+    void groupResistorOfNode();
     void clear();
     void printData();
+    int number_of_resistor_group = -1;
+
+    void increaseNumOfResistorGroup() {
+        number_of_resistor_group++;
+        this->resistors = this->resistors_of_node[number_of_resistor_group % resistors_of_node.size()];
+        std::cout << "ddddddddddddddddddddd" << std::endl;
+    }
+
+    void decreaseNumOfResistorGroup() {
+        number_of_resistor_group--;
+        this->resistors = this->resistors_of_node[number_of_resistor_group % resistors_of_node.size()];
+    }
 
     double getMinResistorVerticalValue() { return this->min_resistor_vertical; }
     double getMaxResistorVerticalValue() { return this->max_resistor_vertical; }
@@ -252,7 +271,7 @@ public:
     ~PEXCapacitorDataManager();
 
 private:
-    std::string file_path;
+    QString file_path;
 
     std::vector<PEXCapacitor> capasitors;
 
@@ -262,7 +281,7 @@ private:
 public:
     std::vector<PEXCapacitor>& getCapacitors() { return this->capasitors; }
 
-    void loadData(const std::string file_path);
+    void loadData(const QString file_path);
     void clear();
     void printData();
 

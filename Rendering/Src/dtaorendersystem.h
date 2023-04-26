@@ -13,6 +13,9 @@
 #include "lve_camera.hpp"
 #include "keyboard_movement_controller.hpp"
 #include "T2D.h"
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+#include "PEXResistorModel.h"
 
 #include <iostream>
 #include <vector>
@@ -34,12 +37,15 @@ public:
     void initSwapChainResources() override;
     void releaseSwapChainResources() override;
     void releaseResources() override;
+    void translateLayerPosition(POS_MONITORING value);
+    void emitMonitor();
 
     void startNextFrame() override;
 
     float getRenderScale() {return this->trans_info.scale;}
     LayoutModel* getLayoutModel();
     bool isRenderModelLoaded(){return this->render_object_created;}
+    std::vector<LveGameObject> &getGameObjects(){return this->gameObjects;}
 
 public:
     LveCamera camera{};
@@ -64,24 +70,32 @@ private:
        float trans_y;
        float trans_z;
        float scale;
+       float minx;
+       float miny;
     };
     TRANS_INFORMATION trans_info;
     std::shared_ptr<LayoutModel> layout_model = {nullptr};
+    std::shared_ptr<PEXResistorModel> res_model = {nullptr};
 
 
 public:
     void createNewObject(MODEL_TYPE model_type, const std::string & file_path);
+
+    std::shared_ptr<PEXResistorModel> &getResistorModel() { return this->res_model;};
     void createT2DObject(MODEL_TYPE model_type, T2D t2d);
-    void getCustomColor(float layernumber, glm::vec3 rgb);
-    void getCustomOpacity(float layernumber, float opacity);
-    void getCustomVisiblity(float layernumber, bool visibility);
+    void getCustomColor(string layernumber, glm::vec3 rgb);
+    void getCustomOpacity(string layernumber, float opacity);
+    void getCustomVisiblity(string layernumber, bool visibility);
+    void createNewPEXCapObject(const QString & file_path, T2D t2d);
+    void createNewPEXResObject(const QString & file_path);
+
+    void initCameraView();
+
 
 private:
     void createNewLayoutObject(const std::string & file_path);
     void createT2DLayoutObject(T2D & t2d);
-    void createNewPEXCapObject(const std::string & file_path);
-    void createNewPEXResObject(const std::string & file_path);
-    void createNewAxisObject(const std::string & file_path);
+    void createNewAxisObject(const QString & file_path);
 
 
 private:

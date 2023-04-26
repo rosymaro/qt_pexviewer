@@ -32,6 +32,8 @@ private:
     void createPipelineForFace(VkRenderPass renderPass);
     void createPipelineForEdge(VkRenderPass renderPass);
     void createPipelineForPEXResistor(VkRenderPass renderPass);
+    void createPipelineForPEXResistorEdge(VkRenderPass renderPass);
+    void createPipelineForPEXCapacitorLine(VkRenderPass renderPass);
     void createPipelineForPEXCapacitor(VkRenderPass renderPass);
 
     LveDevice& lveDevice;
@@ -44,6 +46,12 @@ private:
 
     std::unique_ptr<LvePipeline> lvePipelineForPEXResistor;
     VkPipelineLayout pipelineLayoutForPEXResistor;
+
+    std::unique_ptr<LvePipeline> lvePipelineForPEXResistorEdge;
+    VkPipelineLayout pipelineLayoutForPEXResistorEdge;
+
+    std::unique_ptr<LvePipeline> lvePipelineForPEXCapacitorLine;
+    VkPipelineLayout pipelineLayoutForPEXCapacitorLine;
 
     std::unique_ptr<LvePipeline> lvePipelineForPEXCapacitor;
     VkPipelineLayout pipelineLayoutForPEXCapacitor;

@@ -36,11 +36,13 @@ public:
     void MakeColorButton(int);
     void MakeHeaderCheckBoxAndSlider();
     void ChangeAllCheckBoxState(QCheckBox *);
-    void ChangeCheckBoxStateToOn(int, float, QString);
-    void ChangeCheckBoxStateToOff(int, float, QString);
+    void ChangeCheckBoxStateToOn(int, string, QString);
+    void ChangeCheckBoxStateToOff(int, string, QString);
     void GetPushButtonOldColor(QPushButton *, int *, int *, int *, int *, QRgb *);
     void EnterPushButtonNewColor(int *, QRgb *);
     int FindCheckBoxRow(QCheckBox *);
+
+    bool m_layer_all_check = false;
 
 public slots:
     void on_checkboxInTable_stateChanged();

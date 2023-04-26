@@ -33,6 +33,7 @@ public:
     glm::vec3 translation_d;
     glm::vec3 skew_d;
     glm::vec4 perspective_d;
+    float std_scale = 1.f;
     bool isperspective = true;
 
 };

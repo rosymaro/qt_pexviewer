@@ -43,16 +43,16 @@ void LveModel::createBuffers() {
 
     if (this->model_type == MODEL_TYPE::MODEL_TYPE_LAYOUT) {
         for (auto const& [key, val] : layerby_vertices) {
-            std::map<float, VkBuffer>& buffers = this->layerbyVertexBuffers;
-            std::map<float, VkDeviceMemory>& buffersmemory = this->layerbyVertexBuffersMemory;
+            std::map<string, VkBuffer>& buffers = this->layerbyVertexBuffers;
+            std::map<string, VkDeviceMemory>& buffersmemory = this->layerbyVertexBuffersMemory;
             createVertexBuffers(val, buffers[key], buffersmemory[key]);
 
-            std::map<float, VkBuffer>& facebuffers = this->layerbyFaceIndexBuffers;
-            std::map<float, VkDeviceMemory>& facebuffersmemory = this->layerbyFaceIndexBuffersMemory;
+            std::map<string, VkBuffer>& facebuffers = this->layerbyFaceIndexBuffers;
+            std::map<string, VkDeviceMemory>& facebuffersmemory = this->layerbyFaceIndexBuffersMemory;
             createIndexBuffers(layerby_face[key], facebuffers[key], facebuffersmemory[key]);
 
-            std::map<float, VkBuffer>& edgebuffers = this->layerbyEdgeIndexBuffers;
-            std::map<float, VkDeviceMemory>& edgebuffersmemory = this->layerbyEdgeIndexBuffersMemory;
+            std::map<string, VkBuffer>& edgebuffers = this->layerbyEdgeIndexBuffers;
+            std::map<string, VkDeviceMemory>& edgebuffersmemory = this->layerbyEdgeIndexBuffersMemory;
             createIndexBuffers(layerby_edge[key], edgebuffers[key], edgebuffersmemory[key]);
         }
     }
@@ -61,8 +61,9 @@ void LveModel::createBuffers() {
         createIndexBuffers(this->indices_edge, this->indexBufferForEdge, this->indexBufferMemoryForEdge);
     }
     else if (this->model_type == MODEL_TYPE::MODEL_TYPE_PEX_RESISTOR) {
-        createVertexBuffers(vertices, vertexBuffer, vertexBufferMemory);
+        createVertexBuffersResistor(vertices_resistor, vertexBuffer, vertexBufferMemory);
         createIndexBuffers(this->indices_face, this->indexBufferForFace, this->indexBufferMemoryForFace);
+        createIndexBuffers(this->indices_edge, this->indexBufferForEdge, this->indexBufferMemoryForEdge);
     }
     else if (this->model_type == MODEL_TYPE::MODEL_TYPE_PEX_CAPACITOR) {
         createVertexBuffers(vertices, vertexBuffer, vertexBufferMemory);
@@ -102,6 +103,17 @@ void LveModel::destroyBuffers() {
         vkDestroyBuffer(lveDevice.device(), indexBufferForEdge, nullptr);
         vkFreeMemory(lveDevice.device(), indexBufferMemoryForEdge, nullptr);
     }
+    this->cube_infos.clear();
+
+    this->cube_vertices.clear();
+    this->vertices.clear();
+    this->vertices_resistor.clear();
+    this->layerby_vertices.clear();
+    this->indices_face.clear();
+    this->layerby_face.clear();
+    this->indices_edge.clear();
+    this->layerby_edge.clear();
+
 
 }
 void LveModel::createVertexBuffers(
@@ -138,6 +150,42 @@ void LveModel::createVertexBuffers(
     vkDestroyBuffer(lveDevice.device(), stagingBuffer, nullptr);
     vkFreeMemory(lveDevice.device(), stagingBufferMemory, nullptr);
 }
+
+void LveModel::createVertexBuffersResistor(
+        const std::vector<VertexResistor>& vertices,
+        VkBuffer& buffer,
+        VkDeviceMemory& memory) {
+    vertexCount = static_cast<uint32_t>(vertices.size());
+    assert(vertexCount >= 3 && "Vertex count must be at least 3");
+    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertexCount;
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    lveDevice.createBuffer(
+                bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                stagingBuffer,
+                stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(lveDevice.device(), stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, vertices.data(), (size_t)bufferSize);
+    vkUnmapMemory(lveDevice.device(), stagingBufferMemory);
+
+    lveDevice.createBuffer(
+                bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                buffer,
+                memory);
+
+    lveDevice.copyBuffer(stagingBuffer, buffer, bufferSize);
+
+    vkDestroyBuffer(lveDevice.device(), stagingBuffer, nullptr);
+    vkFreeMemory(lveDevice.device(), stagingBufferMemory, nullptr);
+}
+
 
 void LveModel::createIndexBuffers(
         const std::vector<uint32_t>& indices,
@@ -187,7 +235,7 @@ void LveModel::bindVertexBuffer(VkCommandBuffer commandBuffer) {
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
 }
 
-void LveModel::bindDrawVertexIndexBufferForFace_layer(VkCommandBuffer commandBuffer, const float layer) {
+void LveModel::bindDrawVertexIndexBufferForFace_layer(VkCommandBuffer commandBuffer, const string layer) {
     VkBuffer buffers[] = { layerbyVertexBuffers[layer] };
     VkDeviceSize offsets[] = { 0 };
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
@@ -195,7 +243,7 @@ void LveModel::bindDrawVertexIndexBufferForFace_layer(VkCommandBuffer commandBuf
     vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(this->layerby_face[layer].size()), 1, 0, 0, 0);
 }
 
-void LveModel::bindDrawIndexBufferForEdge_layer(VkCommandBuffer commandBuffer, const float layer) {
+void LveModel::bindDrawIndexBufferForEdge_layer(VkCommandBuffer commandBuffer, const string layer) {
     vkCmdBindIndexBuffer(commandBuffer, layerbyEdgeIndexBuffers[layer], 0, VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(this->layerby_edge[layer].size()), 1, 0, 0, 0);
 }
@@ -233,6 +281,29 @@ std::vector<VkVertexInputAttributeDescription> LveModel::Vertex::getAttributeDes
     return attributeDescriptions;
 }
 
+std::vector<VkVertexInputBindingDescription> LveModel::VertexResistor::getBindingDescriptions() {
+    std::vector<VkVertexInputBindingDescription> bindingDescriptions(1);
+    bindingDescriptions[0].binding = 0;
+    bindingDescriptions[0].stride = sizeof(VertexResistor);
+    bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    return bindingDescriptions;
+}
+
+std::vector<VkVertexInputAttributeDescription> LveModel::VertexResistor::getAttributeDescriptions() {
+    std::vector<VkVertexInputAttributeDescription> attributeDescriptions(2);
+    attributeDescriptions[0].binding = 0;
+    attributeDescriptions[0].location = 0;
+    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescriptions[0].offset = offsetof(VertexResistor, position);
+
+    attributeDescriptions[1].binding = 0;
+    attributeDescriptions[1].location = 1;
+    attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[1].offset = offsetof(VertexResistor, color);
+    return attributeDescriptions;
+}
+
+
 void LveModel::makeAxisData(const float axis_length) {
     this->vertices.clear();
     this->vertices = {
@@ -260,7 +331,7 @@ void LveModel::updateOpacity(float amount) {
     if (this->opacity < 0.0f) this->opacity = 0.0f;
 }
 
-std::map<float, LveModel::LayerProperty> LveModel::getLayer() {
+std::map<string, LveModel::LayerProperty> LveModel::getLayer() {
     //if(layerList.empty()){
     //    vector<glm::vec3> it = { glm::vec3{0.1,0.5,0.8},glm::vec3{0.8,0.4,0.2},glm::vec3{0.5,0.9,0.9} };
     //    int a = 0;
@@ -273,21 +344,23 @@ std::map<float, LveModel::LayerProperty> LveModel::getLayer() {
     return layerList;
 }
 
-void LveModel::changeLayerColor(float layernumber, glm::vec3 rgb){
+void LveModel::changeLayerColor(string layernumber, glm::vec3 rgb){
     if(layerList.count(layernumber) != 0 ){
         layerList[layernumber].color = rgb;
     }
 
 }
 
-void LveModel::changeLayerOpacity(float layernumber, float opacity){
+void LveModel::changeLayerOpacity(string layernumber, float opacity){
     if(layerList.count(layernumber) != 0 ){
         layerList[layernumber].opacity = opacity;
     }
 
 }
 
-void LveModel::changeLayerVisiblity(float layernumber, bool visiblity){
+void LveModel::changeLayerVisiblity(string layernumber, bool visiblity){
+    //qDebug() << QString::fromStdString(layernumber) ;
+
     if(layerList.count(layernumber) != 0 ){
         layerList[layernumber].visiblity = visiblity;
     }
@@ -298,11 +371,11 @@ void LveModel::demoVisiblityOff(){
     for(auto const& [key, val] : layerList){
         layerList[key].visiblity = false;
     }
-    layerList[4].visiblity = true;
+    layerList["4"].visiblity = true;
 
 }
 
-void LveModel::demoVisiblityOn(std::vector<float> layernumbers){
+void LveModel::demoVisiblityOn(std::vector<string> layernumbers){
     for(auto layer : layernumbers){
         layerList[layer].visiblity = true;
     }

@@ -15,9 +15,12 @@ LvePipeline::LvePipeline(
         LveDevice& device,
         const std::string& vertFilepath,
         const std::string& fragFilepath,
-        const PipelineConfigInfo& configInfo)
+        const PipelineConfigInfo& configInfo,
+    const std::vector<VkVertexInputBindingDescription> bindingDescription_,
+    const  std::vector<VkVertexInputAttributeDescription> attributeDescription_
+)
     : lveDevice{device} {
-    createGraphicsPipeline(vertFilepath, fragFilepath, configInfo);
+    createGraphicsPipeline(vertFilepath, fragFilepath, configInfo, bindingDescription_,attributeDescription_);
 }
 
 LvePipeline::~LvePipeline() {
@@ -46,7 +49,10 @@ std::vector<char> LvePipeline::readFile(const std::string& filepath) {
 void LvePipeline::createGraphicsPipeline(
         const std::string& vertFilepath,
         const std::string& fragFilepath,
-        const PipelineConfigInfo& configInfo) {
+        const PipelineConfigInfo& configInfo,
+    const std::vector<VkVertexInputBindingDescription> bindingDescription_,
+    const  std::vector<VkVertexInputAttributeDescription> attributeDescription_
+    ) {
     assert(
                 configInfo.pipelineLayout != VK_NULL_HANDLE &&
             "Cannot create graphics pipeline: no pipelineLayout provided in configInfo");
@@ -76,8 +82,8 @@ void LvePipeline::createGraphicsPipeline(
     shaderStages[1].pNext = nullptr;
     shaderStages[1].pSpecializationInfo = nullptr;
 
-    auto bindingDescriptions = LveModel::Vertex::getBindingDescriptions();
-    auto attributeDescriptions = LveModel::Vertex::getAttributeDescriptions();
+    auto bindingDescriptions = bindingDescription_;
+    auto attributeDescriptions = attributeDescription_;
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexAttributeDescriptionCount =

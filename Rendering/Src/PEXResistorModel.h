@@ -3,12 +3,11 @@
 #include "lve_model.hpp"
 
 
-
 class PEXResistorModel : public LveModel
 {
 public:
 
-    PEXResistorModel(LveDevice& device, MODEL_TYPE model_type, const std::string& data_file = "");
+    PEXResistorModel(LveDevice& device, MODEL_TYPE model_type, const QString& data_file = "");
     ~PEXResistorModel();
 
     PEXResistorModel() = delete;
@@ -21,10 +20,17 @@ private:
 
 
 public:
-    virtual void makeRenderingData(const std::string& file_path = "");
-    virtual void loadData(const std::string& file_path = "");
+    virtual void makeRenderingData(const QString& file_path = "");
+    virtual void loadData(const QString& file_path = "");
+    virtual void groupResistorOfNode();
+    virtual void increaseNumOfResistorGroup();
+    virtual void decreaseNumOfResistorGroup();
+    virtual void setDirectionOfResistor(PEXResDirection _direction);
     virtual void makeVertices();
     virtual void makeIndices();
+    virtual void makeIndicesForEdge_map();
+
+    double percentileOfResistance(const PEXResistor& in_res);
 
     void makeCubeVertices();
     void makeCubes();
@@ -34,6 +40,5 @@ public:
 private:
 
 };
-
 
 

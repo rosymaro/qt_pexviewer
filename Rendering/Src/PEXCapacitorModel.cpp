@@ -9,14 +9,16 @@
 #include <mutex>
 
 #include "LayoutPEXData.h"
+#include "utils.h"
+#include <QString>
 
 using namespace std;
 
 PEXCapacitorModel::PEXCapacitorModel(
-        LveDevice& device,
-        MODEL_TYPE model_type,
-        const std::string& data_file,
-        LayoutDataManager* layout_data_)
+    LveDevice& device,
+    MODEL_TYPE model_type,
+    const QString& data_file,
+    T2D* layout_data_)
     : LveModel(device, model_type), pex_data{}, cap_node_name_to_index_map{}, layout_data{ layout_data_ } {
 
     this->makePatternCapsFromLayoutData();
@@ -32,21 +34,40 @@ PEXCapacitorModel::~PEXCapacitorModel() {
 }
 
 void PEXCapacitorModel::makePatternCapsFromLayoutData() {
-    std::vector<LayoutItem>& layout_items = this->layout_data->getPatterns();
+    std::vector<LDATA10BY10>& layout_items = this->layout_data->LayoutData10by10;
+    std::vector<LDATA10BY10>::iterator it = layout_items.begin();
+    pattern_cap pattern_cap_buf;
     if (layout_items.empty()) {
         std::cerr << "Error! empty patten @PEXCapacitorModel::makePatternWCapsFromLayoutData()\n";
     }
 
-    for (auto& layout_item : layout_items) {
-        this->pattern_caps.push_back(
-                    pattern_cap(layout_item.pattern, layout_item.layer_number, layout_item.layer_datatype, 0.0, 0.0, 0)
-                    );
+    for (it = layout_items.begin(); it != layout_items.end(); ++it) {
+        pattern_cap_buf.layer_number = it->layernum;
+        pattern_cap_buf.layer_datatype = it->datatype;
+        pattern_cap_buf.cap_value = 0;
+        pattern_cap_buf.normalized_cap_value = 0;
+        pattern_cap_buf.cap_count = 0;
+        for (auto row : it->xy) {
+            for (auto col : row) {
+                if (col.size() == 0) break;
+                for (auto each_box : col) {
+                    pattern_cap_buf.pattern.minx = each_box.minx;
+                    pattern_cap_buf.pattern.miny = each_box.miny;
+                    pattern_cap_buf.pattern.minz = it->bot;
+                    pattern_cap_buf.pattern.maxx = each_box.maxx;
+                    pattern_cap_buf.pattern.maxy = each_box.maxy;
+                    pattern_cap_buf.pattern.maxz = it->top;
 
-        this->layers.insert({ layout_item.layer_number, layout_item.layer_datatype });
+                    this->pattern_caps.push_back(pattern_cap_buf);
+                }
+            }
+        }
+
+        this->layers.insert({ it->layernum, it->datatype });
     }
 }
 
-void PEXCapacitorModel::makeRenderingData(const std::string& file_path) {
+void PEXCapacitorModel::makeRenderingData(const QString& file_path) {
     loadData(file_path);
     makeCapNodesFromPEXData();
 
@@ -64,7 +85,7 @@ void PEXCapacitorModel::makeRenderingData(const std::string& file_path) {
     this->layers.clear();
 }
 
-void PEXCapacitorModel::loadData(const std::string& file_path) {
+void PEXCapacitorModel::loadData(const QString& file_path) {
     this->pex_data.loadData(file_path);
     //this->pex_data.printPEXData();
 }
@@ -138,7 +159,7 @@ void PEXCapacitorModel::attachCapToPattern() {
     for (size_t i = 0; i < this->num_threads; ++i) {
 
         this->threads.push_back(
-                    std::thread(&PEXCapacitorModel::matchCapWithPatternThread, this, &this->layers_queue, &this->mutex_layers_queue));
+            std::thread(&PEXCapacitorModel::matchCapWithPatternThread, this, &this->layers_queue, &this->mutex_layers_queue));
     }
 
     for (auto& thread : this->threads)
@@ -170,7 +191,7 @@ void PEXCapacitorModel::matchCapWithPatternThread(std::queue<std::string>* layer
         map<string, vector<cap_node*>>::iterator it_layer_to_cap_node_map = this->layer_to_cap_node_map.find(layer);
         map<string, vector<pattern_cap*>>::iterator it_layer_to_pattern_cap_map = this->layer_to_pattern_cap_map.find(layer);
         if (it_layer_to_cap_node_map == this->layer_to_cap_node_map.end()
-                || it_layer_to_pattern_cap_map == this->layer_to_pattern_cap_map.end()) continue;;
+            || it_layer_to_pattern_cap_map == this->layer_to_pattern_cap_map.end()) continue;;
 
         std::vector<cap_node*>& caps = it_layer_to_cap_node_map->second;
         std::vector<pattern_cap*>& patterns = it_layer_to_pattern_cap_map->second;
@@ -197,9 +218,9 @@ void PEXCapacitorModel::makeLayersQueueForThreadJob() {
 }
 
 void PEXCapacitorModel::matchCapWithPattern(
-        std::vector<cap_node*>& caps,
-        std::vector<pattern_cap*>& patterns
-        ) {
+    std::vector<cap_node*>& caps,
+    std::vector<pattern_cap*>& patterns
+) {
 
     for (auto& cap : caps) {
         for (auto& pattern : patterns) {
@@ -214,9 +235,9 @@ void PEXCapacitorModel::matchCapWithPattern(
 }
 
 void PEXCapacitorModel::matchCapWithPattern(
-        std::map<std::string, std::vector<cap_node*>>& cap_layer_map_,
-        std::map<std::string, std::vector<pattern_cap*>>& pattern_layer_map_,
-        uint target_layer_number, uint target_layer_datatype) {
+    std::map<std::string, std::vector<cap_node*>>& cap_layer_map_,
+    std::map<std::string, std::vector<pattern_cap*>>& pattern_layer_map_,
+    uint target_layer_number, uint target_layer_datatype) {
 
     //string layer = std::to_string(target_layer_number) + "." + std::to_string(target_layer_datatype);
     string layer = getLayerString(target_layer_number, target_layer_datatype);
@@ -321,26 +342,39 @@ void PEXCapacitorModel::makeCubeVertices() {
         this->cube_vertices.push_back(cur_cube_vertices);
     }
 }
-
+  
 void PEXCapacitorModel::makeVertices() {
     Vertex temp_vertex;
     float cap_color_r{}, cap_color_g{}, cap_color_b{};
 
     std::vector<pattern_cap>::iterator cur_pattern_cap = this->pattern_caps.begin();
-    for (const auto& cur_cube : this->cube_vertices) {
-        cap_color_r = cur_pattern_cap->normalized_cap_value;
-        cap_color_g = 0.0f; // cur_pattern_cap->normalized_cap_value;
-        cap_color_b = 0.0f;
 
-        for (int i = 0; i < 8; ++i) {
-            temp_vertex.position = { cur_cube.vertex[i].x, cur_cube.vertex[i].y, cur_cube.vertex[i].z };
-            temp_vertex.color = { cap_color_r , cap_color_g , cap_color_b };
-            vertices.push_back(temp_vertex);
+    double capacitor_value{};
+    double capacitor_percentile{};
+    float temp_color[3] = { 0.0f, 0.0f, 0.0f };
+    glm::vec3 capacitor_color = { 0.0f, 0.0f, 0.0f };
+    for (const auto& cur_cube : this->cube_vertices) {
+        capacitor_value = cur_pattern_cap->cap_value;
+        if (cur_pattern_cap->cap_value > 0) {
+            capacitor_percentile = percentileOfCapacitor(*cur_pattern_cap);
+            capacitor_color = UTILS::getPercentileColour(capacitor_percentile / 100, 0.0, 1.0);
+            /*
+              std::cout << cur_pattern_cap->cap_value << std::endl;
+              std::cout << "normalized_cap_value -----" << cur_pattern_cap->normalized_cap_value << std::endl;
+              std::cout << "layer_number -----" << cur_pattern_cap->layer_number << "." << cur_pattern_cap->layer_datatype << std::endl;
+              std::cout << "percentile -----" << capacitor_percentile << std::endl;
+              std::cout << "r-" << capacitor_color.r << "g-" << capacitor_color.g << "b-" << capacitor_color.b << std::endl;
+              */
+
+            for (int i = 0; i < 8; ++i) {
+                temp_vertex.position = { cur_cube.vertex[i].x, cur_cube.vertex[i].y, cur_cube.vertex[i].z };
+                temp_vertex.color = capacitor_color;
+                vertices.push_back(temp_vertex);
+            }
         }
         cur_pattern_cap++;
     }
 }
-
 
 void PEXCapacitorModel::makeIndices() {
     size_t cube_count = this->cube_vertices.size();
@@ -386,6 +420,23 @@ void PEXCapacitorModel::makeIndices() {
     }
 }
 
+double PEXCapacitorModel::percentileOfCapacitor(const pattern_cap& in_cap) {
+    std::vector<pattern_cap>::const_iterator it;
+    int count = 0;
+    int count_all = 0;
+    double percent;
+    for (it = this->pattern_caps.begin(); it != this->pattern_caps.end(); ++it) {
+        if (it->cap_value != 0) {
+            if (it->cap_value > in_cap.cap_value) {
+                count++;
+            }
+            count_all++;
+        }
+    }
+    percent = (count * 100) / count_all;
+    return percent;
+};
+
 
 void PEXCapacitorModel::printCapNodes() {
     printf("***** PEX ITEM LIST\n");
@@ -401,13 +452,13 @@ void PEXCapacitorModel::printCapNodes() {
     for (auto& cap_node : this->cap_node_name_to_index_map) {
         printf("%dth Cap Node Item\n", i++);
         printf("\nNode Name = %s / Layer# = %d.%d / x,y = %.4f,%.4f / Value = %e / Neibor = %d\n",
-               this->cap_nodes[cap_node.second].name.c_str(),
-                this->cap_nodes[cap_node.second].layer_number,
-                this->cap_nodes[cap_node.second].layer_datatype,
-                this->cap_nodes[cap_node.second].x,
-                this->cap_nodes[cap_node.second].y,
-                this->cap_nodes[cap_node.second].value,
-                this->cap_nodes[cap_node.second].connected_count);
+            this->cap_nodes[cap_node.second].name.c_str(),
+            this->cap_nodes[cap_node.second].layer_number,
+            this->cap_nodes[cap_node.second].layer_datatype,
+            this->cap_nodes[cap_node.second].x,
+            this->cap_nodes[cap_node.second].y,
+            this->cap_nodes[cap_node.second].value,
+            this->cap_nodes[cap_node.second].connected_count);
         printf("\n");
     }
 }
@@ -417,9 +468,9 @@ void PEXCapacitorModel::printPatternCaps(FILE* out_stream) {
     fprintf(out_stream, "### PatternCap List\n");
     for (auto& pattern : this->pattern_caps) {
         fprintf(out_stream, "\nLayer = %u.%u, Cap count = %u, Total Caps = %e\n",
-                pattern.layer_number, pattern.layer_datatype, pattern.cap_count, pattern.cap_value);
+            pattern.layer_number, pattern.layer_datatype, pattern.cap_count, pattern.cap_value);
         fprintf(out_stream, "\tLeft ~ Right/Bottom ~ Top = %.6f ~ %.6f / %.6f ~ %.6f\n",
-                pattern.pattern.minx, pattern.pattern.maxx, pattern.pattern.miny, pattern.pattern.maxy);
+            pattern.pattern.minx, pattern.pattern.maxx, pattern.pattern.miny, pattern.pattern.maxy);
     }
 }
 
@@ -430,7 +481,7 @@ void PEXCapacitorModel::printLayerToCapNodeMap(FILE* out_stream) {
         fprintf(out_stream, "\nLayer = %s :: name / cap count / cap value \n", cur_item.first.c_str());
         for (auto cur_cap : cur_item.second) {
             fprintf(out_stream, "\t%s / %u / %e / %.6f, %.6f\n",
-                    cur_cap->name.c_str(), cur_cap->connected_count, cur_cap->value, cur_cap->x, cur_cap->y);
+                cur_cap->name.c_str(), cur_cap->connected_count, cur_cap->value, cur_cap->x, cur_cap->y);
         }
     }
 }
@@ -442,7 +493,7 @@ void PEXCapacitorModel::printLayerToPatternCapMap(const char* msg) {
         printf("\nLayer = %s :: left ~ right / bottom ~ top - cap count, cap value, norm cap value\n", cur_item.first.c_str());
         for (auto cur_pattern : cur_item.second) {
             printf("\t%.6f ~ %.6f / %.6f ~ %.6f - ",
-                   cur_pattern->pattern.minx, cur_pattern->pattern.maxx, cur_pattern->pattern.miny, cur_pattern->pattern.maxy);
+                cur_pattern->pattern.minx, cur_pattern->pattern.maxx, cur_pattern->pattern.miny, cur_pattern->pattern.maxy);
             printf("%u, %e, %f\n", cur_pattern->cap_count, cur_pattern->cap_value, cur_pattern->normalized_cap_value);
         }
     }

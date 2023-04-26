@@ -18,10 +18,7 @@ DtaoRenderSystem::DtaoRenderSystem(LveWindow *w)
     : lveWindow(w)
 {
     this->trans_info = {};
-    this->camera.setViewTarget(
-                glm::vec3(0.0f,0.0f,1.0f),
-                glm::vec3(0.0f, 0.0f, 0.0f),
-                glm::vec3(0.0f, 1.0f, 0.0f));
+    initCameraView();
     qDebug() << "\n$$$$$ DtaoRenderSystem()";
 }
 
@@ -29,6 +26,13 @@ DtaoRenderSystem::~DtaoRenderSystem()
 {
     deleteSimpleRenderSystem();
     deleteLveDevice();
+}
+
+void DtaoRenderSystem::initCameraView(){
+    this->camera.setViewTarget(
+                glm::vec3(0.0f,0.0f,1.0f),
+                glm::vec3(0.0f, 0.0f, 0.0f),
+                glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 void DtaoRenderSystem::beginRenderPass(VkCommandBuffer command_buffer){
@@ -67,13 +71,54 @@ void DtaoRenderSystem::beginRenderPass(VkCommandBuffer command_buffer){
     m_devFuncs->vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 }
 
+void DtaoRenderSystem::translateLayerPosition(POS_MONITORING value){
+    for (auto& gameobject : this->gameObjects) {
+        if (gameobject.model->getModelType() != MODEL_TYPE::MODEL_TYPE_AXIS) {
+            gameobject.transform.translation = {-value.x*trans_info.scale, -value.y*trans_info.scale, 0};
+
+        }
+    }
+    camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(value.zoom/cameraController.monitor.zoom,
+                                                               value.zoom/cameraController.monitor.zoom,
+                                                               value.zoom/cameraController.monitor.zoom));
+    glm::vec3 right {camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]};
+    camera.viewMatrix = glm::rotate(camera.getView(), (float)glm::radians(value.tilt-cameraController.monitor.tilt), right);
+    camera.viewMatrix = glm::rotate(camera.getView(), (float)glm::radians(value.rotation-cameraController.monitor.rotation), glm::vec3(0.0f, 0.0f, 1.0f));
+}
+
+void DtaoRenderSystem::emitMonitor(){
+
+
+    glm::vec3 forward {camera.viewMatrix[0][2], camera.viewMatrix[1][2], camera.viewMatrix[2][2]};
+    double tilt = asin(forward.z/(sqrt(forward.x*forward.x +forward.y*forward.y+forward.z*forward.z)))*(180/3.141592653589793238463);
+    camera.decomposeView(camera.getView());
+    camera.rotation_d = glm::conjugate(camera.rotation_d);
+    // yaw / z
+    double siny_cosp = 2 * (camera.rotation_d.w * camera.rotation_d.z + camera.rotation_d.x * camera.rotation_d.y);
+    double cosy_cosp = 1 - 2 * (camera.rotation_d.y * camera.rotation_d.y + camera.rotation_d.z * camera.rotation_d.z);
+    double rotation = (double)atan2(siny_cosp, cosy_cosp)*(180/3.141592653589793238463);
+    cameraController.monitor.tilt = tilt;
+    cameraController.monitor.rotation = rotation;
+
+    if(!gameObjects.empty()){
+        cameraController.monitor.x = -(gameObjects[0].transform.translation.x) / trans_info.scale;
+        cameraController.monitor.y = -(gameObjects[0].transform.translation.y)/ trans_info.scale;
+        cameraController.monitor.z = -gameObjects[0].transform.translation.z/ trans_info.scale;
+        cameraController.monitor.zoom = camera.scale_d.x*this->trans_info.scale*camera.std_scale/(2*tan(glm::radians(25.f)));
+    }
+    QString funcName = "camera_position";
+    emit lveWindow->signalInfoText(funcName,cameraController.monitor);
+}
+
 void DtaoRenderSystem::startNextFrame(){
     this->cameraController.moveCamera(
                 aspect, this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
     this->cameraController.moveCameraMouse(
                 this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
+
     this->cameraController.onDemo(aspect, this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
 
+    this->emitMonitor();
 
     VkCommandBuffer command_buffer = this->lveWindow->currentCommandBuffer();
     beginRenderPass(command_buffer);
@@ -158,7 +203,7 @@ void DtaoRenderSystem::createT2DObject(MODEL_TYPE model_type, T2D t2d) {
     //else if( model_type == MODEL_TYPE::MODEL_TYPE_AXIS) createNewAxisObject(file_path);
 }
 
-void DtaoRenderSystem::getCustomColor(float layernumber, glm::vec3 rgb){
+void DtaoRenderSystem::getCustomColor(string layernumber, glm::vec3 rgb){
     if(!gameObjects.empty()){
         for (auto& obj : gameObjects){
           if(obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_LAYOUT){
@@ -172,7 +217,7 @@ void DtaoRenderSystem::getCustomColor(float layernumber, glm::vec3 rgb){
 
 }
 
-void DtaoRenderSystem::getCustomOpacity(float layernumber, float opacity){
+void DtaoRenderSystem::getCustomOpacity(string layernumber, float opacity){
     if(!gameObjects.empty()){
         for (auto& obj : gameObjects){
           if(obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_LAYOUT){
@@ -185,7 +230,7 @@ void DtaoRenderSystem::getCustomOpacity(float layernumber, float opacity){
     }
 }
 
-void DtaoRenderSystem::getCustomVisiblity(float layernumber, bool visibility){
+void DtaoRenderSystem::getCustomVisiblity(string layernumber, bool visibility){
     if(!gameObjects.empty()){
         for (auto& obj : gameObjects){
           if(obj.model->getModelType() == MODEL_TYPE::MODEL_TYPE_LAYOUT){
@@ -208,18 +253,26 @@ void DtaoRenderSystem::createT2DLayoutObject(T2D & t2d){
     model->opacity = 0.5f;
 
     LayoutDataManager* layout_data = model->getLayoutDataManager();
-    this->trans_info.trans_x = static_cast<float>( layout_data->getMinX() + layout_data->getDiffX()/2 );
-    this->trans_info.trans_y = static_cast<float>( layout_data->getMinY()+ layout_data->getDiffY()/2);
+    //this->trans_info.minx = static_cast<float>( layout_data->getMinX());
+    //this->trans_info.miny = static_cast<float>( layout_data->getMinY());
+    this->trans_info.trans_x = static_cast<float>( layout_data->getMinX()
+                                                   + layout_data->getDiffX()/2
+                                                   );
+    this->trans_info.trans_y = static_cast<float>( layout_data->getMinY()
+                                                   + layout_data->getDiffY()/2
+                                                   );
     this->trans_info.trans_z = static_cast<float>( layout_data->getMinZ());
-    this->trans_info.scale = static_cast<float>( layout_data->getScale());
+    this->trans_info.scale =  static_cast<float>( layout_data->getScale());
 
     //auto new_object = DTAOObject::createObject();
     auto new_object = LveGameObject::createGameObject();
     new_object.model = model;
     new_object.transform.translation = {
-        -this->trans_info.trans_x, -this->trans_info.trans_y, -this->trans_info.trans_z};
+        -this->trans_info.trans_x*trans_info.scale, -this->trans_info.trans_y*trans_info.scale, -this->trans_info.trans_z*trans_info.scale};
     new_object.transform.scale = {
-        this->trans_info.scale, this->trans_info.scale, this->trans_info.scale };
+        this->trans_info.scale, this->trans_info.scale, this->trans_info.scale
+    };
+    //qDebug()<<layout_data->getDiffY()/2;
 
     //this->dtao_objects.push_back(std::move(new_object));
     this->gameObjects.push_back(std::move(new_object));
@@ -256,10 +309,11 @@ void DtaoRenderSystem::createNewLayoutObject(const std::string & file_path){
     this->render_object_created = true;
     this->layout_model = model;
 }
+*/
 
-void DtaoRenderSystem::createNewPEXResObject( const std::string & file_path){
+void DtaoRenderSystem::createNewPEXResObject( const QString & file_path){
     //PEX Resistor model
-    std::string res_info_file_path = file_path;
+    QString res_info_file_path = file_path;
     std::shared_ptr<PEXResistorModel> model
             = std::make_unique<PEXResistorModel>(
                 *this->lveDevice, MODEL_TYPE_PEX_RESISTOR, res_info_file_path);
@@ -269,35 +323,36 @@ void DtaoRenderSystem::createNewPEXResObject( const std::string & file_path){
     auto new_object = LveGameObject::createGameObject();
     new_object.model = model;
     new_object.transform.translation = {
-        -this->trans_info.trans_x, -this->trans_info.trans_y, -this->trans_info.trans_z};
+        -this->trans_info.trans_x*trans_info.scale, -this->trans_info.trans_y*trans_info.scale, -this->trans_info.trans_z*trans_info.scale};
     new_object.transform.scale = {
         this->trans_info.scale, this->trans_info.scale, this->trans_info.scale };
 
     //this->dtao_objects.push_back(std::move(new_object));
     this->gameObjects.push_back(std::move(new_object));
+    this->res_model = model;
 }
 
-void DtaoRenderSystem::createNewPEXCapObject( const std::string & file_path){
+void DtaoRenderSystem::createNewPEXCapObject( const QString & file_path,T2D  t2d){
     //PEX Capacitor model
-    std::string cap_info_file_path = file_path;
+    QString cap_info_file_path = file_path;
     std::shared_ptr<PEXCapacitorModel> model
             = std::make_unique<PEXCapacitorModel>(
                 *this->lveDevice, MODEL_TYPE_PEX_CAPACITOR,
-                cap_info_file_path, this->layout_model->getLayoutDataManager());
+                cap_info_file_path, &t2d);
 
     //Capacitor Object
     //auto new_object = DTAOObject::createObject();
     auto new_object = LveGameObject::createGameObject();
     new_object.model = model;
     new_object.transform.translation = {
-        -this->trans_info.trans_x, -this->trans_info.trans_y, -this->trans_info.trans_z};
+        -this->trans_info.trans_x*trans_info.scale, -this->trans_info.trans_y*trans_info.scale, -this->trans_info.trans_z*trans_info.scale};
     new_object.transform.scale = {
         this->trans_info.scale, this->trans_info.scale, this->trans_info.scale };
 
     //this->dtao_objects.push_back(std::move(new_object));
     this->gameObjects.push_back(std::move(new_object));
 }
-
+/*
 void DtaoRenderSystem::createNewAxisObject(const std::string & file_path){
     (void)(file_path);
     //Axis model
