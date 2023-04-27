@@ -1128,7 +1128,7 @@ void PEXResistorDataManager::loadData(const QString file_path) {
         description = line[PEXINFO_INDEX::PEXINFO_INDEX_DESCRIPTION];
         PEXResDirection resistor_direction = PEXResistor::checkDirectionFromDescription(description);
         if (value > 0.005) {
-            updateMinMaxRes(value, resistor_direction); //ì„ì˜ì˜ ì½”ë“œ, 0ë³´ë‹¤ ì‘ì€ ì €í•­ì€ ë¬´ì‹œ
+            updateMinMaxRes(value, resistor_direction); //ÀÓÀÇÀÇ ÄÚµå, 0º¸´Ù ÀÛÀº ÀúÇ×Àº ¹«½Ã
             this->resistors_ref.push_back(PEXResistor(item_name, node1, node2, value, resistor_direction));
         }
     }
@@ -4420,7 +4420,7 @@ FormInfo::FormInfo(QWidget *parent) :
 {
     ui->setupUi(this);    
 
-    //ìˆ«ì ì œì•½ ì„¤ì •
+    //¼ıÀÚ Á¦¾à ¼³Á¤
     QDoubleValidator *validator_pos = new QDoubleValidator(-9999.0,9999.0,4,this);
     QIntValidator *validator_tilt = new QIntValidator(-90,90,this);
     QIntValidator *validator_rot = new QIntValidator(0,359,this);
@@ -4433,7 +4433,7 @@ FormInfo::FormInfo(QWidget *parent) :
     ui->zoom        ->setValidator(validator_zoom);
 
     this->setEnabled(false);
-    //edit ê°’ ì´ˆê¸°í™”
+    //edit °ª ÃÊ±âÈ­
     setTextPosTotal(&TEMP_POS);
 }
 
@@ -4479,7 +4479,7 @@ void FormInfo::receiveFile(T2D &t2d)
 void FormInfo::receivePointPos(POS_MONITORING &pos)
 {
     this->POS = &pos;
-    TEMP_POS = pos;         //TEMP_POS ì—­í•  : enter ë¥¼ ëˆ„ë¥´ê¸° ì „ê¹Œì§€ ê°’ì„ ê°–ê³  ìˆëŠ” ì €ì¥ì†Œ
+    TEMP_POS = pos;         //TEMP_POS ¿ªÇÒ : enter ¸¦ ´©¸£±â Àü±îÁö °ªÀ» °®°í ÀÖ´Â ÀúÀå¼Ò
 }
 
 void FormInfo::changePos()
@@ -4491,7 +4491,7 @@ void FormInfo::changePos()
     }
 }
 
-void FormInfo::addItemToPosList(POS_SET *position_item)    //POS_STACK ì— position ë„£ê¸°
+void FormInfo::addItemToPosList(POS_SET *position_item)    //POS_STACK ¿¡ position ³Ö±â
 {
     POS_STACK.push_back(*position_item);
     item_data_i = POS_STACK.size() - 1 ;
@@ -4563,7 +4563,7 @@ void FormInfo::convertTextToValue(double *point, const QString &arg1)
     inputValueToTemp(point, double_arg);
 }
 
-void FormInfo::inputPos()       //ì§ì ‘ ì…ë ¥í•œ ê°’ì„ POS êµ¬ì¡°ì²´ì— ë„£ìŒ
+void FormInfo::inputPos()       //Á÷Á¢ ÀÔ·ÂÇÑ °ªÀ» POS ±¸Á¶Ã¼¿¡ ³ÖÀ½
 {
     if(isFileOpen)
     {
@@ -4575,20 +4575,20 @@ void FormInfo::inputPos()       //ì§ì ‘ ì…ë ¥í•œ ê°’ì„ POS êµ¬ì¡°ì²´ì— ë„£ì
     }
 }
 
-//ì…ë ¥ì´ ë“¤ì–´ì™”ì„ ë•Œ
+//ÀÔ·ÂÀÌ µé¾î¿ÔÀ» ¶§
 void FormInfo::on_pos_x_textEdited(const QString &arg1)         {convertTextToValue(&TEMP_POS.x,arg1);}
 void FormInfo::on_pos_y_textEdited(const QString &arg1)         {convertTextToValue(&TEMP_POS.y,arg1);}
 void FormInfo::on_pos_z_textEdited(const QString &arg1)         {convertTextToValue(&TEMP_POS.z,arg1);}
 void FormInfo::on_ang_tilt_textEdited(const QString &arg1)      {convertTextToValue(&TEMP_POS.tilt,arg1);}
 void FormInfo::on_ang_rotation_textEdited(const QString &arg1)  {convertTextToValue(&TEMP_POS.rotation,arg1);}
 void FormInfo::on_zoom_textEdited(const QString &arg1)
-{   //zoom ì€ 100% ì¼ ê²½ìš° 1 ê°’ì„ ë„£ì–´ì•¼ í•˜ê¸° ë•Œë¬¸ì— ë”°ë¡œ ì²˜ë¦¬
+{   //zoom Àº 100% ÀÏ °æ¿ì 1 °ªÀ» ³Ö¾î¾ß ÇÏ±â ¶§¹®¿¡ µû·Î Ã³¸®
     double double_arg = arg1.toDouble();
     double_arg = double_arg/100;
     inputValueToTemp(&TEMP_POS.zoom,double_arg);
 }
 
-//enter ê°€ ëˆŒë¦¬ê±°ë‚˜ focus ë¥¼ ìƒì„ ë•Œ TEMP_POS ì— ìˆëŠ” ê°’ì„ ì¶œë ¥í•¨
+//enter °¡ ´­¸®°Å³ª focus ¸¦ ÀÒÀ» ¶§ TEMP_POS ¿¡ ÀÖ´Â °ªÀ» Ãâ·ÂÇÔ
 void FormInfo::on_pos_x_editingFinished()       {setTextTrim(ui->pos_x, &TEMP_POS.x, 1, "");}
 void FormInfo::on_pos_y_editingFinished()       {setTextTrim(ui->pos_y, &TEMP_POS.y, 1, "");}
 void FormInfo::on_pos_z_editingFinished()       {setTextTrim(ui->pos_z, &TEMP_POS.z, 1, "");}
@@ -4596,7 +4596,7 @@ void FormInfo::on_ang_tilt_editingFinished()    {setTextTrim(ui->ang_tilt, &TEMP
 void FormInfo::on_ang_rotation_editingFinished(){setTextTrim(ui->ang_rotation, &TEMP_POS.rotation, 1, "");}
 void FormInfo::on_zoom_editingFinished()        {setTextTrim(ui->zoom, &TEMP_POS.zoom, 100, "%");}
 
-//enter ë¥¼ ëˆŒë €ì„ ë•Œ TEMP_POS ì— ìˆëŠ” ê°’ì„ POS ì— ë„£ê³  List ë¥¼ ë§Œë“¬
+//enter ¸¦ ´­·¶À» ¶§ TEMP_POS ¿¡ ÀÖ´Â °ªÀ» POS ¿¡ ³Ö°í List ¸¦ ¸¸µë
 void FormInfo::on_pos_x_returnPressed()         {inputPos();}
 void FormInfo::on_pos_y_returnPressed()         {inputPos();}
 void FormInfo::on_pos_z_returnPressed()         {inputPos();}
@@ -4626,14 +4626,14 @@ void FormInfo::on_pushButton_del_clicked()
 {
     if(current_item != -1)
     {
-        make_status_bar_msg = false;        //ì‚­ì œ ê³¼ì •ì—ì„œ msg ë³´ë‚´ì§€ ì•Šë„ë¡ ë°©ì§€ : segment fault error ë°œìƒ
+        make_status_bar_msg = false;        //»èÁ¦ °úÁ¤¿¡¼­ msg º¸³»Áö ¾Êµµ·Ï ¹æÁö : segment fault error ¹ß»ı
         for (auto item : selected_item)
         {
             ui->listWidget->takeItem(ui->listWidget->row(item));
         }
-        make_status_bar_msg = true;         //msg ë³´ë‚´ëŠ” ê²ƒ ì›ë³µ
-        current_item = -1;                  //msg ì— "" ë„£ìŒ
-        sendStatusBarMsg(makePosText());                 //msg ì¶œë ¥
+        make_status_bar_msg = true;         //msg º¸³»´Â °Í ¿øº¹
+        current_item = -1;                  //msg ¿¡ "" ³ÖÀ½
+        sendStatusBarMsg(makePosText());                 //msg Ãâ·Â
     }
 }
 
@@ -4687,12 +4687,12 @@ void FormLayer::ReceiveLayerInformation(T2D &t2d)
 
 void FormLayer::MakeLayerInformationTalbe()
 {
-    // QTableWidget í¬ê¸° ì„¤ì •
+    // QTableWidget ??? ????
     ui->tableWidget->setColumnCount(table_default_column);
     ui->tableWidget->setRowCount(t2d_layer_information->LayoutData10by10.size());
     ui->tableWidget->setColumnWidth(5,80);
 
-    // Table ì±„ìš°ê¸°
+    // Table a????
     for (int i=1; i < t2d_layer_information->LayoutData10by10.size() ; i++)
     {
         MakeTableWidgetItemForText(i);
@@ -4702,7 +4702,7 @@ void FormLayer::MakeLayerInformationTalbe()
     }
     MakeHeaderCheckBoxAndSlider();
 
-    // Table Edit ê¸ˆì§€, ë‹¤ì¤‘ ì„ íƒ ê¸ˆì§€
+    // Table Edit ????, ???? ???? ????
     ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
 }
@@ -4761,7 +4761,7 @@ void FormLayer::on_colorbutton_clicked()
 
 void FormLayer::on_opacityslider_valueChanged(int Opacity)
 {
-    // ui->tableWidget->currentRow() ë¡œ ì°¾ìœ¼ë ¤ê³  í•˜ë©´, current row ê°€ -1 ë¡œ ë‚˜ì˜´
+    // ui->tableWidget->currentRow() ?? a?????? ???, current row ?? -1 ?? ????
     int sliderrow = -1;
     int sliderrow_for_t2d = -1;
     QString LayerColorname;
@@ -4832,7 +4832,7 @@ void FormLayer::MakeLayerInformationTableHeader(){
     ui->tableWidget->setColumnWidth(4,40);
     ui->tableWidget->setColumnWidth(5,60);
 
-    /// TableWidget Title Format ì„¤ì •
+    /// TableWidget Title Format ????
     QBrush brush(QColor(255, 255, 255, 255));
     brush.setStyle(Qt::SolidPattern);
     QFont font;
@@ -4840,7 +4840,7 @@ void FormLayer::MakeLayerInformationTableHeader(){
     font.setBold(true);
     font.setWeight(55);
 
-    /// TableWidget Title ì…ë ¥ ë° ë°˜ì˜
+    /// TableWidget Title ??? ?? ???
     for (int i=1; i<6; i++){
         QTableWidgetItem *TableHeaderItem = new QTableWidgetItem;
         TableHeaderItem->setText(TalbeHeader[i]);
@@ -4923,7 +4923,7 @@ void FormLayer::MakeColorButton(int table_row){
     LayerColorText = "background-color: rgba(" + LayerColorRed;
     LayerColorText = LayerColorText + "," + LayerColorGreen + "," + LayerColorBlue + "," + LayerColorAlpha + ")";
 
-    // color pushbutton ì±„ìš°ê¸°
+    // color pushbutton a????
     QPushButton *colorbutton = new QPushButton();
     colorbutton->setStyleSheet(LayerColorText);
     ui->tableWidget->setCellWidget(table_row,1,colorbutton);
@@ -4931,7 +4931,7 @@ void FormLayer::MakeColorButton(int table_row){
 }
 
 void FormLayer::MakeHeaderCheckBoxAndSlider(){
-    //tableWidget title ì— checkbox
+    //tableWidget title ?? checkbox
     QCheckBox *checkBoxItem = new QCheckBox();
     checkBoxItem->setCheckState(Qt::Unchecked);
     QWidget *checkboxWidget = new QWidget();
@@ -4943,7 +4943,7 @@ void FormLayer::MakeHeaderCheckBoxAndSlider(){
     ui->tableWidget->setCellWidget(0,0,checkboxWidget);
     QObject::connect(checkBoxItem, SIGNAL(stateChanged(int)), this, SLOT(on_checkboxInTable_stateChanged()));
 
-    //tableWidget title ì— slider
+    //tableWidget title ?? slider
     QSpacerItem *HeaderVerticalSpacer = new QSpacerItem(0,20,QSizePolicy::Fixed, QSizePolicy::Fixed);
     QSlider *HeaderOpacitySlider = new QSlider();
     HeaderOpacitySlider->setOrientation(Qt::Horizontal);
@@ -5098,7 +5098,7 @@ void SuperItem::slotMove(POS_MONITORING *pos)
     double delta_y = (pos->y - convertPosY()) * (*m_scale);
     double rot = 360 - pos->rotation;
 
-    if (abs(delta_x) >__DBL_EPSILON__ || abs(delta_y) > __DBL_EPSILON__) // 0ë³´ë‹¤ í¬ë©´
+    if (abs(delta_x) >__DBL_EPSILON__ || abs(delta_y) > __DBL_EPSILON__) // 0º¸´Ù Å©¸é
     {        
         moveBy(delta_x, -1 * delta_y);             
     }
@@ -5110,7 +5110,7 @@ void SuperItem::slotMove(POS_MONITORING *pos)
     // trans.scale = 1 um / height / pos->zoom = 1 um / height / (1 um / now_height) = now_height / height
 
     trans.scale((*m_zoom_init)/pos->zoom, ((*m_zoom_init)/pos->zoom) * (pos->tilt / 90));
-      //zoom ì´ˆê¸°ê°€ 25%ë©´ ..
+      //zoom ÃÊ±â°¡ 25%¸é ..
     setTransform(trans);
 }
 
@@ -5128,13 +5128,13 @@ void SuperItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
     painter->drawLine(-60,-60,60,-60);
 }
 
-QRectF SuperItem::boundingRect() const{ // ë‚˜ì¤‘ì— ì´í•´ë¥¼ ìœ„í•œ ë„ì›€ ìš”ì²­ í•„ìš”
+QRectF SuperItem::boundingRect() const{ // ³ªÁß¿¡ ÀÌÇØ¸¦ À§ÇÑ µµ¿ò ¿äÃ» ÇÊ¿ä
     return QRectF(-61,-61,122,122);
 }
 
 double SuperItem::convertPosX()
 {
-    return (this->x() - (*m_from_window_to_box_x))/(*m_scale)+(*m_min_x); // ì›ì ì´ (0,0) ì´ ì•„ë‹ ê²½ìš° skew(m_min_x) ì¶”ê°€
+    return (this->x() - (*m_from_window_to_box_x))/(*m_scale)+(*m_min_x); // ¿øÁ¡ÀÌ (0,0) ÀÌ ¾Æ´Ò °æ¿ì skew(m_min_x) Ãß°¡
 }
 
 double SuperItem::convertPosY()
@@ -5167,7 +5167,7 @@ void FormMap::receiveFile(T2D &t2d)
     double width = t2d.LayoutMinMax.maxx - t2d.LayoutMinMax.minx;
     double height = t2d.LayoutMinMax.maxy - t2d.LayoutMinMax.miny;
     m_zoom_init = 1 / height;
-    m_scale = m_gray_box_size/qMax(width,height);    //ê°€ì¥ ê¸´ ê³³ì„ 120ìœ¼ë¡œ ë§ì¶¤
+    m_scale = m_gray_box_size/qMax(width,height);    //°¡Àå ±ä °÷À» 120À¸·Î ¸ÂÃã
     double box_x_zero_point = -1 * m_scale * width /2;
     double box_y_zero_point = -1 * m_scale * height /2;
     m_box_width = m_scale * width;
@@ -5179,9 +5179,9 @@ void FormMap::receiveFile(T2D &t2d)
 
     rectItem->setRect(box_x_zero_point,box_y_zero_point,m_box_width,m_box_height);
     rectItem->setBrush(QBrush(QColor(Qt::gray)));
-    rectItem->setPos(m_window_width/2,-m_window_height/2); //ì¢Œì¸¡ ìœ„ (0,0) ì—ì„œ ë¶€í„° ì¤‘ì•™ìœ¼ë¡œ ì´ë™
-    scene->setSceneRect(m_from_window_to_box_x,(m_from_window_to_box_y - m_box_height),m_box_width,m_box_height); //Y ì¢Œí‘œëŠ” ìœ„ì—ì„œ ì–¼ë§Œí¼ ë‚´ë ¤ì˜¤ëŠ”ê°€ ë¼ì„œ
-    scene->addItem(rectItem);           //ì‚¬ê°í˜•
+    rectItem->setPos(m_window_width/2,-m_window_height/2); //ÁÂÃø À§ (0,0) ¿¡¼­ ºÎÅÍ Áß¾ÓÀ¸·Î ÀÌµ¿
+    scene->setSceneRect(m_from_window_to_box_x,(m_from_window_to_box_y - m_box_height),m_box_width,m_box_height); //Y ÁÂÇ¥´Â À§¿¡¼­ ¾ó¸¸Å­ ³»·Á¿À´Â°¡ ¶ó¼­
+    scene->addItem(rectItem);           //»ç°¢Çü
     scene->addItem(super);    
 
     QObject::connect(this,&FormMap::signalMove,super,&SuperItem::slotMove);
@@ -5274,7 +5274,7 @@ void FormTop::drawing()
     //cout << "c:" << m_begin_col << " " << m_end_col << endl;
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment ì™€ ë¹„êµí•˜ì—¬ for skip
+        //layer_enviroment ?? ??????? for skip
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
         /*m_begin_row = 0;
         m_begin_col = 0;
@@ -5305,7 +5305,7 @@ void FormTop::filterDrawing()
     areaFilterRect();
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment ì™€ ë¹„êµí•˜ì—¬ for skip
+        //layer_enviroment ?? ??????? for skip
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
         for(int row = m_begin_row ; row < m_end_row ; row++)
         {
@@ -5329,7 +5329,7 @@ void FormTop::filterDrawing()
 
 void FormTop::drawingClear()
 {
-    // ê¸°ì¡´ì— ìˆëŠ” vector ë¥¼ ë‚¨ê²¨ë†”ì•¼ í•¨ : delete ë¥¼ ìœ„í•´
+    // ?????? ??? vector ?? ??????? ?? : delete ?? ????
     for(auto cur_item : rectItemList)
     {
         delete cur_item;
@@ -5446,7 +5446,7 @@ int FormTop::extPos(double *pos, double *min, double *max)
     int max_col_row = (*max-*min)/m_block_size;
 
 
-    //block ìœ¼ë¡œ ìë¥¸ ê²½ê³„ë©´ ê·¼ì²˜ì— ìˆì„ ê²½ìš° external ì„ ì¶”ê°€
+    //block ???? ??? ?????? ??o?? ???? ???? external ?? ???
     if ((*pos - *min)<area && pos_col_row > 0) // 30.0413 - 3*10 = 0.0413 < 0.05
     {
         return pos_col_row - 1;
@@ -5468,7 +5468,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
 
     if(m_filter_right == true){
         if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx >= pos->x){return;}
-        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < pos->x && rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx >= pos->x) //area ë³´ë‹¤ ë„˜ì–´ê°€ë©´ ìë¦„
+        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < pos->x && rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx >= pos->x) //area ???? ????? ???
         {
             maxx = pos->x;
         }
@@ -5482,7 +5482,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
     }
     if(m_filter_left == true){
         if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx <= pos->x){return;}
-        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > pos->x && rendering_full->LayoutData10by10[layer].xy[row][col][n].minx <= pos->x) //area ë³´ë‹¤ ë„˜ì–´ê°€ë©´ ìë¦„
+        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > pos->x && rendering_full->LayoutData10by10[layer].xy[row][col][n].minx <= pos->x) //area ???? ????? ???
         {
             minx = pos->x;
         }
@@ -5496,7 +5496,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
     }
     if(m_filter_top == true){
         if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny >= pos->y){return;}
-        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < pos->y && rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy >= pos->y) //area ë³´ë‹¤ ë„˜ì–´ê°€ë©´ ìë¦„
+        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < pos->y && rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy >= pos->y) //area ???? ????? ???
         {
             maxy = pos->y;
         }
@@ -5510,7 +5510,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
     }
     if(m_filter_bottom == true){
         if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy <= pos->y){return;}
-        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > pos->y && rendering_full->LayoutData10by10[layer].xy[row][col][n].miny <= pos->y) //area ë³´ë‹¤ ë„˜ì–´ê°€ë©´ ìë¦„
+        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > pos->y && rendering_full->LayoutData10by10[layer].xy[row][col][n].miny <= pos->y) //area ???? ????? ???
         {
             miny = pos->y;
         }
@@ -5549,7 +5549,7 @@ void FormTop::areaFilterRect()
         }
     }
 
-    /*int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //ì‹ì´ í•„ìš”í•œëŒ€   23.3841 / 10 = 2.33841 -> int 2
+    /*int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //???? ??????   23.3841 / 10 = 2.33841 -> int 2
     int ext_col = extPos(&pos->x, &rendering_full->LayoutMinMax.minx, &rendering_full->LayoutMinMax.maxx);
     m_begin_col = qMin(pos_col,ext_col);
     m_end_col = qMax(pos_col,ext_col)+1;
@@ -5562,7 +5562,7 @@ void FormTop::areaFilterRect()
     //layer
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment ì™€ ë¹„êµí•˜ì—¬ for skip
+        //layer_enviroment ?? ??????? for skip
 
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
 
@@ -5581,7 +5581,7 @@ void FormTop::areaFilterRect()
 }
 
 void FormTop::getRowCol(){
-    int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //ì‹ì´ í•„ìš”í•œëŒ€   23.3841 / 10 = 2.33841 -> int 2
+    int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //???? ??????   23.3841 / 10 = 2.33841 -> int 2
     if(pos_col - 1 >= 0){
         m_begin_col = pos_col - 1;
     }else{
@@ -5611,11 +5611,11 @@ void FormTop::getRowCol(){
 void FormTop::wheelEvent(QWheelEvent *event){
     int delta = event->delta();
 
-    // ìŠ¤í¬ë¡¤ ê°’ì— ë”°ë¼ ìŠ¤ì¼€ì¼ ê°’ì„ ë³€ê²½
+    // ????? ???? ???? ?????? ???? ????
     if (delta > 0) {
-        this->pos->zoom *= 1.01; // 10% í™•ëŒ€
+        this->pos->zoom *= 1.01; // 10% ???
     } else if (delta < 0) {
-        this->pos->zoom /= 1.01; // 10% ì¶•ì†Œ
+        this->pos->zoom /= 1.01; // 10% ????
     }
     //pos->zoom = m_scale;
     //cout << m_scale << endl;
@@ -5857,7 +5857,7 @@ void GitMerge::makeCodeFiles()
                 }
                 break;
             }
-            if (j == codeList.size()-1) // ì°¾ì•„ë´¤ëŠ”ë° ê¸°ì¡´ íŒŒì¼ì´ ì—†ë‹¤.
+            if (j == codeList.size()-1) // Ã£¾ÆºÃ´Âµ¥ ±âÁ¸ ÆÄÀÏÀÌ ¾ø´Ù.
             {
                 QFile file(fileListDivide[0]);
                 if(!file.open(QFile::WriteOnly | QFile::Text))
@@ -6032,7 +6032,7 @@ MainWindow::MainWindow(LveWindow* w)
     QObject::connect(dockInfo, SIGNAL(visibilityChanged(bool)), this, SLOT(on_docker_Info_stateChanged(bool)));
     QObject::connect(dockHier, SIGNAL(visibilityChanged(bool)), this, SLOT(on_docker_Hier_stateChanged(bool)));
     QObject::connect(dockLayer, SIGNAL(visibilityChanged(bool)), this, SLOT(on_docker_Layer_stateChanged(bool)));
-    // í‰ê°€ìš©
+    // Æò°¡¿ë
     dev_dialog = new DevDialog(this);
     devDialog();
 }
@@ -6100,7 +6100,7 @@ void MainWindow::slotInfoText(QString funcName, POS_MONITORING value)
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "íŒŒì¼ ì„ íƒ", ".", "Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "ÆÄÀÏ ¼±ÅÃ", ".", "Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
@@ -6110,7 +6110,7 @@ void MainWindow::on_actionOpen_file_triggered()
 void MainWindow::on_actionOpen_PEX_triggered()
 {
     if (this->t2d.LayoutData10by10.empty() == false) {
-        QString file_name = QFileDialog::getOpenFileName(this, "íŒŒì¼ ì„ íƒ", ".", "Files(*.*)");
+        QString file_name = QFileDialog::getOpenFileName(this, "ÆÄÀÏ ¼±ÅÃ", ".", "Files(*.*)");
 
         DtaoRenderSystem* renderer = this->m_window->getRenderer();
 
@@ -6120,7 +6120,7 @@ void MainWindow::on_actionOpen_PEX_triggered()
         //test
     }
     else {
-        qDebug() << "Layout Load í›„ PEXë¥¼ ë¶ˆëŸ¬ì˜¬ ìˆ˜ ìˆìŠµë‹ˆë‹¤";
+        qDebug() << "Layout Load ÈÄ PEX¸¦ ºÒ·¯¿Ã ¼ö ÀÖ½À´Ï´Ù";
     }
 }
 
@@ -6142,7 +6142,7 @@ void MainWindow::inputPosInformation()
 
 void MainWindow::on_actionOpen_Layout_triggered()
 {
-    QString file_name = QFileDialog::getOpenFileName(this, "íŒŒì¼ ì„ íƒ", ".", "Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "ÆÄÀÏ ¼±ÅÃ", ".", "Files(*.*)");
     DtaoRenderSystem* renderer = this->m_window->getRenderer();
 
     //renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
@@ -6226,12 +6226,12 @@ void MainWindow::on_actionOpen_DB_triggered() {
 
 }
 
-void MainWindow::slotDirectlyInputPos() //point info ì—ì„œ ì§ì ‘ ì…ë ¥í•œ ê²½ìš°
+void MainWindow::slotDirectlyInputPos() //point info ¿¡¼­ Á÷Á¢ ÀÔ·ÂÇÑ °æ¿ì
 {
     sendPositionDataToDocker();
     DtaoRenderSystem * renderer = this->m_window->getRenderer();
     renderer->translateLayerPosition(pos);
-    //ìš”ì²­ì‚¬í•­ 230324 vulkan ì—ì„œë„ ìˆ˜ì •ì„ ì—¬ê¸°ì„œ ì‹¤í–‰
+    //¿äÃ»»çÇ× 230324 vulkan ¿¡¼­µµ ¼öÁ¤À» ¿©±â¼­ ½ÇÇà
 }
 
 void MainWindow::slotStatusBarMsg(QString msg)
@@ -8222,7 +8222,7 @@ private:
     double *m_min_y;
     double m_zero_point_x;
     double m_zero_point_y;
-    double temp_x;      // ë§ˆìš°ìŠ¤ë¡œ box ì›€ì§ì¼ ë•Œ ì¢Œí‘œ ì•Œì•„ë³´ê¸° ìœ„í•¨
+    double temp_x;      // ¸¶¿ì½º·Î box ¿òÁ÷ÀÏ ¶§ ÁÂÇ¥ ¾Ë¾Æº¸±â À§ÇÔ
     double temp_y;
 };
 
@@ -8267,7 +8267,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom ì´ˆê¸°ê°’ì— ëŒ€í•œ GDS size ë¥¼ ê°–ê³ ì™€ ìˆ˜ì • í•„ìš”
+    float infoZoom = 1; //Zoom ÃÊ±â°ª¿¡ ´ëÇÑ GDS size ¸¦ °®°í¿Í ¼öÁ¤ ÇÊ¿ä
 
     float initRot = 0;
     float initTilt = 90;
@@ -8384,8 +8384,8 @@ private:
     bool write_code_files = false;
     QString split1;
     QString split2;
-    QString merged_code_files;    //ê°ì¢… cpp, h ë“±ì—ì„œ ì½ì–´ì˜¨ ë‚´ìš©
-    QString based_on_reading_txt; //gitMerge.txt ì—ì„œ ì½ì–´ì˜¨ ë‚´ìš©
+    QString merged_code_files;    //°¢Á¾ cpp, h µî¿¡¼­ ÀĞ¾î¿Â ³»¿ë
+    QString based_on_reading_txt; //gitMerge.txt ¿¡¼­ ÀĞ¾î¿Â ³»¿ë
     QString txt_file = "./gitMerge.txt";
     QString pro_file = "./IInterface.pro";
     QString hash = "!@hash[]";
@@ -9734,4 +9734,4 @@ DEPENDPATH += $$PWD/../../Library/VulkanSDK/1.3.239.0/Lib
 
 INCLUDEPATH += $$PWD/../../Library/glm-0.9.9.8/glm
 
-#í•œê¸€ ì‹¤í—˜
+#ÇÑ±Û ½ÇÇè

@@ -15,7 +15,7 @@ FormInfo::FormInfo(QWidget *parent) :
 {
     ui->setupUi(this);    
 
-    //レ옄 쒖빟 ㅼ젙
+    //숫자 제약 설정
     QDoubleValidator *validator_pos = new QDoubleValidator(-9999.0,9999.0,4,this);
     QIntValidator *validator_tilt = new QIntValidator(-90,90,this);
     QIntValidator *validator_rot = new QIntValidator(0,359,this);
@@ -28,7 +28,7 @@ FormInfo::FormInfo(QWidget *parent) :
     ui->zoom        ->setValidator(validator_zoom);
 
     this->setEnabled(false);
-    //edit 媛珥덇린
+    //edit 값 초기화
     setTextPosTotal(&TEMP_POS);
 }
 
@@ -74,7 +74,7 @@ void FormInfo::receiveFile(T2D &t2d)
 void FormInfo::receivePointPos(POS_MONITORING &pos)
 {
     this->POS = &pos;
-    TEMP_POS = pos;         //TEMP_POS 븷 : enter 瑜꾨Ⅴ湲꾧퉴吏 媛믪쓣 媛뽮퀬 덈뒗 μ냼
+    TEMP_POS = pos;         //TEMP_POS 역할 : enter 를 누르기 전까지 값을 갖고 있는 저장소
 }
 
 void FormInfo::changePos()
@@ -86,7 +86,7 @@ void FormInfo::changePos()
     }
 }
 
-void FormInfo::addItemToPosList(POS_SET *position_item)    //POS_STACK position ｊ린
+void FormInfo::addItemToPosList(POS_SET *position_item)    //POS_STACK 에 position 넣기
 {
     POS_STACK.push_back(*position_item);
     item_data_i = POS_STACK.size() - 1 ;
@@ -158,7 +158,7 @@ void FormInfo::convertTextToValue(double *point, const QString &arg1)
     inputValueToTemp(point, double_arg);
 }
 
-void FormInfo::inputPos()       //吏곸젒 낅젰媛믪쓣 POS 援ъ“泥댁뿉 ｌ쓬
+void FormInfo::inputPos()       //직접 입력한 값을 POS 구조체에 넣음
 {
     if(isFileOpen)
     {
@@ -170,20 +170,20 @@ void FormInfo::inputPos()       //吏곸젒 낅젰媛믪쓣 POS 援ъ“泥댁�
     }
 }
 
-//낅젰ㅼ뼱붿쓣 
+//입력이 들어왔을 때
 void FormInfo::on_pos_x_textEdited(const QString &arg1)         {convertTextToValue(&TEMP_POS.x,arg1);}
 void FormInfo::on_pos_y_textEdited(const QString &arg1)         {convertTextToValue(&TEMP_POS.y,arg1);}
 void FormInfo::on_pos_z_textEdited(const QString &arg1)         {convertTextToValue(&TEMP_POS.z,arg1);}
 void FormInfo::on_ang_tilt_textEdited(const QString &arg1)      {convertTextToValue(&TEMP_POS.tilt,arg1);}
 void FormInfo::on_ang_rotation_textEdited(const QString &arg1)  {convertTextToValue(&TEMP_POS.rotation,arg1);}
 void FormInfo::on_zoom_textEdited(const QString &arg1)
-{   //zoom  100% 寃쎌슦 1 媛믪쓣 ｌ뼱섍린 뚮Ц곕줈 泥섎━
+{   //zoom 은 100% 일 경우 1 값을 넣어야 하기 때문에 따로 처리
     double double_arg = arg1.toDouble();
     double_arg = double_arg/100;
     inputValueToTemp(&TEMP_POS.zoom,double_arg);
 }
 
-//enter 媛 뚮━嫄곕굹 focus 瑜껋쓣 TEMP_POS 덈뒗 媛믪쓣 異쒕젰
+//enter 가 눌리거나 focus 를 잃을 때 TEMP_POS 에 있는 값을 출력함
 void FormInfo::on_pos_x_editingFinished()       {setTextTrim(ui->pos_x, &TEMP_POS.x, 1, "");}
 void FormInfo::on_pos_y_editingFinished()       {setTextTrim(ui->pos_y, &TEMP_POS.y, 1, "");}
 void FormInfo::on_pos_z_editingFinished()       {setTextTrim(ui->pos_z, &TEMP_POS.z, 1, "");}
@@ -191,7 +191,7 @@ void FormInfo::on_ang_tilt_editingFinished()    {setTextTrim(ui->ang_tilt, &TEMP
 void FormInfo::on_ang_rotation_editingFinished(){setTextTrim(ui->ang_rotation, &TEMP_POS.rotation, 1, "");}
 void FormInfo::on_zoom_editingFinished()        {setTextTrim(ui->zoom, &TEMP_POS.zoom, 100, "%");}
 
-//enter 瑜뚮TEMP_POS 덈뒗 媛믪쓣 POS ｊ퀬 List 瑜留뚮벉
+//enter 를 눌렀을 때 TEMP_POS 에 있는 값을 POS 에 넣고 List 를 만듬
 void FormInfo::on_pos_x_returnPressed()         {inputPos();}
 void FormInfo::on_pos_y_returnPressed()         {inputPos();}
 void FormInfo::on_pos_z_returnPressed()         {inputPos();}
@@ -202,11 +202,8 @@ void FormInfo::on_zoom_returnPressed()          {inputPos();}
 
 void FormInfo::on_listWidget_currentRowChanged(int currentRow)
 {
-    if(isDeleting == false)
-    {
-        current_item = currentRow;
-        sendStatusBarMsg(makePosText());
-    }
+    current_item = currentRow;
+    sendStatusBarMsg(makePosText());
 }
 
 void FormInfo::on_pushButton_go_clicked()
@@ -222,33 +219,23 @@ void FormInfo::on_pushButton_go_clicked()
 
 void FormInfo::on_pushButton_del_clicked()
 {
-    isDeleting = true;
     if(current_item != -1)
     {
-//        qDebug() << "    all item";
-//        for (int i = 0; i < ui->listWidget->count(); i++)
-//        {
-//            qDebug() << "a : " << i << "item name : "<< ui->listWidget->item(i)->text() << "number" << ui->listWidget->item(i)->data(Qt::UserRole).toInt() ;
-//        }
-        make_status_bar_msg = false;        //젣 怨쇱젙먯꽌 msg 蹂대궡吏 딅룄濡諛⑹ : segment fault error 諛쒖깮
-
+        make_status_bar_msg = false;        //삭제 과정에서 msg 보내지 않도록 방지 : segment fault error 발생
         for (auto item : selected_item)
         {
-            int i = ui->listWidget->row(item);
-            ui->listWidget->takeItem(i);
+            ui->listWidget->takeItem(ui->listWidget->row(item));
         }
-
-        make_status_bar_msg = true;         //msg 蹂대궡寃먮났
-        isDeleting = false;
-        QString msg = "Deleted Items";
-        sendStatusBarMsg(msg);                 //msg 異쒕젰
+        make_status_bar_msg = true;         //msg 보내는 것 원복
+        current_item = -1;                  //msg 에 "" 넣음
+        sendStatusBarMsg(makePosText());                 //msg 출력
     }
 }
 
 void FormInfo::on_listWidget_itemChanged(QListWidgetItem *item)
 {
-    if(isDeleting == false)
-    {
+    if(current_item != -1)
+    {        
         POS_STACK[item->data(Qt::UserRole).toInt()].name = item->text().toStdString();
         sendStatusBarMsg(makePosText());
     }
@@ -257,14 +244,10 @@ void FormInfo::on_listWidget_itemChanged(QListWidgetItem *item)
 
 void FormInfo::on_listWidget_itemSelectionChanged()
 {
-    if(isDeleting == false)
+    selected_item = ui->listWidget->selectedItems();
+    int sel_item = selected_item.size();
+    if(sel_item > 1)
     {
-        selected_item = ui->listWidget->selectedItems();
-        int sel_item = selected_item.size();
-
-        if(sel_item > 1)
-        {
-            sendStatusBarMsg("selected " + QString::number(sel_item) + " items");
-        }
+        sendStatusBarMsg("selected " + QString::number(sel_item) + " items");
     }
 }

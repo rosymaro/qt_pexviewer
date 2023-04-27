@@ -45,7 +45,7 @@ private:
     double *m_min_y;
     double m_zero_point_x;
     double m_zero_point_y;
-    double temp_x;      // 留덉슦ㅻ줈 box 吏곸씪 醫뚰몴 뚯븘蹂닿린 꾪븿
+    double temp_x;      // 마우스로 box 움직일 때 좌표 알아보기 위함
     double temp_y;
 };
 
@@ -90,7 +90,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom 珥덇린媛믪뿉 GDS size 瑜媛뽮퀬 섏젙 꾩슂
+    float infoZoom = 1; //Zoom 초기값에 대한 GDS size 를 갖고와 수정 필요
 
     float initRot = 0;
     float initTilt = 90;

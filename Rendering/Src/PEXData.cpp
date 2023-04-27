@@ -170,7 +170,7 @@ void PEXResistorDataManager::loadData(const QString file_path) {
         description = line[PEXINFO_INDEX::PEXINFO_INDEX_DESCRIPTION];
         PEXResDirection resistor_direction = PEXResistor::checkDirectionFromDescription(description);
         if (value > 0.005) {
-            updateMinMaxRes(value, resistor_direction); //꾩쓽肄붾뱶, 0蹂대떎 묒  臾댁떆
+            updateMinMaxRes(value, resistor_direction); //임의의 코드, 0보다 작은 저항은 무시
             this->resistors_ref.push_back(PEXResistor(item_name, node1, node2, value, resistor_direction));
         }
     }
@@ -198,6 +198,7 @@ void PEXResistorDataManager::groupResistorOfNode() {
             this->resistors_of_node.emplace_back(std::vector<PEXResistor>{resistor});
         }
     }
+
 
 
     int i = 0;
@@ -231,11 +232,18 @@ void PEXResistorDataManager::groupResistorOfNode() {
         }
         i++;
     }
+    qDebug() << "resistors_of_node size confirm &&&&&&&&&&&&&&&&&&&&&&&" << resistors_of_node.size();
+
+    for (auto& loop : resistors_of_node[0]){
+        qDebug() << "loop test XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+    }
+
+
     for (const auto& nodes : this->resistors_of_node) {
 
             qDebug() << "------------";
         for (const auto& node : nodes) {
-            qDebug() << QString::fromStdString(node.node1.name);
+            qDebug() << QString::fromStdString(node.name);
                 //<< ", " << node.node1.name << ", " << node.node1.layer_number << ", " << node.node2.name << ", " << node.node2.layer_number << ", ";
         }
     }

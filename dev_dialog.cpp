@@ -2,7 +2,6 @@
 #include "ui_dev_dialog.h"
 #include <QDebug>
 
-
 DevDialog::DevDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::DevDialog)
@@ -44,10 +43,4 @@ void DevDialog::on_checkBox_pos_stateChanged(int arg1)
             *is_pos_checked = false;
         }
     }
-}
-
-void DevDialog::on_pushButton_initCamera_clicked()
-{
-    DtaoRenderSystem* renderer = getRenderer();
-    renderer->initCameraView();
 }

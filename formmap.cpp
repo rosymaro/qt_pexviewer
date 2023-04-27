@@ -30,7 +30,7 @@ void SuperItem::slotMove(POS_MONITORING *pos)
     double delta_y = (pos->y - convertPosY()) * (*m_scale);
     double rot = 360 - pos->rotation;
 
-    if (abs(delta_x) >__DBL_EPSILON__ || abs(delta_y) > __DBL_EPSILON__) // 0蹂대떎 щ㈃
+    if (abs(delta_x) >__DBL_EPSILON__ || abs(delta_y) > __DBL_EPSILON__) // 0보다 크면
     {        
         moveBy(delta_x, -1 * delta_y);             
     }
@@ -42,7 +42,7 @@ void SuperItem::slotMove(POS_MONITORING *pos)
     // trans.scale = 1 um / height / pos->zoom = 1 um / height / (1 um / now_height) = now_height / height
 
     trans.scale((*m_zoom_init)/pos->zoom, ((*m_zoom_init)/pos->zoom) * (pos->tilt / 90));
-      //zoom 珥덇린媛 25%硫..
+      //zoom 초기가 25%면 ..
     setTransform(trans);
 }
 
@@ -60,13 +60,13 @@ void SuperItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
     painter->drawLine(-60,-60,60,-60);
 }
 
-QRectF SuperItem::boundingRect() const{ // 섏쨷댄빐瑜꾪븳 꾩 붿껌 꾩슂
+QRectF SuperItem::boundingRect() const{ // 나중에 이해를 위한 도움 요청 필요
     return QRectF(-61,-61,122,122);
 }
 
 double SuperItem::convertPosX()
 {
-    return (this->x() - (*m_from_window_to_box_x))/(*m_scale)+(*m_min_x); // 먯젏(0,0) 꾨땺 寃쎌슦 skew(m_min_x) 異붽
+    return (this->x() - (*m_from_window_to_box_x))/(*m_scale)+(*m_min_x); // 원점이 (0,0) 이 아닐 경우 skew(m_min_x) 추가
 }
 
 double SuperItem::convertPosY()
@@ -99,7 +99,7 @@ void FormMap::receiveFile(T2D &t2d)
     double width = t2d.LayoutMinMax.maxx - t2d.LayoutMinMax.minx;
     double height = t2d.LayoutMinMax.maxy - t2d.LayoutMinMax.miny;
     m_zoom_init = 1 / height;
-    m_scale = m_gray_box_size/qMax(width,height);    //媛湲怨녹쓣 120쇰줈 留욎땄
+    m_scale = m_gray_box_size/qMax(width,height);    //가장 긴 곳을 120으로 맞춤
     double box_x_zero_point = -1 * m_scale * width /2;
     double box_y_zero_point = -1 * m_scale * height /2;
     m_box_width = m_scale * width;
@@ -111,9 +111,9 @@ void FormMap::receiveFile(T2D &t2d)
 
     rectItem->setRect(box_x_zero_point,box_y_zero_point,m_box_width,m_box_height);
     rectItem->setBrush(QBrush(QColor(Qt::gray)));
-    rectItem->setPos(m_window_width/2,-m_window_height/2); //醫뚯륫 (0,0) 먯꽌 遺以묒븰쇰줈 대룞
-    scene->setSceneRect(m_from_window_to_box_x,(m_from_window_to_box_y - m_box_height),m_box_width,m_box_height); //Y 醫뚰몴꾩뿉쇰쭔대젮ㅻ뒗媛 쇱꽌
-    scene->addItem(rectItem);           //ш컖
+    rectItem->setPos(m_window_width/2,-m_window_height/2); //좌측 위 (0,0) 에서 부터 중앙으로 이동
+    scene->setSceneRect(m_from_window_to_box_x,(m_from_window_to_box_y - m_box_height),m_box_width,m_box_height); //Y 좌표는 위에서 얼만큼 내려오는가 라서
+    scene->addItem(rectItem);           //사각형
     scene->addItem(super);    
 
     QObject::connect(this,&FormMap::signalMove,super,&SuperItem::slotMove);

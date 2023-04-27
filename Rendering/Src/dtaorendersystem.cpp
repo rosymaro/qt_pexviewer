@@ -18,7 +18,10 @@ DtaoRenderSystem::DtaoRenderSystem(LveWindow *w)
     : lveWindow(w)
 {
     this->trans_info = {};
-    initCameraView();
+    this->camera.setViewTarget(
+                glm::vec3(0.0f,0.0f,1.0f),
+                glm::vec3(0.0f, 0.0f, 0.0f),
+                glm::vec3(0.0f, 1.0f, 0.0f));
     qDebug() << "\n$$$$$ DtaoRenderSystem()";
 }
 
@@ -26,13 +29,6 @@ DtaoRenderSystem::~DtaoRenderSystem()
 {
     deleteSimpleRenderSystem();
     deleteLveDevice();
-}
-
-void DtaoRenderSystem::initCameraView(){
-    this->camera.setViewTarget(
-                glm::vec3(0.0f,0.0f,1.0f),
-                glm::vec3(0.0f, 0.0f, 0.0f),
-                glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 void DtaoRenderSystem::beginRenderPass(VkCommandBuffer command_buffer){

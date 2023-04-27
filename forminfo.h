@@ -51,7 +51,6 @@ private:
     bool isFileOpen = false;
     bool isEndedEdit = true;
     bool make_status_bar_msg = true;
-    bool isDeleting = false;
     int current_item = -1;
     int pos_number = 0;
     int item_data_i = 0;

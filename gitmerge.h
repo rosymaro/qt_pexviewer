@@ -17,8 +17,8 @@ private:
     bool write_code_files = false;
     QString split1;
     QString split2;
-    QString merged_code_files;    //媛곸쥌 cpp, h 깆뿉쎌뼱댁슜
-    QString based_on_reading_txt; //gitMerge.txt 먯꽌 쎌뼱댁슜
+    QString merged_code_files;    //각종 cpp, h 등에서 읽어온 내용
+    QString based_on_reading_txt; //gitMerge.txt 에서 읽어온 내용
     QString txt_file = "./gitMerge.txt";
     QString pro_file = "./IInterface.pro";
     QString hash = "!@hash[]";

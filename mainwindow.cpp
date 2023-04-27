@@ -101,9 +101,8 @@ MainWindow::MainWindow(LveWindow* w)
     QObject::connect(dockInfo, SIGNAL(visibilityChanged(bool)), this, SLOT(on_docker_Info_stateChanged(bool)));
     QObject::connect(dockHier, SIGNAL(visibilityChanged(bool)), this, SLOT(on_docker_Hier_stateChanged(bool)));
     QObject::connect(dockLayer, SIGNAL(visibilityChanged(bool)), this, SLOT(on_docker_Layer_stateChanged(bool)));
-    // 됯
+    // 평가용
     dev_dialog = new DevDialog(this);
-    dev_dialog->setRenderWindow(this->m_window);
     devDialog();
 }
 
@@ -170,7 +169,7 @@ void MainWindow::slotInfoText(QString funcName, POS_MONITORING value)
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "뚯씪 좏깮", ".", "Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "파일 선택", ".", "Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
@@ -180,7 +179,7 @@ void MainWindow::on_actionOpen_file_triggered()
 void MainWindow::on_actionOpen_PEX_triggered()
 {
     if (this->t2d.LayoutData10by10.empty() == false) {
-        QString file_name = QFileDialog::getOpenFileName(this, "뚯씪 좏깮", ".", "Files(*.*)");
+        QString file_name = QFileDialog::getOpenFileName(this, "파일 선택", ".", "Files(*.*)");
 
         DtaoRenderSystem* renderer = this->m_window->getRenderer();
 
@@ -190,7 +189,7 @@ void MainWindow::on_actionOpen_PEX_triggered()
         //test
     }
     else {
-        qDebug() << "Layout Load PEX瑜遺덈윭덉뒿덈떎";
+        qDebug() << "Layout Load 후 PEX를 불러올 수 있습니다";
     }
 }
 
@@ -212,7 +211,7 @@ void MainWindow::inputPosInformation()
 
 void MainWindow::on_actionOpen_Layout_triggered()
 {
-    QString file_name = QFileDialog::getOpenFileName(this, "뚯씪 좏깮", ".", "Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "파일 선택", ".", "Files(*.*)");
     DtaoRenderSystem* renderer = this->m_window->getRenderer();
 
     //renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
@@ -296,12 +295,12 @@ void MainWindow::on_actionOpen_DB_triggered() {
 
 }
 
-void MainWindow::slotDirectlyInputPos() //point info 먯꽌 吏곸젒 낅젰寃쎌슦
+void MainWindow::slotDirectlyInputPos() //point info 에서 직접 입력한 경우
 {
     sendPositionDataToDocker();
     DtaoRenderSystem * renderer = this->m_window->getRenderer();
     renderer->translateLayerPosition(pos);
-    //붿껌ы빆 230324 vulkan 먯꽌섏젙ш린ㅽ뻾
+    //요청사항 230324 vulkan 에서도 수정을 여기서 실행
 }
 
 void MainWindow::slotStatusBarMsg(QString msg)

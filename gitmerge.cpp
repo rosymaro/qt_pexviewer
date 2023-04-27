@@ -171,7 +171,7 @@ void GitMerge::makeCodeFiles()
                 }
                 break;
             }
-            if (j == codeList.size()-1) // 李얠븘遊ㅻ뒗湲곗〈 뚯씪녿떎.
+            if (j == codeList.size()-1) // 찾아봤는데 기존 파일이 없다.
             {
                 QFile file(fileListDivide[0]);
                 if(!file.open(QFile::WriteOnly | QFile::Text))

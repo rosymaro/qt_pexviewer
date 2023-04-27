@@ -1,3 +1,4 @@
+//#include "/Rendering/Src/LayoutPEXData.h"
 #include "formhier.h"
 #include "ui_formhier.h"
 #include "mainwindow.h"
@@ -38,6 +39,11 @@ void FormHier::createHierarchyTree(T2D *t2d){
 
         m_buf_tree_item[m_level - 1]->addChild(m_child_tree);
     }
+
+//    PEXResistorDataManager::getResistorsOfNode();
+//    for (auto& loop : resistors_of_node[0]){
+//        qDebug() << "loop test XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+//    }
 }
 
 void FormHier::on_hierarchy_tree_itemDoubleClicked(QTreeWidgetItem *item, int column)

@@ -89,8 +89,6 @@ public:
     void createNewPEXCapObject(const QString & file_path, T2D t2d);
     void createNewPEXResObject(const QString & file_path);
 
-    void initCameraView();
-
 
 private:
     void createNewLayoutObject(const std::string & file_path);
