@@ -1158,6 +1158,7 @@ void PEXResistorDataManager::groupResistorOfNode() {
     }
 
 
+
     int i = 0;
     while (i < this->resistors_of_node.size()) {
         int j = 0;
@@ -1189,11 +1190,18 @@ void PEXResistorDataManager::groupResistorOfNode() {
         }
         i++;
     }
+    qDebug() << "resistors_of_node size confirm &&&&&&&&&&&&&&&&&&&&&&&" << resistors_of_node.size();
+
+    for (auto& loop : resistors_of_node[0]){
+        qDebug() << "loop test XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+    }
+
+
     for (const auto& nodes : this->resistors_of_node) {
 
             qDebug() << "------------";
         for (const auto& node : nodes) {
-            qDebug() << QString::fromStdString(node.node1.name);
+            qDebug() << QString::fromStdString(node.name);
                 //<< ", " << node.node1.name << ", " << node.node1.layer_number << ", " << node.node2.name << ", " << node.node2.layer_number << ", ";
         }
     }
@@ -1632,7 +1640,10 @@ DtaoRenderSystem::DtaoRenderSystem(LveWindow *w)
     : lveWindow(w)
 {
     this->trans_info = {};
-    initCameraView();
+    this->camera.setViewTarget(
+                glm::vec3(0.0f,0.0f,1.0f),
+                glm::vec3(0.0f, 0.0f, 0.0f),
+                glm::vec3(0.0f, 1.0f, 0.0f));
     qDebug() << "\n$$$$$ DtaoRenderSystem()";
 }
 
@@ -1640,13 +1651,6 @@ DtaoRenderSystem::~DtaoRenderSystem()
 {
     deleteSimpleRenderSystem();
     deleteLveDevice();
-}
-
-void DtaoRenderSystem::initCameraView(){
-    this->camera.setViewTarget(
-                glm::vec3(0.0f,0.0f,1.0f),
-                glm::vec3(0.0f, 0.0f, 0.0f),
-                glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 void DtaoRenderSystem::beginRenderPass(VkCommandBuffer command_buffer){
@@ -4168,7 +4172,6 @@ void all_data::receiveSelectFileName(QString file_name)
 #include "ui_dev_dialog.h"
 #include <QDebug>
 
-
 DevDialog::DevDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::DevDialog)
@@ -4210,12 +4213,6 @@ void DevDialog::on_checkBox_pos_stateChanged(int arg1)
             *is_pos_checked = false;
         }
     }
-}
-
-void DevDialog::on_pushButton_initCamera_clicked()
-{
-    DtaoRenderSystem* renderer = getRenderer();
-    renderer->initCameraView();
 }
 !@hash[]!@file[]./filedb.cpp!@hash[]!@code[]#include "filedb.h"
 #include <QFile>
@@ -4266,7 +4263,8 @@ void FileDb::openFile(QString fileNameInfo,QVector<QList<float>> &vecList,
     return;
 
 }
-!@hash[]!@file[]./formhier.cpp!@hash[]!@code[]#include "formhier.h"
+!@hash[]!@file[]./formhier.cpp!@hash[]!@code[]//#include "/Rendering/Src/LayoutPEXData.h"
+#include "formhier.h"
 #include "ui_formhier.h"
 #include "mainwindow.h"
 
@@ -4306,6 +4304,11 @@ void FormHier::createHierarchyTree(T2D *t2d){
 
         m_buf_tree_item[m_level - 1]->addChild(m_child_tree);
     }
+
+//    PEXResistorDataManager::getResistorsOfNode();
+//    for (auto& loop : resistors_of_node[0]){
+//        qDebug() << "loop test XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+//    }
 }
 
 void FormHier::on_hierarchy_tree_itemDoubleClicked(QTreeWidgetItem *item, int column)
@@ -4604,11 +4607,8 @@ void FormInfo::on_zoom_returnPressed()          {inputPos();}
 
 void FormInfo::on_listWidget_currentRowChanged(int currentRow)
 {
-    if(isDeleting == false)
-    {
-        current_item = currentRow;
-        sendStatusBarMsg(makePosText());
-    }
+    current_item = currentRow;
+    sendStatusBarMsg(makePosText());
 }
 
 void FormInfo::on_pushButton_go_clicked()
@@ -4624,33 +4624,23 @@ void FormInfo::on_pushButton_go_clicked()
 
 void FormInfo::on_pushButton_del_clicked()
 {
-    isDeleting = true;
     if(current_item != -1)
     {
-//        qDebug() << "    all item";
-//        for (int i = 0; i < ui->listWidget->count(); i++)
-//        {
-//            qDebug() << "a : " << i << "item name : "<< ui->listWidget->item(i)->text() << "number" << ui->listWidget->item(i)->data(Qt::UserRole).toInt() ;
-//        }
         make_status_bar_msg = false;        //삭제 과정에서 msg 보내지 않도록 방지 : segment fault error 발생
-
         for (auto item : selected_item)
         {
-            int i = ui->listWidget->row(item);
-            ui->listWidget->takeItem(i);
+            ui->listWidget->takeItem(ui->listWidget->row(item));
         }
-
         make_status_bar_msg = true;         //msg 보내는 것 원복
-        isDeleting = false;
-        QString msg = "Deleted Items";
-        sendStatusBarMsg(msg);                 //msg 출력
+        current_item = -1;                  //msg 에 "" 넣음
+        sendStatusBarMsg(makePosText());                 //msg 출력
     }
 }
 
 void FormInfo::on_listWidget_itemChanged(QListWidgetItem *item)
 {
-    if(isDeleting == false)
-    {
+    if(current_item != -1)
+    {        
         POS_STACK[item->data(Qt::UserRole).toInt()].name = item->text().toStdString();
         sendStatusBarMsg(makePosText());
     }
@@ -4659,15 +4649,11 @@ void FormInfo::on_listWidget_itemChanged(QListWidgetItem *item)
 
 void FormInfo::on_listWidget_itemSelectionChanged()
 {
-    if(isDeleting == false)
+    selected_item = ui->listWidget->selectedItems();
+    int sel_item = selected_item.size();
+    if(sel_item > 1)
     {
-        selected_item = ui->listWidget->selectedItems();
-        int sel_item = selected_item.size();
-
-        if(sel_item > 1)
-        {
-            sendStatusBarMsg("selected " + QString::number(sel_item) + " items");
-        }
+        sendStatusBarMsg("selected " + QString::number(sel_item) + " items");
     }
 }
 !@hash[]!@file[]./formlayer.cpp!@hash[]!@code[]#include "formlayer.h"
@@ -6048,7 +6034,6 @@ MainWindow::MainWindow(LveWindow* w)
     QObject::connect(dockLayer, SIGNAL(visibilityChanged(bool)), this, SLOT(on_docker_Layer_stateChanged(bool)));
     // 평가용
     dev_dialog = new DevDialog(this);
-    dev_dialog->setRenderWindow(this->m_window);
     devDialog();
 }
 
@@ -7031,8 +7016,6 @@ public:
     void createNewPEXCapObject(const QString & file_path, T2D t2d);
     void createNewPEXResObject(const QString & file_path);
 
-    void initCameraView();
-
 
 private:
     void createNewLayoutObject(const std::string & file_path);
@@ -7753,6 +7736,65 @@ private:
     VkPipelineLayout pipelineLayoutForPEXCapacitor;
 };
 
+!@hash[]!@file[]./Rendering/Src/utils.h!@hash[]!@code[]#pragma once
+#ifndef UTILS
+#define UTILS
+#endif
+
+// libs
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+
+#include <string>
+#include <iostream>
+#include <cstdio>
+
+namespace UTILS {
+    inline bool check_file_exsist(const std::string& file_path) {
+        FILE* fp = nullptr;
+        if (fopen_s(&fp, file_path.c_str(), "r")) {
+            fclose(fp);
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    glm::vec3 getPercentileColour(double v, double vmin, double vmax)
+    {
+        glm::vec3 c = { 1.0,1.0,0.0 }; // white
+        double dv;
+
+        if (v < vmin)
+            v = vmin;
+        if (v > vmax)
+            v = vmax;
+        dv = vmax - vmin;
+
+        if (v < (vmin + 0.05 * dv)) {
+            c.r = 1;
+            c.g = 0;
+        }
+        else if (v < (vmin + 0.5 * dv)) {
+            c.r = 0.5 + 5 * (vmin + 0.5 * dv - v) / dv / 4;
+            c.g = 0.5 + 5 * (v - vmin - 0.5 * dv) / dv / 4;
+        }
+        else if (v < (vmin + 0.95 * dv)) {
+            c.r = 0.5 + 5 * (vmin + 0.5 * dv - v) / dv / 4;
+            c.g = 0.5 + 5 * (v - vmin - 0.5 * dv) / dv / 4;
+        }
+        else {
+            c.r = 0;
+            c.g = 1;
+        }
+
+
+        return(c);
+    }
+}
+
 !@hash[]!@file[]./T2D.h!@hash[]!@code[]#ifndef T2D_H
 #define T2D_H
 
@@ -7894,10 +7936,6 @@ struct MIN_MAX_XYZ{
 #include <QDialog>
 #include <defineParam.h>
 
-
-#include "Rendering/Src/lve_window.hpp"
-#include "Rendering/Src/dtaorendersystem.h"
-
 namespace Ui {
 class DevDialog;
 }
@@ -7916,22 +7954,11 @@ public:
 private slots:
     void on_checkBox_pos_stateChanged(int arg1);
 
-    void on_pushButton_initCamera_clicked();
-
 private:
     Ui::DevDialog *ui;
     bool *is_pos_checked;
     bool init_check = false;
     POS_MONITORING *pos;
-
-    LveWindow* m_window = nullptr;
-
-public:
-    void setRenderWindow(LveWindow* window_){ this->m_window = window_;}
-
-private:
-    DtaoRenderSystem* getRenderer(){ return this->m_window->getRenderer();}
-
 };
 
 #endif // DEV_DIALOG_H
@@ -8042,7 +8069,6 @@ private:
     bool isFileOpen = false;
     bool isEndedEdit = true;
     bool make_status_bar_msg = true;
-    bool isDeleting = false;
     int current_item = -1;
     int pos_number = 0;
     int item_data_i = 0;
@@ -8520,33 +8546,76 @@ private:
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QTabWidget" name="tabWidget">
-     <property name="currentIndex">
-      <number>1</number>
-     </property>
-     <widget class="QWidget" name="tab">
-      <attribute name="title">
-       <string>MainWindow</string>
-      </attribute>
-     </widget>
-     <widget class="QWidget" name="tab_2">
-      <attribute name="title">
-       <string>Docker</string>
-      </attribute>
-      <widget class="QCheckBox" name="checkBox_pos">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>20</y>
-         <width>113</width>
-         <height>18</height>
-        </rect>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="14" column="0">
+      <widget class="QLabel" name="label_11">
+       <property name="text">
+        <string>Vulkan PEX</string>
        </property>
+      </widget>
+     </item>
+     <item row="13" column="0">
+      <widget class="QCheckBox" name="checkBox_7">
+       <property name="text">
+        <string>CheckBox</string>
+       </property>
+      </widget>
+     </item>
+     <item row="9" column="0">
+      <widget class="QCheckBox" name="checkBox_5">
+       <property name="text">
+        <string>CheckBox</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="3">
+      <widget class="QLabel" name="label_10">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="8" column="0">
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>Docker Hierarchy</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>Docker top view</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Docker mini map</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="label_8">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QLabel" name="label_9">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QCheckBox" name="checkBox_pos">
        <property name="text">
         <string>Change Pos</string>
        </property>
       </widget>
-<<<<<<< Updated upstream
      </item>
      <item row="12" column="0">
       <widget class="QLabel" name="label_7">
@@ -8635,33 +8704,7 @@ private:
        </property>
       </widget>
      </item>
-     <item row="14" column="3">
-      <widget class="QPushButton" name="pushButton_initCamera">
-       <property name="text">
-        <string>Init Camera</string>
-       </property>
-      </widget>
-     </item>
     </layout>
-=======
-     </widget>
-     <widget class="QWidget" name="tab_5">
-      <attribute name="title">
-       <string>Data Process</string>
-      </attribute>
-     </widget>
-     <widget class="QWidget" name="tab_3">
-      <attribute name="title">
-       <string>3D Modeling</string>
-      </attribute>
-     </widget>
-     <widget class="QWidget" name="tab_4">
-      <attribute name="title">
-       <string>PEX</string>
-      </attribute>
-     </widget>
-    </widget>
->>>>>>> Stashed changes
    </item>
   </layout>
  </widget>
@@ -8676,8 +8719,8 @@ private:
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>320</width>
-    <height>300</height>
+    <width>780</width>
+    <height>646</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -8689,33 +8732,97 @@ private:
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
+  <layout class="QGridLayout" name="gridLayout_2">
+   <item row="0" column="0">
     <layout class="QGridLayout" name="gridLayout">
      <item row="1" column="0">
-      <widget class="QTreeWidget" name="hierarchy_tree">
-       <property name="verticalScrollBarPolicy">
-        <enum>Qt::ScrollBarAsNeeded</enum>
+      <widget class="QTabWidget" name="tabWidget">
+       <property name="currentIndex">
+        <number>1</number>
        </property>
-       <property name="horizontalScrollBarPolicy">
-        <enum>Qt::ScrollBarAlwaysOff</enum>
-       </property>
-       <property name="expandsOnDoubleClick">
-        <bool>false</bool>
-       </property>
-       <attribute name="headerVisible">
-        <bool>false</bool>
-       </attribute>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLineEdit" name="hierarchy_searching">
-       <property name="text">
-        <string/>
-       </property>
-       <property name="placeholderText">
-        <string>Searching...</string>
-       </property>
+       <widget class="QWidget" name="tab_3">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <attribute name="title">
+         <string>Hierarchy</string>
+        </attribute>
+        <layout class="QGridLayout" name="gridLayout_3">
+         <item row="0" column="0">
+          <layout class="QVBoxLayout" name="verticalLayout">
+           <item>
+            <widget class="QLineEdit" name="hierarchy_searching">
+             <property name="enabled">
+              <bool>true</bool>
+             </property>
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>1</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+             </property>
+             <property name="placeholderText">
+              <string>Searching...</string>
+             </property>
+             <property name="clearButtonEnabled">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QTreeWidget" name="hierarchy_tree">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+               <horstretch>1</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="verticalScrollBarPolicy">
+              <enum>Qt::ScrollBarAsNeeded</enum>
+             </property>
+             <property name="horizontalScrollBarPolicy">
+              <enum>Qt::ScrollBarAlwaysOff</enum>
+             </property>
+             <property name="expandsOnDoubleClick">
+              <bool>false</bool>
+             </property>
+             <attribute name="headerVisible">
+              <bool>false</bool>
+             </attribute>
+             <column>
+              <property name="text">
+               <string notr="true">1</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="tab_4">
+        <attribute name="title">
+         <string>PEX</string>
+        </attribute>
+        <layout class="QGridLayout" name="gridLayout_4">
+         <item row="0" column="0">
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <item>
+            <widget class="QTreeWidget" name="pex_tree"/>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
       </widget>
      </item>
     </layout>
@@ -9557,6 +9664,7 @@ HEADERS += \
     Rendering/Src/lve_pipeline.hpp \
     Rendering/Src/lve_window.hpp \
     Rendering/Src/simple_render_system.hpp \
+    Rendering/Src/utils.h \
     T2D.h \
     all_data.h \
     defineParam.h \
