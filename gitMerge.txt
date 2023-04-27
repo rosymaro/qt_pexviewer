@@ -524,6 +524,7 @@ void PEXCapacitorModel::makeRenderingData(const QString& file_path) {
     makeCubeVertices();
     makeVertices();
     makeIndices();
+    makeIndicesFace();
 
     for (auto& cur_item : this->layer_to_cap_node_map) cur_item.second.clear();
     this->layer_to_cap_node_map.clear();
@@ -790,7 +791,7 @@ void PEXCapacitorModel::makeCubeVertices() {
 }
   
 void PEXCapacitorModel::makeVertices() {
-    Vertex temp_vertex;
+    VertexCapacitor temp_vertex;
     float cap_color_r{}, cap_color_g{}, cap_color_b{};
 
     std::vector<pattern_cap>::iterator cur_pattern_cap = this->pattern_caps.begin();
@@ -814,8 +815,8 @@ void PEXCapacitorModel::makeVertices() {
 
             for (int i = 0; i < 8; ++i) {
                 temp_vertex.position = { cur_cube.vertex[i].x, cur_cube.vertex[i].y, cur_cube.vertex[i].z };
-                temp_vertex.color = capacitor_color;
-                vertices.push_back(temp_vertex);
+                temp_vertex.color = {capacitor_color,0.2};
+                vertices_capacitor.push_back(temp_vertex);
             }
         }
         cur_pattern_cap++;
@@ -865,6 +866,35 @@ void PEXCapacitorModel::makeIndices() {
         indices.push_back(start_idx + 2); indices.push_back(start_idx + 1);
     }
 }
+
+void PEXCapacitorModel::makeIndicesFace() {
+    size_t cube_count = this->cube_vertices.size();
+
+    std::vector<uint32_t>& indices = this->indices_face;
+    uint32_t start_idx = 0;
+    for (int i = 0; i < cube_count; ++i) {
+        start_idx = 8 * i;
+        indices.push_back(start_idx + 0); indices.push_back(start_idx + 1); indices.push_back(start_idx + 2);
+        indices.push_back(start_idx + 2); indices.push_back(start_idx + 3); indices.push_back(start_idx + 0);//top
+
+        indices.push_back(start_idx + 3); indices.push_back(start_idx + 2); indices.push_back(start_idx + 6);
+        indices.push_back(start_idx + 6); indices.push_back(start_idx + 7); indices.push_back(start_idx + 3);//right
+
+        indices.push_back(start_idx + 0); indices.push_back(start_idx + 3); indices.push_back(start_idx + 7);
+        indices.push_back(start_idx + 7); indices.push_back(start_idx + 4); indices.push_back(start_idx + 0);//front
+
+        indices.push_back(start_idx + 4); indices.push_back(start_idx + 7); indices.push_back(start_idx + 6);
+        indices.push_back(start_idx + 6); indices.push_back(start_idx + 5); indices.push_back(start_idx + 4);//bottom
+
+        indices.push_back(start_idx + 0); indices.push_back(start_idx + 4); indices.push_back(start_idx + 5);
+        indices.push_back(start_idx + 5); indices.push_back(start_idx + 1); indices.push_back(start_idx + 0);//left
+
+        indices.push_back(start_idx + 1); indices.push_back(start_idx + 5); indices.push_back(start_idx + 6);
+        indices.push_back(start_idx + 6); indices.push_back(start_idx + 2); indices.push_back(start_idx + 1);//back
+    }
+
+  }
+
 
 double PEXCapacitorModel::percentileOfCapacitor(const pattern_cap& in_cap) {
     std::vector<pattern_cap>::const_iterator it;
@@ -1128,7 +1158,7 @@ void PEXResistorDataManager::loadData(const QString file_path) {
         description = line[PEXINFO_INDEX::PEXINFO_INDEX_DESCRIPTION];
         PEXResDirection resistor_direction = PEXResistor::checkDirectionFromDescription(description);
         if (value > 0.005) {
-            updateMinMaxRes(value, resistor_direction); //¿”¿«¿« ƒ⁄µÂ, 0∫∏¥Ÿ ¿€¿∫ ¿˙«◊¿∫ π´Ω√
+            updateMinMaxRes(value, resistor_direction); //ÏûÑÏùòÏùò ÏΩîÎìú, 0Î≥¥Îã§ ÏûëÏùÄ Ï†ÄÌï≠ÏùÄ Î¨¥Ïãú
             this->resistors_ref.push_back(PEXResistor(item_name, node1, node2, value, resistor_direction));
         }
     }
@@ -1156,7 +1186,6 @@ void PEXResistorDataManager::groupResistorOfNode() {
             this->resistors_of_node.emplace_back(std::vector<PEXResistor>{resistor});
         }
     }
-
 
 
     int i = 0;
@@ -1190,18 +1219,11 @@ void PEXResistorDataManager::groupResistorOfNode() {
         }
         i++;
     }
-    qDebug() << "resistors_of_node size confirm &&&&&&&&&&&&&&&&&&&&&&&" << resistors_of_node.size();
-
-    for (auto& loop : resistors_of_node[0]){
-        qDebug() << "loop test XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-    }
-
-
     for (const auto& nodes : this->resistors_of_node) {
 
             qDebug() << "------------";
         for (const auto& node : nodes) {
-            qDebug() << QString::fromStdString(node.name);
+            qDebug() << QString::fromStdString(node.node1.name);
                 //<< ", " << node.node1.name << ", " << node.node1.layer_number << ", " << node.node2.name << ", " << node.node2.layer_number << ", ";
         }
     }
@@ -1635,22 +1657,28 @@ double PEXResistorModel::percentileOfResistance(const PEXResistor& in_res) {
 #include "PEXResistorModel.h"
 #include "PEXCapacitorModel.h"
 
+#include "ToyCAD/Src/toycadmodel.h"
+
 
 DtaoRenderSystem::DtaoRenderSystem(LveWindow *w)
     : lveWindow(w)
 {
     this->trans_info = {};
-    this->camera.setViewTarget(
-                glm::vec3(0.0f,0.0f,1.0f),
-                glm::vec3(0.0f, 0.0f, 0.0f),
-                glm::vec3(0.0f, 1.0f, 0.0f));
-    qDebug() << "\n$$$$$ DtaoRenderSystem()";
+    initCameraView();
+    qDebug() << "\n$$$$$ DtaoRenderSystem()";    
 }
 
 DtaoRenderSystem::~DtaoRenderSystem()
 {
     deleteSimpleRenderSystem();
     deleteLveDevice();
+}
+
+void DtaoRenderSystem::initCameraView(){
+    this->camera.setViewTarget(
+                glm::vec3(0.0f,0.0f,1.0f),
+                glm::vec3(0.0f, 0.0f, 0.0f),
+                glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 void DtaoRenderSystem::beginRenderPass(VkCommandBuffer command_buffer){
@@ -1689,32 +1717,52 @@ void DtaoRenderSystem::beginRenderPass(VkCommandBuffer command_buffer){
     m_devFuncs->vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 }
 
-void DtaoRenderSystem::translateLayerPosition(POS_MONITORING value){
+void DtaoRenderSystem::goNavi(POS_MONITORING value){
+    this->naviInfo = value;
+    isNavi = true;
+}
+
+void DtaoRenderSystem::translateLayerPosition(){
+    if(!isNavi) return ;
     for (auto& gameobject : this->gameObjects) {
         if (gameobject.model->getModelType() != MODEL_TYPE::MODEL_TYPE_AXIS) {
-            gameobject.transform.translation = {-value.x*trans_info.scale, -value.y*trans_info.scale, 0};
+            gameobject.transform.translation = {-naviInfo.x*trans_info.scale, -naviInfo.y*trans_info.scale, 0};
 
         }
     }
-    camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(value.zoom/cameraController.monitor.zoom,
-                                                               value.zoom/cameraController.monitor.zoom,
-                                                               value.zoom/cameraController.monitor.zoom));
+    camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(naviInfo.zoom/cameraController.monitor.zoom,
+                                                               naviInfo.zoom/cameraController.monitor.zoom,
+                                                               naviInfo.zoom/cameraController.monitor.zoom));
+
     glm::vec3 right {camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]};
-    camera.viewMatrix = glm::rotate(camera.getView(), (float)glm::radians(value.tilt-cameraController.monitor.tilt), right);
-    camera.viewMatrix = glm::rotate(camera.getView(), (float)glm::radians(value.rotation-cameraController.monitor.rotation), glm::vec3(0.0f, 0.0f, 1.0f));
+    camera.viewMatrix = glm::rotate(camera.getView(), (float)glm::radians(naviInfo.tilt-cameraController.monitor.tilt), right);
+
+
+    camera.viewMatrix = glm::rotate(camera.getView(), (float)glm::radians(naviInfo.rotation-cameraController.monitor.rotation), glm::vec3(0.0f, 0.0f, 1.0f));
+
+    isNavi = false;
 }
 
 void DtaoRenderSystem::emitMonitor(){
 
 
     glm::vec3 forward {camera.viewMatrix[0][2], camera.viewMatrix[1][2], camera.viewMatrix[2][2]};
+    glm::vec3 up {camera.viewMatrix[0][1], camera.viewMatrix[1][1], camera.viewMatrix[2][1]};
     double tilt = asin(forward.z/(sqrt(forward.x*forward.x +forward.y*forward.y+forward.z*forward.z)))*(180/3.141592653589793238463);
-    camera.decomposeView(camera.getView());
-    camera.rotation_d = glm::conjugate(camera.rotation_d);
+    double rotation;
+    //camera.decomposeView(camera.getView());
+    //camera.rotation_d = glm::conjugate(camera.rotation_d);
     // yaw / z
-    double siny_cosp = 2 * (camera.rotation_d.w * camera.rotation_d.z + camera.rotation_d.x * camera.rotation_d.y);
-    double cosy_cosp = 1 - 2 * (camera.rotation_d.y * camera.rotation_d.y + camera.rotation_d.z * camera.rotation_d.z);
-    double rotation = (double)atan2(siny_cosp, cosy_cosp)*(180/3.141592653589793238463);
+    //double siny_cosp = 2 * (camera.rotation_d.w * camera.rotation_d.z + camera.rotation_d.x * camera.rotation_d.y);
+    //double cosy_cosp = 1 - 2 * (camera.rotation_d.y * camera.rotation_d.y + camera.rotation_d.z * camera.rotation_d.z);
+    if(tilt > 89.5 || tilt < -89.5){
+        //rotation = (double)atan2(siny_cosp, cosy_cosp)*(180/3.141592653589793238463);
+        rotation = (double)atan2(up.x, up.y)*(180/3.141592653589793238463);
+    } else {
+        rotation = (double)atan2(-forward.x, -forward.y)*(180/3.141592653589793238463);
+    }
+
+
     cameraController.monitor.tilt = tilt;
     cameraController.monitor.rotation = rotation;
 
@@ -1737,6 +1785,11 @@ void DtaoRenderSystem::startNextFrame(){
     this->cameraController.onDemo(aspect, this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
 
     this->emitMonitor();
+
+    this->translateLayerPosition();
+
+
+
 
     VkCommandBuffer command_buffer = this->lveWindow->currentCommandBuffer();
     beginRenderPass(command_buffer);
@@ -1764,6 +1817,10 @@ void DtaoRenderSystem::initResources() {
 
     qDebug() << "\tDevice = " << this->lveDevice->device();
 
+
+    ToyCADModel* cad_model =
+            new ToyCADModel(*this->lveDevice, MODEL_TYPE_TOY_CAD);
+    (void)cad_model;
 }
 
 void DtaoRenderSystem::releaseResources() {
@@ -2208,11 +2265,45 @@ void KeyboardMovementController::moveCamera(
     if (camera_moving_flag.toggleDemensionXY) rotate_toggle_xy = -0.1f;
 
 
-    glm::vec3 right= glm::normalize(glm::vec3{camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]});
-    glm::vec3 up= glm::normalize(glm::vec3{camera.viewMatrix[0][1], camera.viewMatrix[1][1], camera.viewMatrix[2][1]});
-    glm::vec3 forward= glm::normalize(glm::vec3{camera.viewMatrix[0][2], camera.viewMatrix[1][2], camera.viewMatrix[2][2]});
+    right= glm::normalize(glm::vec3{camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]});
+    forward= glm::normalize(glm::vec3{camera.viewMatrix[0][2], camera.viewMatrix[1][2], camera.viewMatrix[2][2]});
+    up= glm::normalize(glm::vec3{camera.viewMatrix[0][1], camera.viewMatrix[1][1], camera.viewMatrix[2][1]});
 
     glm::vec3 v{ glm::normalize(glm::cross(right,glm::vec3{0,0,1})) };
+
+
+    if (glm::dot(rotate_lr, rotate_lr) > std::numeric_limits<float>::epsilon()) {
+        camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_lr), glm::vec3(0.0f, 0.0f, 1.0f));
+    }
+
+    if (glm::dot(rotate_ud, rotate_ud) > std::numeric_limits<float>::epsilon()) {
+        if(glm::rotate(camera.getView(), glm::radians(rotate_ud*0.5f),right)[2][1] >= 0){
+            camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_ud), right);
+        }
+    }
+
+    if (glm::dot(scale, scale) > std::numeric_limits<float>::epsilon()) {
+        camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(scale, scale, scale));
+    }
+
+    glm::vec3 moveDir{ 0.f };
+    camera.decomposeView(camera.getView());
+
+    if (camera_moving_flag.moveRight) moveDir += right;
+    if (camera_moving_flag.moveLeft)  moveDir -= right;
+    if (camera_moving_flag.moveUp)  moveDir -= v;
+    if (camera_moving_flag.moveDown)  moveDir += v;
+
+
+
+    if (glm::dot(moveDir, moveDir) > std::numeric_limits<float>::epsilon()) {
+        for (auto& gameobject : gameObjects) {
+            if (gameobject.model->getModelType() != MODEL_TYPE::MODEL_TYPE_AXIS) {
+                gameobject.transform.translation += moveDir/(float)this->monitor.zoom/(float)lvewindow->swapChainImageSize().height()*obj_scale;
+            }
+        }
+    }
+
 
     if (glm::dot(rotate_toggle, rotate_toggle) > std::numeric_limits<float>::epsilon()) {
 
@@ -2268,35 +2359,7 @@ void KeyboardMovementController::moveCamera(
 
     }
 
-    if (glm::dot(rotate_lr, rotate_lr) > std::numeric_limits<float>::epsilon()) {
-        camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_lr), glm::vec3(0.0f, 0.0f, 1.0f));
-    }
 
-    if (glm::dot(rotate_ud, rotate_ud) > std::numeric_limits<float>::epsilon()) {
-        camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_ud), right);
-    }
-
-    if (glm::dot(scale, scale) > std::numeric_limits<float>::epsilon()) {
-        camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(scale, scale, scale));
-    }
-
-    glm::vec3 moveDir{ 0.f };
-    camera.decomposeView(camera.getView());
-
-    if (camera_moving_flag.moveRight) moveDir += right;
-    if (camera_moving_flag.moveLeft)  moveDir -= right;
-    if (camera_moving_flag.moveUp)  moveDir -= v;
-    if (camera_moving_flag.moveDown)  moveDir += v;
-
-
-
-    if (glm::dot(moveDir, moveDir) > std::numeric_limits<float>::epsilon()) {
-        for (auto& gameobject : gameObjects) {
-            if (gameobject.model->getModelType() != MODEL_TYPE::MODEL_TYPE_AXIS) {
-                gameobject.transform.translation += moveDir/(float)this->monitor.zoom/(float)lvewindow->swapChainImageSize().height()*obj_scale;
-            }
-        }
-    }
 
 }
 
@@ -2312,9 +2375,10 @@ void KeyboardMovementController::moveCameraMouse(LveCamera& camera, float render
         rotate_ud = mouse_position.currentPosition.y() - ypos_prev;
 
         //glm::vec3 direction{ camera.viewMatrix[0][2], camera.viewMatrix[1][2], 0 };
-        glm::vec3 right{ camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0] };
-        glm::vec3 up{ camera.viewMatrix[0][1], camera.viewMatrix[1][1], camera.viewMatrix[2][1] };
-        glm::vec3 forward{ camera.viewMatrix[0][2], camera.viewMatrix[1][2], camera.viewMatrix[2][2] };
+
+        right={camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]};
+
+
 
 
         if (glm::dot(rotate_ud, rotate_ud) > std::numeric_limits<float>::epsilon()) {
@@ -2337,8 +2401,8 @@ void KeyboardMovementController::moveCameraMouse(LveCamera& camera, float render
         float movement_lr = mouse_position.currentPosition.x() - xpos_prev;
         float movement_ud = mouse_position.currentPosition.y() - ypos_prev;
 
-        glm::vec3 right = glm::normalize(glm::vec3{camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]});
-        glm::vec3 forward{ glm::normalize(glm::cross(right,glm::vec3{0,0,1})) };
+        right = glm::normalize(glm::vec3{camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]});
+        forward={ glm::normalize(glm::cross(right,glm::vec3{0,0,1})) };
 
         moveDir += right * (movement_lr);
         moveDir += forward * (movement_ud);
@@ -2357,7 +2421,13 @@ void KeyboardMovementController::moveCameraMouse(LveCamera& camera, float render
     }
 
     if (mouse_position.scroll.y() != 0) {
-        float scale_mouse = 1.0f + 0.1f * (mouse_position.scroll.y() / 120);
+        float scale_mouse;// = 1.0f + 0.1f * (mouse_position.scroll.y() / 120);
+        if(mouse_position.scroll.y()>0){
+            scale_mouse = 1.0f + 0.1f;
+        } else {
+            scale_mouse = 1.0f - 0.1f;
+        }
+
         camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(scale_mouse, scale_mouse, scale_mouse));
         mouse_position.scroll.setY(0);
     }
@@ -2439,23 +2509,20 @@ void KeyboardMovementController::PEXSetting(std::shared_ptr<PEXResistorModel>& _
     }
 }
 
-//void KeyboardMovementController::translateLayerPosition(std::vector<LveGameObject>& gameObjects){
-//
-//}
 
 void KeyboardMovementController::triggerDemo() {
     camera_moving_flag.demoTrigger = true;
 };
 
-void KeyboardMovementController::onDemo(float dt, LveCamera& camera, float render_scale, std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow) {
-    if (camera_moving_flag.demoTrigger) {
-        float scale = 0.0f;
+void KeyboardMovementController::onDemo(float dt, LveCamera &camera, float render_scale, std::vector<LveGameObject> &gameObjects, LveWindow *lvewindow){
+    if (camera_moving_flag.demoTrigger){
         float rotate_lr = 0.0f;
         float rotate_ud = 0.0f;
         float rotate_toggle = 0.0f;
         float rotate_toggle_xy = 0.0f;
         float obj_scale = 2.0f / render_scale;
         demoTime = demoTime + 1;
+
 
         //if (camera_moving_flag.moveForward) scale = 1.0f + 0.01f * obj_scale;
         //else if (camera_moving_flag.moveBackward) scale = 1.0f - 0.01f * obj_scale;
@@ -3116,7 +3183,8 @@ void LveModel::createBuffers() {
         createIndexBuffers(this->indices_edge, this->indexBufferForEdge, this->indexBufferMemoryForEdge);
     }
     else if (this->model_type == MODEL_TYPE::MODEL_TYPE_PEX_CAPACITOR) {
-        createVertexBuffers(vertices, vertexBuffer, vertexBufferMemory);
+        createVertexBuffersCapacitor(vertices_capacitor, vertexBuffer, vertexBufferMemory);
+        createIndexBuffers(this->indices_face, this->indexBufferForFace, this->indexBufferMemoryForFace);
         createIndexBuffers(this->indices_edge, this->indexBufferForEdge, this->indexBufferMemoryForEdge);
     }
 }
@@ -3150,6 +3218,9 @@ void LveModel::destroyBuffers() {
     else if (this->model_type == MODEL_TYPE::MODEL_TYPE_PEX_CAPACITOR) {
         vkDestroyBuffer(lveDevice.device(), vertexBuffer, nullptr);
         vkFreeMemory(lveDevice.device(), vertexBufferMemory, nullptr);
+        vkDestroyBuffer(lveDevice.device(), indexBufferForFace, nullptr);
+        vkFreeMemory(lveDevice.device(), indexBufferMemoryForFace, nullptr);
+
         vkDestroyBuffer(lveDevice.device(), indexBufferForEdge, nullptr);
         vkFreeMemory(lveDevice.device(), indexBufferMemoryForEdge, nullptr);
     }
@@ -3167,9 +3238,9 @@ void LveModel::destroyBuffers() {
 
 }
 void LveModel::createVertexBuffers(
-        const std::vector<Vertex>& vertices,
-        VkBuffer& buffer,
-        VkDeviceMemory& memory) {
+    const std::vector<Vertex>& vertices,
+    VkBuffer& buffer,
+    VkDeviceMemory& memory) {
     vertexCount = static_cast<uint32_t>(vertices.size());
     assert(vertexCount >= 3 && "Vertex count must be at least 3");
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertexCount;
@@ -3177,11 +3248,11 @@ void LveModel::createVertexBuffers(
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     lveDevice.createBuffer(
-                bufferSize,
-                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                stagingBuffer,
-                stagingBufferMemory);
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBuffer,
+        stagingBufferMemory);
 
     void* data;
     vkMapMemory(lveDevice.device(), stagingBufferMemory, 0, bufferSize, 0, &data);
@@ -3189,11 +3260,11 @@ void LveModel::createVertexBuffers(
     vkUnmapMemory(lveDevice.device(), stagingBufferMemory);
 
     lveDevice.createBuffer(
-                bufferSize,
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                buffer,
-                memory);
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        buffer,
+        memory);
 
     lveDevice.copyBuffer(stagingBuffer, buffer, bufferSize);
 
@@ -3202,9 +3273,9 @@ void LveModel::createVertexBuffers(
 }
 
 void LveModel::createVertexBuffersResistor(
-        const std::vector<VertexResistor>& vertices,
-        VkBuffer& buffer,
-        VkDeviceMemory& memory) {
+    const std::vector<VertexResistor>& vertices,
+    VkBuffer& buffer,
+    VkDeviceMemory& memory) {
     vertexCount = static_cast<uint32_t>(vertices.size());
     assert(vertexCount >= 3 && "Vertex count must be at least 3");
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertexCount;
@@ -3212,11 +3283,11 @@ void LveModel::createVertexBuffersResistor(
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     lveDevice.createBuffer(
-                bufferSize,
-                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                stagingBuffer,
-                stagingBufferMemory);
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBuffer,
+        stagingBufferMemory);
 
     void* data;
     vkMapMemory(lveDevice.device(), stagingBufferMemory, 0, bufferSize, 0, &data);
@@ -3224,11 +3295,46 @@ void LveModel::createVertexBuffersResistor(
     vkUnmapMemory(lveDevice.device(), stagingBufferMemory);
 
     lveDevice.createBuffer(
-                bufferSize,
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                buffer,
-                memory);
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        buffer,
+        memory);
+
+    lveDevice.copyBuffer(stagingBuffer, buffer, bufferSize);
+
+    vkDestroyBuffer(lveDevice.device(), stagingBuffer, nullptr);
+    vkFreeMemory(lveDevice.device(), stagingBufferMemory, nullptr);
+}
+
+void LveModel::createVertexBuffersCapacitor(
+    const std::vector<VertexCapacitor>& vertices,
+    VkBuffer& buffer,
+    VkDeviceMemory& memory) {
+    vertexCount = static_cast<uint32_t>(vertices.size());
+    assert(vertexCount >= 3 && "Vertex count must be at least 3");
+    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertexCount;
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    lveDevice.createBuffer(
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBuffer,
+        stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(lveDevice.device(), stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, vertices.data(), (size_t)bufferSize);
+    vkUnmapMemory(lveDevice.device(), stagingBufferMemory);
+
+    lveDevice.createBuffer(
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        buffer,
+        memory);
 
     lveDevice.copyBuffer(stagingBuffer, buffer, bufferSize);
 
@@ -3237,21 +3343,23 @@ void LveModel::createVertexBuffersResistor(
 }
 
 
+
+
 void LveModel::createIndexBuffers(
-        const std::vector<uint32_t>& indices,
-        VkBuffer& buffer,
-        VkDeviceMemory& memory) {
-    assert( !indices.empty() && "Index size can't be zero");
+    const std::vector<uint32_t>& indices,
+    VkBuffer& buffer,
+    VkDeviceMemory& memory) {
+    assert(!indices.empty() && "Index size can't be zero");
     VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     lveDevice.createBuffer(
-                bufferSize,
-                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                stagingBuffer,
-                stagingBufferMemory);
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBuffer,
+        stagingBufferMemory);
 
     void* data;
     vkMapMemory(lveDevice.device(), stagingBufferMemory, 0, bufferSize, 0, &data);
@@ -3259,11 +3367,11 @@ void LveModel::createIndexBuffers(
     vkUnmapMemory(lveDevice.device(), stagingBufferMemory);
 
     lveDevice.createBuffer(
-                bufferSize,
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                buffer,
-                memory);
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        buffer,
+        memory);
 
     lveDevice.copyBuffer(stagingBuffer, buffer, bufferSize);
 
@@ -3280,7 +3388,7 @@ void LveModel::drawForEdge(VkCommandBuffer commandBuffer) {
 }
 
 void LveModel::bindVertexBuffer(VkCommandBuffer commandBuffer) {
-    VkBuffer buffers[] = {vertexBuffer};
+    VkBuffer buffers[] = { vertexBuffer };
     VkDeviceSize offsets[] = { 0 };
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
 }
@@ -3353,6 +3461,30 @@ std::vector<VkVertexInputAttributeDescription> LveModel::VertexResistor::getAttr
     return attributeDescriptions;
 }
 
+std::vector<VkVertexInputBindingDescription> LveModel::VertexCapacitor::getBindingDescriptions() {
+    std::vector<VkVertexInputBindingDescription> bindingDescriptions(1);
+    bindingDescriptions[0].binding = 0;
+    bindingDescriptions[0].stride = sizeof(VertexCapacitor);
+    bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    return bindingDescriptions;
+}
+
+std::vector<VkVertexInputAttributeDescription> LveModel::VertexCapacitor::getAttributeDescriptions() {
+    std::vector<VkVertexInputAttributeDescription> attributeDescriptions(2);
+    attributeDescriptions[0].binding = 0;
+    attributeDescriptions[0].location = 0;
+    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescriptions[0].offset = offsetof(VertexCapacitor, position);
+
+    attributeDescriptions[1].binding = 0;
+    attributeDescriptions[1].location = 1;
+    attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[1].offset = offsetof(VertexCapacitor, color);
+    return attributeDescriptions;
+}
+
+
+
 
 void LveModel::makeAxisData(const float axis_length) {
     this->vertices.clear();
@@ -3394,39 +3526,39 @@ std::map<string, LveModel::LayerProperty> LveModel::getLayer() {
     return layerList;
 }
 
-void LveModel::changeLayerColor(string layernumber, glm::vec3 rgb){
-    if(layerList.count(layernumber) != 0 ){
+void LveModel::changeLayerColor(string layernumber, glm::vec3 rgb) {
+    if (layerList.count(layernumber) != 0) {
         layerList[layernumber].color = rgb;
     }
 
 }
 
-void LveModel::changeLayerOpacity(string layernumber, float opacity){
-    if(layerList.count(layernumber) != 0 ){
+void LveModel::changeLayerOpacity(string layernumber, float opacity) {
+    if (layerList.count(layernumber) != 0) {
         layerList[layernumber].opacity = opacity;
     }
 
 }
 
-void LveModel::changeLayerVisiblity(string layernumber, bool visiblity){
+void LveModel::changeLayerVisiblity(string layernumber, bool visiblity) {
     //qDebug() << QString::fromStdString(layernumber) ;
 
-    if(layerList.count(layernumber) != 0 ){
+    if (layerList.count(layernumber) != 0) {
         layerList[layernumber].visiblity = visiblity;
     }
 
 }
 
-void LveModel::demoVisiblityOff(){
-    for(auto const& [key, val] : layerList){
+void LveModel::demoVisiblityOff() {
+    for (auto const& [key, val] : layerList) {
         layerList[key].visiblity = false;
     }
     layerList["4"].visiblity = true;
 
 }
 
-void LveModel::demoVisiblityOn(std::vector<string> layernumbers){
-    for(auto layer : layernumbers){
+void LveModel::demoVisiblityOn(std::vector<string> layernumbers) {
+    for (auto layer : layernumbers) {
         layerList[layer].visiblity = true;
     }
 }
@@ -3795,6 +3927,9 @@ SimpleRenderSystem::SimpleRenderSystem(LveDevice& device, VkRenderPass renderPas
     createPipelineForPEXResistorEdge(renderPass);
     createPipelineLayout(this->pipelineLayoutForPEXCapacitor);
     createPipelineForPEXCapacitor(renderPass);
+    createPipelineLayout(this->pipelineLayoutForPEXCapacitorEdge);
+    createPipelineForPEXCapacitorEdge(renderPass);
+
 }
 
 SimpleRenderSystem::~SimpleRenderSystem() {
@@ -3895,39 +4030,40 @@ void SimpleRenderSystem::createPipelineForPEXResistorEdge(VkRenderPass renderPas
         pipelineConfigResistorEdge, LveModel::VertexResistor::getBindingDescriptions(), LveModel::VertexResistor::getAttributeDescriptions());
 }
 
-void SimpleRenderSystem::createPipelineForPEXCapacitorLine(VkRenderPass renderPass) {
-    assert(pipelineLayoutForPEXResistor != nullptr && "Cannot create pipeline before pipeline layout");
-    PipelineConfigInfo pipelineConfigCapacitorLine{};
-    LvePipeline::defaultPipelineConfigInfo(pipelineConfigCapacitorLine);
-    pipelineConfigCapacitorLine.renderPass = renderPass;
-    pipelineConfigCapacitorLine.pipelineLayout = pipelineLayoutForPEXCapacitorLine;
-    pipelineConfigCapacitorLine.colorBlendAttachment.blendEnable = VK_TRUE;
-
-    pipelineConfigCapacitorLine.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-    pipelineConfigCapacitorLine.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-
-    this->lvePipelineForPEXCapacitorLine = std::make_unique<LvePipeline>(
-        lveDevice,
-        "Rendering/shaders/simple_shader.vert_pex.spv",
-        "Rendering/shaders/simple_shader.frag_pex.spv",
-        pipelineConfigCapacitorLine, LveModel::Vertex::getBindingDescriptions(), LveModel::Vertex::getAttributeDescriptions());
-}
-
 void SimpleRenderSystem::createPipelineForPEXCapacitor(VkRenderPass renderPass) {
     assert(pipelineLayoutForPEXCapacitor != nullptr && "Cannot create pipeline before pipeline layout");
     PipelineConfigInfo pipelineConfigCapacitor{};
     LvePipeline::defaultPipelineConfigInfo(pipelineConfigCapacitor);
     pipelineConfigCapacitor.renderPass = renderPass;
     pipelineConfigCapacitor.pipelineLayout = pipelineLayoutForPEXCapacitor;
+    pipelineConfigCapacitor.colorBlendAttachment.blendEnable = VK_TRUE;
 
-    pipelineConfigCapacitor.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+    pipelineConfigCapacitor.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    pipelineConfigCapacitor.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 
     this->lvePipelineForPEXCapacitor = std::make_unique<LvePipeline>(
         lveDevice,
         "Rendering/shaders/simple_shader.vert_pex.spv",
         "Rendering/shaders/simple_shader.frag_pex.spv",
-        pipelineConfigCapacitor, LveModel::Vertex::getBindingDescriptions(), LveModel::Vertex::getAttributeDescriptions());
+        pipelineConfigCapacitor, LveModel::VertexCapacitor::getBindingDescriptions(), LveModel::VertexCapacitor::getAttributeDescriptions());
 }
+
+void SimpleRenderSystem::createPipelineForPEXCapacitorEdge(VkRenderPass renderPass) {
+    assert(pipelineLayoutForPEXCapacitorEdge != nullptr && "Cannot create pipeline before pipeline layout");
+    PipelineConfigInfo pipelineConfigCapacitorEdge{};
+    LvePipeline::defaultPipelineConfigInfo(pipelineConfigCapacitorEdge);
+    pipelineConfigCapacitorEdge.renderPass = renderPass;
+    pipelineConfigCapacitorEdge.pipelineLayout = pipelineLayoutForPEXCapacitorEdge;
+
+    pipelineConfigCapacitorEdge.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+
+    this->lvePipelineForPEXCapacitorEdge = std::make_unique<LvePipeline>(
+        lveDevice,
+        "Rendering/shaders/simple_shader.vert_pex.spv",
+        "Rendering/shaders/simple_shader.frag_pex.spv",
+        pipelineConfigCapacitorEdge, LveModel::VertexCapacitor::getBindingDescriptions(), LveModel::VertexCapacitor::getAttributeDescriptions());
+}
+
 
 void SimpleRenderSystem::renderGameObjects(
     VkCommandBuffer commandBuffer,
@@ -4007,7 +4143,15 @@ void SimpleRenderSystem::renderGameObjects(
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                 sizeof(SimplePushConstantData), &push);
             obj.model->bindVertexBuffer(commandBuffer);
+            obj.model->bindIndexBufferForFace(commandBuffer);
+            obj.model->drawForFace(commandBuffer);
             obj.model->bindIndexBufferForEdge(commandBuffer);
+            lvePipelineForPEXCapacitorEdge->bind(commandBuffer);
+            vkCmdPushConstants(
+                commandBuffer, pipelineLayoutForPEXCapacitorEdge,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                sizeof(SimplePushConstantData), &push);
+
             obj.model->drawForEdge(commandBuffer);
             //*/
         }
@@ -4116,6 +4260,105 @@ vector<string> T2D::string_split(string input, char delimiter) {
 
     return answer;
 }
+!@hash[]!@file[]./ToyCAD/Src/toycadmodel.cpp!@hash[]!@code[]#include "toycadmodel.h"
+
+#include <iostream>
+#include <vector>
+#include <sstream>
+#include <string>
+
+#include <QFile>
+
+using namespace std;
+
+ToyCADModel::ToyCADModel(LveDevice& device, MODEL_TYPE model_type)
+    : LveModel(device, model_type){
+    QString test_input("ToyCAD/Data/toy_cad_test_data.csv");
+    num_points_for_circle = 20;
+    this->makeRenderingData(test_input);
+    //this->createBuffers();
+}
+
+ToyCADModel::~ToyCADModel(){
+
+}
+
+void ToyCADModel::makeRenderingData(const QString& file_path){
+       this->loadData(file_path.toStdString());
+
+}
+
+
+
+void ToyCADModel::makeVertices(){
+
+}
+
+void ToyCADModel::makeIndices(){
+
+}
+
+void ToyCADModel::makeCubeVertices(){}
+void ToyCADModel::makeCylinderVertices(){}
+void ToyCADModel::makeIndicesForFace(){}
+
+void ToyCADModel::loadData(const string& file_path){
+    if (!QFile::exists(file_path.c_str())) {
+        cerr << "File is not exist @ ToyCADModel - " << file_path << endl;
+        return;
+    }
+
+    ifstream readfile(file_path);
+    string line;
+    vector<string> tokens;
+    string token;
+
+    toycad_data cur_data;
+
+    getline(readfile, line); //head line
+    while(getline(readfile, line)){
+        tokens.clear();
+        stringstream ss(line);
+        while( getline(ss, token, ',')){
+            tokens.push_back(token);
+        }
+
+        cur_data.type = tokens[TOYCADINFO_IDX_TYPE];
+        cur_data.layer = tokens[TOYCADINFO_IDX_LAYER];
+        cur_data.minx = stof(tokens[TOYCADINFO_IDX_XMIN]);
+        cur_data.miny = stof(tokens[TOYCADINFO_IDX_YMIN]);
+        cur_data.maxx = stof(tokens[TOYCADINFO_IDX_XMAX]);
+        cur_data.maxy = stof(tokens[TOYCADINFO_IDX_YMAX]);
+        cur_data.minz = stof(tokens[TOYCADINFO_IDX_ZMIN]);
+        cur_data.maxz = stof(tokens[TOYCADINFO_IDX_ZMAX]);
+        cur_data.slopex = stof(tokens[TOYCADINFO_IDX_XSLOPE]);
+        cur_data.slopey = stof(tokens[TOYCADINFO_IDX_YSLOPE]);
+
+        this->cad_datas.push_back(cur_data);
+
+        //qDebug() << "Cur Line : "<< line.c_str();
+        //for(auto cur_token : tokens){qDebug() << cur_token.c_str();}
+    }
+
+
+    printAllData();
+}
+
+void ToyCADModel::printAllData(){
+    qDebug() << "ToyCADModel :: printAllData()";
+    for(auto cur : this->cad_datas){
+        qDebug() << cur.type.c_str();
+        qDebug() << cur.layer.c_str();
+        qDebug() << cur.minx;
+        qDebug() << cur.miny;
+        qDebug() << cur.maxx;
+        qDebug() << cur.maxy;
+        qDebug() << cur.minz;
+        qDebug() << cur.maxz;
+        qDebug() << cur.slopex;
+        qDebug() << cur.slopey;;
+    }
+}
 !@hash[]!@file[]./all_data.cpp!@hash[]!@code[]#include "all_data.h"
 #include <QString>
 #include <QTextStream>
@@ -4172,6 +4415,7 @@ void all_data::receiveSelectFileName(QString file_name)
 #include "ui_dev_dialog.h"
 #include <QDebug>
 
+
 DevDialog::DevDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::DevDialog)
@@ -4213,6 +4457,12 @@ void DevDialog::on_checkBox_pos_stateChanged(int arg1)
             *is_pos_checked = false;
         }
     }
+}
+
+void DevDialog::on_pushButton_initCamera_clicked()
+{
+    DtaoRenderSystem* renderer = getRenderer();
+    renderer->initCameraView();
 }
 !@hash[]!@file[]./filedb.cpp!@hash[]!@code[]#include "filedb.h"
 #include <QFile>
@@ -4263,8 +4513,7 @@ void FileDb::openFile(QString fileNameInfo,QVector<QList<float>> &vecList,
     return;
 
 }
-!@hash[]!@file[]./formhier.cpp!@hash[]!@code[]//#include "/Rendering/Src/LayoutPEXData.h"
-#include "formhier.h"
+!@hash[]!@file[]./formhier.cpp!@hash[]!@code[]#include "formhier.h"
 #include "ui_formhier.h"
 #include "mainwindow.h"
 
@@ -4304,11 +4553,6 @@ void FormHier::createHierarchyTree(T2D *t2d){
 
         m_buf_tree_item[m_level - 1]->addChild(m_child_tree);
     }
-
-//    PEXResistorDataManager::getResistorsOfNode();
-//    for (auto& loop : resistors_of_node[0]){
-//        qDebug() << "loop test XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-//    }
 }
 
 void FormHier::on_hierarchy_tree_itemDoubleClicked(QTreeWidgetItem *item, int column)
@@ -4420,7 +4664,7 @@ FormInfo::FormInfo(QWidget *parent) :
 {
     ui->setupUi(this);    
 
-    //º˝¿⁄ ¡¶æ‡ º≥¡§
+    //Ïà´Ïûê Ï†úÏïΩ ÏÑ§Ï†ï
     QDoubleValidator *validator_pos = new QDoubleValidator(-9999.0,9999.0,4,this);
     QIntValidator *validator_tilt = new QIntValidator(-90,90,this);
     QIntValidator *validator_rot = new QIntValidator(0,359,this);
@@ -4433,7 +4677,7 @@ FormInfo::FormInfo(QWidget *parent) :
     ui->zoom        ->setValidator(validator_zoom);
 
     this->setEnabled(false);
-    //edit ∞™ √ ±‚»≠
+    //edit Í∞í Ï¥àÍ∏∞Ìôî
     setTextPosTotal(&TEMP_POS);
 }
 
@@ -4479,7 +4723,7 @@ void FormInfo::receiveFile(T2D &t2d)
 void FormInfo::receivePointPos(POS_MONITORING &pos)
 {
     this->POS = &pos;
-    TEMP_POS = pos;         //TEMP_POS ø™«“ : enter ∏¶ ¥©∏£±‚ ¿¸±Ó¡ˆ ∞™¿ª ∞Æ∞Ì ¿÷¥¬ ¿˙¿Âº“
+    TEMP_POS = pos;         //TEMP_POS Ïó≠Ìï† : enter Î•º ÎàÑÎ•¥Í∏∞ Ï†ÑÍπåÏßÄ Í∞íÏùÑ Í∞ñÍ≥† ÏûàÎäî Ï†ÄÏû•ÏÜå
 }
 
 void FormInfo::changePos()
@@ -4491,7 +4735,7 @@ void FormInfo::changePos()
     }
 }
 
-void FormInfo::addItemToPosList(POS_SET *position_item)    //POS_STACK ø° position ≥÷±‚
+void FormInfo::addItemToPosList(POS_SET *position_item)    //POS_STACK Ïóê position ÎÑ£Í∏∞
 {
     POS_STACK.push_back(*position_item);
     item_data_i = POS_STACK.size() - 1 ;
@@ -4563,7 +4807,7 @@ void FormInfo::convertTextToValue(double *point, const QString &arg1)
     inputValueToTemp(point, double_arg);
 }
 
-void FormInfo::inputPos()       //¡˜¡¢ ¿‘∑¬«— ∞™¿ª POS ±∏¡∂√ºø° ≥÷¿Ω
+void FormInfo::inputPos()       //ÏßÅÏ†ë ÏûÖÎ†•Ìïú Í∞íÏùÑ POS Íµ¨Ï°∞Ï≤¥Ïóê ÎÑ£Ïùå
 {
     if(isFileOpen)
     {
@@ -4575,20 +4819,20 @@ void FormInfo::inputPos()       //¡˜¡¢ ¿‘∑¬«— ∞™¿ª POS ±∏¡∂√ºø° ≥÷¿Ω
     }
 }
 
-//¿‘∑¬¿Ã µÈæÓø‘¿ª ∂ß
+//ÏûÖÎ†•Ïù¥ Îì§Ïñ¥ÏôîÏùÑ Îïå
 void FormInfo::on_pos_x_textEdited(const QString &arg1)         {convertTextToValue(&TEMP_POS.x,arg1);}
 void FormInfo::on_pos_y_textEdited(const QString &arg1)         {convertTextToValue(&TEMP_POS.y,arg1);}
 void FormInfo::on_pos_z_textEdited(const QString &arg1)         {convertTextToValue(&TEMP_POS.z,arg1);}
 void FormInfo::on_ang_tilt_textEdited(const QString &arg1)      {convertTextToValue(&TEMP_POS.tilt,arg1);}
 void FormInfo::on_ang_rotation_textEdited(const QString &arg1)  {convertTextToValue(&TEMP_POS.rotation,arg1);}
 void FormInfo::on_zoom_textEdited(const QString &arg1)
-{   //zoom ¿∫ 100% ¿œ ∞ÊøÏ 1 ∞™¿ª ≥÷æÓæﬂ «œ±‚ ∂ßπÆø° µ˚∑Œ √≥∏Æ
+{   //zoom ÏùÄ 100% Ïùº Í≤ΩÏö∞ 1 Í∞íÏùÑ ÎÑ£Ïñ¥Ïïº ÌïòÍ∏∞ ÎïåÎ¨∏Ïóê Îî∞Î°ú Ï≤òÎ¶¨
     double double_arg = arg1.toDouble();
     double_arg = double_arg/100;
     inputValueToTemp(&TEMP_POS.zoom,double_arg);
 }
 
-//enter ∞° ¥≠∏Æ∞≈≥™ focus ∏¶ ¿“¿ª ∂ß TEMP_POS ø° ¿÷¥¬ ∞™¿ª √‚∑¬«‘
+//enter Í∞Ä ÎàåÎ¶¨Í±∞ÎÇò focus Î•º ÏûÉÏùÑ Îïå TEMP_POS Ïóê ÏûàÎäî Í∞íÏùÑ Ï∂úÎ†•Ìï®
 void FormInfo::on_pos_x_editingFinished()       {setTextTrim(ui->pos_x, &TEMP_POS.x, 1, "");}
 void FormInfo::on_pos_y_editingFinished()       {setTextTrim(ui->pos_y, &TEMP_POS.y, 1, "");}
 void FormInfo::on_pos_z_editingFinished()       {setTextTrim(ui->pos_z, &TEMP_POS.z, 1, "");}
@@ -4596,7 +4840,7 @@ void FormInfo::on_ang_tilt_editingFinished()    {setTextTrim(ui->ang_tilt, &TEMP
 void FormInfo::on_ang_rotation_editingFinished(){setTextTrim(ui->ang_rotation, &TEMP_POS.rotation, 1, "");}
 void FormInfo::on_zoom_editingFinished()        {setTextTrim(ui->zoom, &TEMP_POS.zoom, 100, "%");}
 
-//enter ∏¶ ¥≠∑∂¿ª ∂ß TEMP_POS ø° ¿÷¥¬ ∞™¿ª POS ø° ≥÷∞Ì List ∏¶ ∏∏µÎ
+//enter Î•º ÎàåÎ†ÄÏùÑ Îïå TEMP_POS Ïóê ÏûàÎäî Í∞íÏùÑ POS Ïóê ÎÑ£Í≥† List Î•º ÎßåÎì¨
 void FormInfo::on_pos_x_returnPressed()         {inputPos();}
 void FormInfo::on_pos_y_returnPressed()         {inputPos();}
 void FormInfo::on_pos_z_returnPressed()         {inputPos();}
@@ -4607,8 +4851,11 @@ void FormInfo::on_zoom_returnPressed()          {inputPos();}
 
 void FormInfo::on_listWidget_currentRowChanged(int currentRow)
 {
-    current_item = currentRow;
-    sendStatusBarMsg(makePosText());
+    if(isDeleting == false)
+    {
+        current_item = currentRow;
+        sendStatusBarMsg(makePosText());
+    }
 }
 
 void FormInfo::on_pushButton_go_clicked()
@@ -4624,23 +4871,33 @@ void FormInfo::on_pushButton_go_clicked()
 
 void FormInfo::on_pushButton_del_clicked()
 {
+    isDeleting = true;
     if(current_item != -1)
     {
-        make_status_bar_msg = false;        //ªË¡¶ ∞˙¡§ø°º≠ msg ∫∏≥ª¡ˆ æ µµ∑œ πÊ¡ˆ : segment fault error πﬂª˝
+//        qDebug() << "    all item";
+//        for (int i = 0; i < ui->listWidget->count(); i++)
+//        {
+//            qDebug() << "a : " << i << "item name : "<< ui->listWidget->item(i)->text() << "number" << ui->listWidget->item(i)->data(Qt::UserRole).toInt() ;
+//        }
+        make_status_bar_msg = false;        //ÏÇ≠Ï†ú Í≥ºÏ†ïÏóêÏÑú msg Î≥¥ÎÇ¥ÏßÄ ÏïäÎèÑÎ°ù Î∞©ÏßÄ : segment fault error Î∞úÏÉù
+
         for (auto item : selected_item)
         {
-            ui->listWidget->takeItem(ui->listWidget->row(item));
+            int i = ui->listWidget->row(item);
+            ui->listWidget->takeItem(i);
         }
-        make_status_bar_msg = true;         //msg ∫∏≥ª¥¬ ∞Õ ø¯∫π
-        current_item = -1;                  //msg ø° "" ≥÷¿Ω
-        sendStatusBarMsg(makePosText());                 //msg √‚∑¬
+
+        make_status_bar_msg = true;         //msg Î≥¥ÎÇ¥Îäî Í≤É ÏõêÎ≥µ
+        isDeleting = false;
+        QString msg = "Deleted Items";
+        sendStatusBarMsg(msg);                 //msg Ï∂úÎ†•
     }
 }
 
 void FormInfo::on_listWidget_itemChanged(QListWidgetItem *item)
 {
-    if(current_item != -1)
-    {        
+    if(isDeleting == false)
+    {
         POS_STACK[item->data(Qt::UserRole).toInt()].name = item->text().toStdString();
         sendStatusBarMsg(makePosText());
     }
@@ -4649,11 +4906,15 @@ void FormInfo::on_listWidget_itemChanged(QListWidgetItem *item)
 
 void FormInfo::on_listWidget_itemSelectionChanged()
 {
-    selected_item = ui->listWidget->selectedItems();
-    int sel_item = selected_item.size();
-    if(sel_item > 1)
+    if(isDeleting == false)
     {
-        sendStatusBarMsg("selected " + QString::number(sel_item) + " items");
+        selected_item = ui->listWidget->selectedItems();
+        int sel_item = selected_item.size();
+
+        if(sel_item > 1)
+        {
+            sendStatusBarMsg("selected " + QString::number(sel_item) + " items");
+        }
     }
 }
 !@hash[]!@file[]./formlayer.cpp!@hash[]!@code[]#include "formlayer.h"
@@ -4687,12 +4948,12 @@ void FormLayer::ReceiveLayerInformation(T2D &t2d)
 
 void FormLayer::MakeLayerInformationTalbe()
 {
-    // QTableWidget ??? ????
+    // QTableWidget ÌÅ¨Í∏∞ ÏÑ§Ï†ï
     ui->tableWidget->setColumnCount(table_default_column);
     ui->tableWidget->setRowCount(t2d_layer_information->LayoutData10by10.size());
     ui->tableWidget->setColumnWidth(5,80);
 
-    // Table a????
+    // Table Ï±ÑÏö∞Í∏∞
     for (int i=1; i < t2d_layer_information->LayoutData10by10.size() ; i++)
     {
         MakeTableWidgetItemForText(i);
@@ -4702,7 +4963,7 @@ void FormLayer::MakeLayerInformationTalbe()
     }
     MakeHeaderCheckBoxAndSlider();
 
-    // Table Edit ????, ???? ???? ????
+    // Table Edit Í∏àÏßÄ, Îã§Ï§ë ÏÑ†ÌÉù Í∏àÏßÄ
     ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
 }
@@ -4761,7 +5022,7 @@ void FormLayer::on_colorbutton_clicked()
 
 void FormLayer::on_opacityslider_valueChanged(int Opacity)
 {
-    // ui->tableWidget->currentRow() ?? a?????? ???, current row ?? -1 ?? ????
+    // ui->tableWidget->currentRow() Î°ú Ï∞æÏúºÎ†§Í≥† ÌïòÎ©¥, current row Í∞Ä -1 Î°ú ÎÇòÏò¥
     int sliderrow = -1;
     int sliderrow_for_t2d = -1;
     QString LayerColorname;
@@ -4832,7 +5093,7 @@ void FormLayer::MakeLayerInformationTableHeader(){
     ui->tableWidget->setColumnWidth(4,40);
     ui->tableWidget->setColumnWidth(5,60);
 
-    /// TableWidget Title Format ????
+    /// TableWidget Title Format ÏÑ§Ï†ï
     QBrush brush(QColor(255, 255, 255, 255));
     brush.setStyle(Qt::SolidPattern);
     QFont font;
@@ -4840,7 +5101,7 @@ void FormLayer::MakeLayerInformationTableHeader(){
     font.setBold(true);
     font.setWeight(55);
 
-    /// TableWidget Title ??? ?? ???
+    /// TableWidget Title ÏûÖÎ†• Î∞è Î∞òÏòÅ
     for (int i=1; i<6; i++){
         QTableWidgetItem *TableHeaderItem = new QTableWidgetItem;
         TableHeaderItem->setText(TalbeHeader[i]);
@@ -4923,7 +5184,7 @@ void FormLayer::MakeColorButton(int table_row){
     LayerColorText = "background-color: rgba(" + LayerColorRed;
     LayerColorText = LayerColorText + "," + LayerColorGreen + "," + LayerColorBlue + "," + LayerColorAlpha + ")";
 
-    // color pushbutton a????
+    // color pushbutton Ï±ÑÏö∞Í∏∞
     QPushButton *colorbutton = new QPushButton();
     colorbutton->setStyleSheet(LayerColorText);
     ui->tableWidget->setCellWidget(table_row,1,colorbutton);
@@ -4931,7 +5192,7 @@ void FormLayer::MakeColorButton(int table_row){
 }
 
 void FormLayer::MakeHeaderCheckBoxAndSlider(){
-    //tableWidget title ?? checkbox
+    //tableWidget title Ïóê checkbox
     QCheckBox *checkBoxItem = new QCheckBox();
     checkBoxItem->setCheckState(Qt::Unchecked);
     QWidget *checkboxWidget = new QWidget();
@@ -4943,7 +5204,7 @@ void FormLayer::MakeHeaderCheckBoxAndSlider(){
     ui->tableWidget->setCellWidget(0,0,checkboxWidget);
     QObject::connect(checkBoxItem, SIGNAL(stateChanged(int)), this, SLOT(on_checkboxInTable_stateChanged()));
 
-    //tableWidget title ?? slider
+    //tableWidget title Ïóê slider
     QSpacerItem *HeaderVerticalSpacer = new QSpacerItem(0,20,QSizePolicy::Fixed, QSizePolicy::Fixed);
     QSlider *HeaderOpacitySlider = new QSlider();
     HeaderOpacitySlider->setOrientation(Qt::Horizontal);
@@ -5098,7 +5359,7 @@ void SuperItem::slotMove(POS_MONITORING *pos)
     double delta_y = (pos->y - convertPosY()) * (*m_scale);
     double rot = 360 - pos->rotation;
 
-    if (abs(delta_x) >__DBL_EPSILON__ || abs(delta_y) > __DBL_EPSILON__) // 0∫∏¥Ÿ ≈©∏È
+    if (abs(delta_x) >__DBL_EPSILON__ || abs(delta_y) > __DBL_EPSILON__) // 0Î≥¥Îã§ ÌÅ¨Î©¥
     {        
         moveBy(delta_x, -1 * delta_y);             
     }
@@ -5110,7 +5371,7 @@ void SuperItem::slotMove(POS_MONITORING *pos)
     // trans.scale = 1 um / height / pos->zoom = 1 um / height / (1 um / now_height) = now_height / height
 
     trans.scale((*m_zoom_init)/pos->zoom, ((*m_zoom_init)/pos->zoom) * (pos->tilt / 90));
-      //zoom √ ±‚∞° 25%∏È ..
+      //zoom Ï¥àÍ∏∞Í∞Ä 25%Î©¥ ..
     setTransform(trans);
 }
 
@@ -5128,13 +5389,13 @@ void SuperItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
     painter->drawLine(-60,-60,60,-60);
 }
 
-QRectF SuperItem::boundingRect() const{ // ≥™¡ﬂø° ¿Ã«ÿ∏¶ ¿ß«— µµøÚ ø‰√ª « ø‰
+QRectF SuperItem::boundingRect() const{ // ÎÇòÏ§ëÏóê Ïù¥Ìï¥Î•º ÏúÑÌïú ÎèÑÏõÄ ÏöîÏ≤≠ ÌïÑÏöî
     return QRectF(-61,-61,122,122);
 }
 
 double SuperItem::convertPosX()
 {
-    return (this->x() - (*m_from_window_to_box_x))/(*m_scale)+(*m_min_x); // ø¯¡°¿Ã (0,0) ¿Ã æ∆¥“ ∞ÊøÏ skew(m_min_x) √ﬂ∞°
+    return (this->x() - (*m_from_window_to_box_x))/(*m_scale)+(*m_min_x); // ÏõêÏ†êÏù¥ (0,0) Ïù¥ ÏïÑÎãê Í≤ΩÏö∞ skew(m_min_x) Ï∂îÍ∞Ä
 }
 
 double SuperItem::convertPosY()
@@ -5167,7 +5428,7 @@ void FormMap::receiveFile(T2D &t2d)
     double width = t2d.LayoutMinMax.maxx - t2d.LayoutMinMax.minx;
     double height = t2d.LayoutMinMax.maxy - t2d.LayoutMinMax.miny;
     m_zoom_init = 1 / height;
-    m_scale = m_gray_box_size/qMax(width,height);    //∞°¿Â ±‰ ∞˜¿ª 120¿∏∑Œ ∏¬√„
+    m_scale = m_gray_box_size/qMax(width,height);    //Í∞ÄÏû• Í∏¥ Í≥≥ÏùÑ 120ÏúºÎ°ú ÎßûÏ∂§
     double box_x_zero_point = -1 * m_scale * width /2;
     double box_y_zero_point = -1 * m_scale * height /2;
     m_box_width = m_scale * width;
@@ -5179,9 +5440,9 @@ void FormMap::receiveFile(T2D &t2d)
 
     rectItem->setRect(box_x_zero_point,box_y_zero_point,m_box_width,m_box_height);
     rectItem->setBrush(QBrush(QColor(Qt::gray)));
-    rectItem->setPos(m_window_width/2,-m_window_height/2); //¡¬√¯ ¿ß (0,0) ø°º≠ ∫Œ≈Õ ¡ﬂæ”¿∏∑Œ ¿Ãµø
-    scene->setSceneRect(m_from_window_to_box_x,(m_from_window_to_box_y - m_box_height),m_box_width,m_box_height); //Y ¡¬«•¥¬ ¿ßø°º≠ æÛ∏∏≈≠ ≥ª∑¡ø¿¥¬∞° ∂Ûº≠
-    scene->addItem(rectItem);           //ªÁ∞¢«¸
+    rectItem->setPos(m_window_width/2,-m_window_height/2); //Ï¢åÏ∏° ÏúÑ (0,0) ÏóêÏÑú Î∂ÄÌÑ∞ Ï§ëÏïôÏúºÎ°ú Ïù¥Îèô
+    scene->setSceneRect(m_from_window_to_box_x,(m_from_window_to_box_y - m_box_height),m_box_width,m_box_height); //Y Ï¢åÌëúÎäî ÏúÑÏóêÏÑú ÏñºÎßåÌÅº ÎÇ¥Î†§Ïò§ÎäîÍ∞Ä ÎùºÏÑú
+    scene->addItem(rectItem);           //ÏÇ¨Í∞ÅÌòï
     scene->addItem(super);    
 
     QObject::connect(this,&FormMap::signalMove,super,&SuperItem::slotMove);
@@ -5274,7 +5535,7 @@ void FormTop::drawing()
     //cout << "c:" << m_begin_col << " " << m_end_col << endl;
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment ?? ??????? for skip
+        //layer_enviroment ÏôÄ ÎπÑÍµêÌïòÏó¨ for skip
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
         /*m_begin_row = 0;
         m_begin_col = 0;
@@ -5305,7 +5566,7 @@ void FormTop::filterDrawing()
     areaFilterRect();
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment ?? ??????? for skip
+        //layer_enviroment ÏôÄ ÎπÑÍµêÌïòÏó¨ for skip
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
         for(int row = m_begin_row ; row < m_end_row ; row++)
         {
@@ -5329,7 +5590,7 @@ void FormTop::filterDrawing()
 
 void FormTop::drawingClear()
 {
-    // ?????? ??? vector ?? ??????? ?? : delete ?? ????
+    // Í∏∞Ï°¥Ïóê ÏûàÎäî vector Î•º ÎÇ®Í≤®ÎÜîÏïº Ìï® : delete Î•º ÏúÑÌï¥
     for(auto cur_item : rectItemList)
     {
         delete cur_item;
@@ -5446,7 +5707,7 @@ int FormTop::extPos(double *pos, double *min, double *max)
     int max_col_row = (*max-*min)/m_block_size;
 
 
-    //block ???? ??? ?????? ??o?? ???? ???? external ?? ???
+    //block ÏúºÎ°ú ÏûêÎ•∏ Í≤ΩÍ≥ÑÎ©¥ Í∑ºÏ≤òÏóê ÏûàÏùÑ Í≤ΩÏö∞ external ÏùÑ Ï∂îÍ∞Ä
     if ((*pos - *min)<area && pos_col_row > 0) // 30.0413 - 3*10 = 0.0413 < 0.05
     {
         return pos_col_row - 1;
@@ -5468,7 +5729,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
 
     if(m_filter_right == true){
         if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx >= pos->x){return;}
-        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < pos->x && rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx >= pos->x) //area ???? ????? ???
+        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < pos->x && rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx >= pos->x) //area Î≥¥Îã§ ÎÑòÏñ¥Í∞ÄÎ©¥ ÏûêÎ¶Ñ
         {
             maxx = pos->x;
         }
@@ -5482,7 +5743,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
     }
     if(m_filter_left == true){
         if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx <= pos->x){return;}
-        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > pos->x && rendering_full->LayoutData10by10[layer].xy[row][col][n].minx <= pos->x) //area ???? ????? ???
+        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > pos->x && rendering_full->LayoutData10by10[layer].xy[row][col][n].minx <= pos->x) //area Î≥¥Îã§ ÎÑòÏñ¥Í∞ÄÎ©¥ ÏûêÎ¶Ñ
         {
             minx = pos->x;
         }
@@ -5496,7 +5757,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
     }
     if(m_filter_top == true){
         if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny >= pos->y){return;}
-        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < pos->y && rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy >= pos->y) //area ???? ????? ???
+        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < pos->y && rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy >= pos->y) //area Î≥¥Îã§ ÎÑòÏñ¥Í∞ÄÎ©¥ ÏûêÎ¶Ñ
         {
             maxy = pos->y;
         }
@@ -5510,7 +5771,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
     }
     if(m_filter_bottom == true){
         if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy <= pos->y){return;}
-        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > pos->y && rendering_full->LayoutData10by10[layer].xy[row][col][n].miny <= pos->y) //area ???? ????? ???
+        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > pos->y && rendering_full->LayoutData10by10[layer].xy[row][col][n].miny <= pos->y) //area Î≥¥Îã§ ÎÑòÏñ¥Í∞ÄÎ©¥ ÏûêÎ¶Ñ
         {
             miny = pos->y;
         }
@@ -5549,7 +5810,7 @@ void FormTop::areaFilterRect()
         }
     }
 
-    /*int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //???? ??????   23.3841 / 10 = 2.33841 -> int 2
+    /*int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //ÏãùÏù¥ ÌïÑÏöîÌïúÎåÄ   23.3841 / 10 = 2.33841 -> int 2
     int ext_col = extPos(&pos->x, &rendering_full->LayoutMinMax.minx, &rendering_full->LayoutMinMax.maxx);
     m_begin_col = qMin(pos_col,ext_col);
     m_end_col = qMax(pos_col,ext_col)+1;
@@ -5562,7 +5823,7 @@ void FormTop::areaFilterRect()
     //layer
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment ?? ??????? for skip
+        //layer_enviroment ÏôÄ ÎπÑÍµêÌïòÏó¨ for skip
 
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
 
@@ -5581,7 +5842,7 @@ void FormTop::areaFilterRect()
 }
 
 void FormTop::getRowCol(){
-    int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //???? ??????   23.3841 / 10 = 2.33841 -> int 2
+    int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //ÏãùÏù¥ ÌïÑÏöîÌïúÎåÄ   23.3841 / 10 = 2.33841 -> int 2
     if(pos_col - 1 >= 0){
         m_begin_col = pos_col - 1;
     }else{
@@ -5611,11 +5872,11 @@ void FormTop::getRowCol(){
 void FormTop::wheelEvent(QWheelEvent *event){
     int delta = event->delta();
 
-    // ????? ???? ???? ?????? ???? ????
+    // Ïä§ÌÅ¨Î°§ Í∞íÏóê Îî∞Îùº Ïä§ÏºÄÏùº Í∞íÏùÑ Î≥ÄÍ≤Ω
     if (delta > 0) {
-        this->pos->zoom *= 1.01; // 10% ???
+        this->pos->zoom *= 1.01; // 10% ÌôïÎåÄ
     } else if (delta < 0) {
-        this->pos->zoom /= 1.01; // 10% ????
+        this->pos->zoom /= 1.01; // 10% Ï∂ïÏÜå
     }
     //pos->zoom = m_scale;
     //cout << m_scale << endl;
@@ -5857,7 +6118,7 @@ void GitMerge::makeCodeFiles()
                 }
                 break;
             }
-            if (j == codeList.size()-1) // √£æ∆∫√¥¬µ• ±‚¡∏ ∆ƒ¿œ¿Ã æ¯¥Ÿ.
+            if (j == codeList.size()-1) // Ï∞æÏïÑÎ¥§ÎäîÎç∞ Í∏∞Ï°¥ ÌååÏùºÏù¥ ÏóÜÎã§.
             {
                 QFile file(fileListDivide[0]);
                 if(!file.open(QFile::WriteOnly | QFile::Text))
@@ -6032,8 +6293,9 @@ MainWindow::MainWindow(LveWindow* w)
     QObject::connect(dockInfo, SIGNAL(visibilityChanged(bool)), this, SLOT(on_docker_Info_stateChanged(bool)));
     QObject::connect(dockHier, SIGNAL(visibilityChanged(bool)), this, SLOT(on_docker_Hier_stateChanged(bool)));
     QObject::connect(dockLayer, SIGNAL(visibilityChanged(bool)), this, SLOT(on_docker_Layer_stateChanged(bool)));
-    // ∆Ú∞°øÎ
+    // ÌèâÍ∞ÄÏö©
     dev_dialog = new DevDialog(this);
+    dev_dialog->setRenderWindow(this->m_window);
     devDialog();
 }
 
@@ -6059,8 +6321,8 @@ void MainWindow::slotInfoText(QString funcName, POS_MONITORING value)
     if (value.x != pos_past.x ||
         value.y != pos_past.y ||
         value.z != pos_past.z ||
-        (value.tilt - pos_past.tilt) > 0.01 ||
-        (value.rotation - pos_past.rotation) > 0.01 ||
+        (value.tilt != pos_past.tilt)  ||
+        (value.rotation != pos_past.rotation)  ||
         value.zoom != pos_past.zoom)
     {
         pos.x = value.x;
@@ -6100,7 +6362,7 @@ void MainWindow::slotInfoText(QString funcName, POS_MONITORING value)
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "∆ƒ¿œ º±≈√", ".", "Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "ÌååÏùº ÏÑ†ÌÉù", ".", "Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
@@ -6110,7 +6372,7 @@ void MainWindow::on_actionOpen_file_triggered()
 void MainWindow::on_actionOpen_PEX_triggered()
 {
     if (this->t2d.LayoutData10by10.empty() == false) {
-        QString file_name = QFileDialog::getOpenFileName(this, "∆ƒ¿œ º±≈√", ".", "Files(*.*)");
+        QString file_name = QFileDialog::getOpenFileName(this, "ÌååÏùº ÏÑ†ÌÉù", ".", "Files(*.*)");
 
         DtaoRenderSystem* renderer = this->m_window->getRenderer();
 
@@ -6120,7 +6382,7 @@ void MainWindow::on_actionOpen_PEX_triggered()
         //test
     }
     else {
-        qDebug() << "Layout Load »ƒ PEX∏¶ ∫“∑Øø√ ºˆ ¿÷Ω¿¥œ¥Ÿ";
+        qDebug() << "Layout Load ÌõÑ PEXÎ•º Î∂àÎü¨Ïò¨ Ïàò ÏûàÏäµÎãàÎã§";
     }
 }
 
@@ -6142,7 +6404,7 @@ void MainWindow::inputPosInformation()
 
 void MainWindow::on_actionOpen_Layout_triggered()
 {
-    QString file_name = QFileDialog::getOpenFileName(this, "∆ƒ¿œ º±≈√", ".", "Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "ÌååÏùº ÏÑ†ÌÉù", ".", "Files(*.*)");
     DtaoRenderSystem* renderer = this->m_window->getRenderer();
 
     //renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
@@ -6226,12 +6488,12 @@ void MainWindow::on_actionOpen_DB_triggered() {
 
 }
 
-void MainWindow::slotDirectlyInputPos() //point info ø°º≠ ¡˜¡¢ ¿‘∑¬«— ∞ÊøÏ
+void MainWindow::slotDirectlyInputPos() //point info ÏóêÏÑú ÏßÅÏ†ë ÏûÖÎ†•Ìïú Í≤ΩÏö∞
 {
     sendPositionDataToDocker();
     DtaoRenderSystem * renderer = this->m_window->getRenderer();
-    renderer->translateLayerPosition(pos);
-    //ø‰√ªªÁ«◊ 230324 vulkan ø°º≠µµ ºˆ¡§¿ª ø©±‚º≠ Ω««‡
+    renderer->goNavi(pos);
+    //ÏöîÏ≤≠ÏÇ¨Ìï≠ 230324 vulkan ÏóêÏÑúÎèÑ ÏàòÏ†ïÏùÑ Ïó¨Í∏∞ÏÑú Ïã§Ìñâ
 }
 
 void MainWindow::slotStatusBarMsg(QString msg)
@@ -6842,6 +7104,7 @@ public:
     virtual void loadData(const QString& file_path = "");
     virtual void makeVertices();
     virtual void makeIndices();
+    virtual void makeIndicesFace();
 
     void makeCubeVertices();
 
@@ -6964,7 +7227,8 @@ public:
     void initSwapChainResources() override;
     void releaseSwapChainResources() override;
     void releaseResources() override;
-    void translateLayerPosition(POS_MONITORING value);
+    void goNavi(POS_MONITORING value);
+    void translateLayerPosition();
     void emitMonitor();
 
     void startNextFrame() override;
@@ -6972,7 +7236,10 @@ public:
     float getRenderScale() {return this->trans_info.scale;}
     LayoutModel* getLayoutModel();
     bool isRenderModelLoaded(){return this->render_object_created;}
+    bool isNavi=false;
+    POS_MONITORING naviInfo;
     std::vector<LveGameObject> &getGameObjects(){return this->gameObjects;}
+
 
 public:
     LveCamera camera{};
@@ -7015,6 +7282,8 @@ public:
     void getCustomVisiblity(string layernumber, bool visibility);
     void createNewPEXCapObject(const QString & file_path, T2D t2d);
     void createNewPEXResObject(const QString & file_path);
+
+    void initCameraView();
 
 
 private:
@@ -7135,7 +7404,9 @@ public:
     CameraMovingContinousFlags camera_moving_flag;
     POS_MONITORING monitor;
 
-    glm::vec3 translationOnPressed;
+    glm::vec3 right;
+    glm::vec3 forward;
+    glm::vec3 up;
 
 
     float moveSpeed{ 0.05f };
@@ -7430,6 +7701,7 @@ typedef enum MODEL_TYPE {
     MODEL_TYPE_AXIS,
     MODEL_TYPE_PEX_RESISTOR,
     MODEL_TYPE_PEX_CAPACITOR,
+    MODEL_TYPE_TOY_CAD,
     MODEL_TYPE_DEFAULT
 } MODEL_TYPE;
 
@@ -7455,6 +7727,16 @@ public:
         static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
         static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
     };
+
+    struct VertexCapacitor {
+        glm::vec3 position{};
+        glm::vec4 color{};
+        glm::vec3 normal{};
+
+        static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
+        static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
+    };
+
 
 
     struct LayerProperty {
@@ -7488,6 +7770,8 @@ public:
     void destroyBuffers();
     void createVertexBuffers(const std::vector<Vertex>& vertices, VkBuffer& buffer, VkDeviceMemory& memory);
     void createVertexBuffersResistor(const std::vector<VertexResistor>& vertices, VkBuffer& buffer, VkDeviceMemory& memory);
+    void createVertexBuffersCapacitor(const std::vector<VertexCapacitor>& vertices, VkBuffer& buffer, VkDeviceMemory& memory);
+
     void createIndexBuffers(const std::vector<uint32_t>& indices, VkBuffer & buffer, VkDeviceMemory & memory);
     LveDevice& lveDevice;
     VkBuffer vertexBuffer{};
@@ -7514,6 +7798,7 @@ public:
     std::vector<cube_vertex> cube_vertices{};
 
     std::vector<Vertex> vertices{};
+    std::vector<VertexCapacitor> vertices_capacitor{};
     std::vector<VertexResistor> vertices_resistor{};
     std::vector<uint32_t> indices_face{};
     std::vector<uint32_t> indices_edge{};
@@ -7714,6 +7999,7 @@ private:
     void createPipelineForPEXResistorEdge(VkRenderPass renderPass);
     void createPipelineForPEXCapacitorLine(VkRenderPass renderPass);
     void createPipelineForPEXCapacitor(VkRenderPass renderPass);
+    void createPipelineForPEXCapacitorEdge(VkRenderPass renderPass);
 
     LveDevice& lveDevice;
 
@@ -7734,66 +8020,11 @@ private:
 
     std::unique_ptr<LvePipeline> lvePipelineForPEXCapacitor;
     VkPipelineLayout pipelineLayoutForPEXCapacitor;
+
+    std::unique_ptr<LvePipeline> lvePipelineForPEXCapacitorEdge;
+    VkPipelineLayout pipelineLayoutForPEXCapacitorEdge;
+
 };
-
-!@hash[]!@file[]./Rendering/Src/utils.h!@hash[]!@code[]#pragma once
-#ifndef UTILS
-#define UTILS
-#endif
-
-// libs
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-
-#include <string>
-#include <iostream>
-#include <cstdio>
-
-namespace UTILS {
-    inline bool check_file_exsist(const std::string& file_path) {
-        FILE* fp = nullptr;
-        if (fopen_s(&fp, file_path.c_str(), "r")) {
-            fclose(fp);
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-
-    glm::vec3 getPercentileColour(double v, double vmin, double vmax)
-    {
-        glm::vec3 c = { 1.0,1.0,0.0 }; // white
-        double dv;
-
-        if (v < vmin)
-            v = vmin;
-        if (v > vmax)
-            v = vmax;
-        dv = vmax - vmin;
-
-        if (v < (vmin + 0.05 * dv)) {
-            c.r = 1;
-            c.g = 0;
-        }
-        else if (v < (vmin + 0.5 * dv)) {
-            c.r = 0.5 + 5 * (vmin + 0.5 * dv - v) / dv / 4;
-            c.g = 0.5 + 5 * (v - vmin - 0.5 * dv) / dv / 4;
-        }
-        else if (v < (vmin + 0.95 * dv)) {
-            c.r = 0.5 + 5 * (vmin + 0.5 * dv - v) / dv / 4;
-            c.g = 0.5 + 5 * (v - vmin - 0.5 * dv) / dv / 4;
-        }
-        else {
-            c.r = 0;
-            c.g = 1;
-        }
-
-
-        return(c);
-    }
-}
 
 !@hash[]!@file[]./T2D.h!@hash[]!@code[]#ifndef T2D_H
 #define T2D_H
@@ -7837,6 +8068,89 @@ class T2D{
 };
 
 #endif // T2D_H
+!@hash[]!@file[]./ToyCAD/Src/toycadmodel.h!@hash[]!@code[]#ifndef TOYCADMODEL_H
+#define TOYCADMODEL_H
+
+#include "Rendering/Src/lve_model.hpp"
+
+#include <iostream>
+#include <vector>
+
+
+enum TOYCADINFO_INDEX {
+    TOYCADINFO_IDX_TYPE = 0,
+    TOYCADINFO_IDX_LAYER,
+    TOYCADINFO_IDX_XMIN,
+    TOYCADINFO_IDX_YMIN,
+    TOYCADINFO_IDX_XMAX,
+    TOYCADINFO_IDX_YMAX,
+    TOYCADINFO_IDX_ZMIN,
+    TOYCADINFO_IDX_ZMAX,
+    TOYCADINFO_IDX_XSLOPE,
+    TOYCADINFO_IDX_YSLOPE,
+    TOYCADINFO_IDX_DEFAULT,
+};
+
+enum TOYCAD_TYPE_LIST {
+    TOYCAD_TYPE_RECT = 0,
+    TOYCAD_TYPE_CIRCLE = 1,
+    TOYCAD_TYPE_DEFAULT = 99
+};
+
+struct toycad_data {
+    string type;
+    string layer;
+    double minx;
+    double miny;
+    double maxx;
+    double maxy;
+    double minz;
+    double maxz;
+    double slopex;
+    double slopey;
+};
+
+struct toycad_coord3d {
+    double x;
+    double y;
+    double z;
+};
+
+class ToyCADModel : public LveModel
+{
+public:
+    ToyCADModel(LveDevice& device, MODEL_TYPE model_type);
+    ~ToyCADModel();
+
+    ToyCADModel() = delete;
+    ToyCADModel(const ToyCADModel&) = delete;
+    ToyCADModel& operator=(const ToyCADModel&) = delete;
+
+public:
+    virtual void makeRenderingData(const QString& file_path = "");
+    virtual void loadData(const string& file_path = "");
+    virtual void makeVertices();
+    virtual void makeIndices();
+
+private:
+    void makeCubeVertices();
+    void makeCylinderVertices();
+    void makeIndicesForFace();
+    //void makeIndicesForEdge();
+
+public:
+    void setNumPointsForCircle(unsigned int num_){this->num_points_for_circle=num_;}
+private:
+    unsigned int num_points_for_circle;
+    std::vector<toycad_data> cad_datas;
+
+
+
+public:
+    void printAllData();
+};
+
+#endif // TOYCADMODEL_H
 !@hash[]!@file[]./all_data.h!@hash[]!@code[]#ifndef ALL_DATA_H
 #define ALL_DATA_H
 
@@ -7936,6 +8250,10 @@ struct MIN_MAX_XYZ{
 #include <QDialog>
 #include <defineParam.h>
 
+
+#include "Rendering/Src/lve_window.hpp"
+#include "Rendering/Src/dtaorendersystem.h"
+
 namespace Ui {
 class DevDialog;
 }
@@ -7954,11 +8272,22 @@ public:
 private slots:
     void on_checkBox_pos_stateChanged(int arg1);
 
+    void on_pushButton_initCamera_clicked();
+
 private:
     Ui::DevDialog *ui;
     bool *is_pos_checked;
     bool init_check = false;
     POS_MONITORING *pos;
+
+    LveWindow* m_window = nullptr;
+
+public:
+    void setRenderWindow(LveWindow* window_){ this->m_window = window_;}
+
+private:
+    DtaoRenderSystem* getRenderer(){ return this->m_window->getRenderer();}
+
 };
 
 #endif // DEV_DIALOG_H
@@ -8069,6 +8398,7 @@ private:
     bool isFileOpen = false;
     bool isEndedEdit = true;
     bool make_status_bar_msg = true;
+    bool isDeleting = false;
     int current_item = -1;
     int pos_number = 0;
     int item_data_i = 0;
@@ -8222,7 +8552,7 @@ private:
     double *m_min_y;
     double m_zero_point_x;
     double m_zero_point_y;
-    double temp_x;      // ∏∂øÏΩ∫∑Œ box øÚ¡˜¿œ ∂ß ¡¬«• æÀæ∆∫∏±‚ ¿ß«‘
+    double temp_x;      // ÎßàÏö∞Ïä§Î°ú box ÏõÄÏßÅÏùº Îïå Ï¢åÌëú ÏïåÏïÑÎ≥¥Í∏∞ ÏúÑÌï®
     double temp_y;
 };
 
@@ -8267,7 +8597,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom √ ±‚∞™ø° ¥Î«— GDS size ∏¶ ∞Æ∞ÌøÕ ºˆ¡§ « ø‰
+    float infoZoom = 1; //Zoom Ï¥àÍ∏∞Í∞íÏóê ÎåÄÌïú GDS size Î•º Í∞ñÍ≥†ÏôÄ ÏàòÏ†ï ÌïÑÏöî
 
     float initRot = 0;
     float initTilt = 90;
@@ -8384,8 +8714,8 @@ private:
     bool write_code_files = false;
     QString split1;
     QString split2;
-    QString merged_code_files;    //∞¢¡æ cpp, h µÓø°º≠ ¿–æÓø¬ ≥ªøÎ
-    QString based_on_reading_txt; //gitMerge.txt ø°º≠ ¿–æÓø¬ ≥ªøÎ
+    QString merged_code_files;    //Í∞ÅÏ¢Ö cpp, h Îì±ÏóêÏÑú ÏùΩÏñ¥Ïò® ÎÇ¥Ïö©
+    QString based_on_reading_txt; //gitMerge.txt ÏóêÏÑú ÏùΩÏñ¥Ïò® ÎÇ¥Ïö©
     QString txt_file = "./gitMerge.txt";
     QString pro_file = "./IInterface.pro";
     QString hash = "!@hash[]";
@@ -8546,165 +8876,49 @@ private:
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QGridLayout" name="gridLayout">
-     <item row="14" column="0">
-      <widget class="QLabel" name="label_11">
-       <property name="text">
-        <string>Vulkan PEX</string>
-       </property>
-      </widget>
-     </item>
-     <item row="13" column="0">
-      <widget class="QCheckBox" name="checkBox_7">
-       <property name="text">
-        <string>CheckBox</string>
-       </property>
-      </widget>
-     </item>
-     <item row="9" column="0">
-      <widget class="QCheckBox" name="checkBox_5">
-       <property name="text">
-        <string>CheckBox</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="3">
-      <widget class="QLabel" name="label_10">
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
-     </item>
-     <item row="8" column="0">
-      <widget class="QLabel" name="label_5">
-       <property name="text">
-        <string>Docker Hierarchy</string>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="0">
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>Docker top view</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>Docker mini map</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QLabel" name="label_8">
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="2">
-      <widget class="QLabel" name="label_9">
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>1</number>
+     </property>
+     <widget class="QWidget" name="tab">
+      <attribute name="title">
+       <string>MainWindow</string>
+      </attribute>
+     </widget>
+     <widget class="QWidget" name="tab_2">
+      <attribute name="title">
+       <string>Docker</string>
+      </attribute>
       <widget class="QCheckBox" name="checkBox_pos">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>20</y>
+         <width>113</width>
+         <height>18</height>
+        </rect>
+       </property>
        <property name="text">
         <string>Change Pos</string>
        </property>
       </widget>
-     </item>
-     <item row="12" column="0">
-      <widget class="QLabel" name="label_7">
-       <property name="text">
-        <string>Vulkan 3D modeling</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0">
-      <widget class="QCheckBox" name="checkBox_2">
-       <property name="text">
-        <string>CheckBox</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="0">
-      <widget class="QCheckBox" name="checkBox_3">
-       <property name="text">
-        <string>CheckBox</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label">
-       <property name="text">
-        <string>Main Window</string>
-       </property>
-      </widget>
-     </item>
-     <item row="6" column="0">
-      <widget class="QLabel" name="label_4">
-       <property name="text">
-        <string>Docker navigator</string>
-       </property>
-      </widget>
-     </item>
-     <item row="10" column="0">
-      <widget class="QLabel" name="label_6">
-       <property name="text">
-        <string>Docker Layer</string>
-       </property>
-      </widget>
-     </item>
-     <item row="7" column="0">
-      <widget class="QCheckBox" name="checkBox_4">
-       <property name="text">
-        <string>CheckBox</string>
-       </property>
-      </widget>
-     </item>
-     <item row="11" column="0">
-      <widget class="QCheckBox" name="checkBox_6">
-       <property name="text">
-        <string>CheckBox</string>
-       </property>
-      </widget>
-     </item>
-     <item row="15" column="0">
-      <widget class="QCheckBox" name="checkBox_8">
-       <property name="text">
-        <string>CheckBox</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="1">
-      <widget class="QPushButton" name="pushButton">
-       <property name="text">
-        <string>PushButton</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLabel" name="label_12">
-       <property name="text">
-        <string>Pos coordinate : </string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="2" colspan="2">
-      <widget class="QLabel" name="label_pos">
-       <property name="text">
-        <string>pos_label</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+     </widget>
+     <widget class="QWidget" name="tab_5">
+      <attribute name="title">
+       <string>Data Process</string>
+      </attribute>
+     </widget>
+     <widget class="QWidget" name="tab_3">
+      <attribute name="title">
+       <string>3D Modeling</string>
+      </attribute>
+     </widget>
+     <widget class="QWidget" name="tab_4">
+      <attribute name="title">
+       <string>PEX</string>
+      </attribute>
+     </widget>
+    </widget>
    </item>
   </layout>
  </widget>
@@ -8719,8 +8933,8 @@ private:
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>780</width>
-    <height>646</height>
+    <width>320</width>
+    <height>300</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -8732,97 +8946,33 @@ private:
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout_2">
-   <item row="0" column="0">
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
     <layout class="QGridLayout" name="gridLayout">
      <item row="1" column="0">
-      <widget class="QTabWidget" name="tabWidget">
-       <property name="currentIndex">
-        <number>1</number>
+      <widget class="QTreeWidget" name="hierarchy_tree">
+       <property name="verticalScrollBarPolicy">
+        <enum>Qt::ScrollBarAsNeeded</enum>
        </property>
-       <widget class="QWidget" name="tab_3">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <attribute name="title">
-         <string>Hierarchy</string>
-        </attribute>
-        <layout class="QGridLayout" name="gridLayout_3">
-         <item row="0" column="0">
-          <layout class="QVBoxLayout" name="verticalLayout">
-           <item>
-            <widget class="QLineEdit" name="hierarchy_searching">
-             <property name="enabled">
-              <bool>true</bool>
-             </property>
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-               <horstretch>1</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="text">
-              <string/>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-             </property>
-             <property name="placeholderText">
-              <string>Searching...</string>
-             </property>
-             <property name="clearButtonEnabled">
-              <bool>false</bool>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QTreeWidget" name="hierarchy_tree">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-               <horstretch>1</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="verticalScrollBarPolicy">
-              <enum>Qt::ScrollBarAsNeeded</enum>
-             </property>
-             <property name="horizontalScrollBarPolicy">
-              <enum>Qt::ScrollBarAlwaysOff</enum>
-             </property>
-             <property name="expandsOnDoubleClick">
-              <bool>false</bool>
-             </property>
-             <attribute name="headerVisible">
-              <bool>false</bool>
-             </attribute>
-             <column>
-              <property name="text">
-               <string notr="true">1</string>
-              </property>
-             </column>
-            </widget>
-           </item>
-          </layout>
-         </item>
-        </layout>
-       </widget>
-       <widget class="QWidget" name="tab_4">
-        <attribute name="title">
-         <string>PEX</string>
-        </attribute>
-        <layout class="QGridLayout" name="gridLayout_4">
-         <item row="0" column="0">
-          <layout class="QVBoxLayout" name="verticalLayout_2">
-           <item>
-            <widget class="QTreeWidget" name="pex_tree"/>
-           </item>
-          </layout>
-         </item>
-        </layout>
-       </widget>
+       <property name="horizontalScrollBarPolicy">
+        <enum>Qt::ScrollBarAlwaysOff</enum>
+       </property>
+       <property name="expandsOnDoubleClick">
+        <bool>false</bool>
+       </property>
+       <attribute name="headerVisible">
+        <bool>false</bool>
+       </attribute>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLineEdit" name="hierarchy_searching">
+       <property name="text">
+        <string/>
+       </property>
+       <property name="placeholderText">
+        <string>Searching...</string>
+       </property>
       </widget>
      </item>
     </layout>
@@ -9637,6 +9787,7 @@ SOURCES += \
     Rendering/Src/lve_window.cpp \
     Rendering/Src/simple_render_system.cpp \
     T2D.cpp \
+    ToyCAD/Src/toycadmodel.cpp \
     all_data.cpp \
     dev_dialog.cpp \
     filedb.cpp \
@@ -9664,8 +9815,8 @@ HEADERS += \
     Rendering/Src/lve_pipeline.hpp \
     Rendering/Src/lve_window.hpp \
     Rendering/Src/simple_render_system.hpp \
-    Rendering/Src/utils.h \
     T2D.h \
+    ToyCAD/Src/toycadmodel.h \
     all_data.h \
     defineParam.h \
     dev_dialog.h \
@@ -9721,7 +9872,8 @@ DISTFILES += \
     Rendering/shaders/simple_shader_edge.frag \
     Rendering/shaders/simple_shader_edge.vert \
     Rendering/shaders/simple_shader_pex.frag \
-    Rendering/shaders/simple_shader_pex.vert
+    Rendering/shaders/simple_shader_pex.vert \
+    ToyCAD/Data/toy_cad_test_data.csv
 
 
 
@@ -9734,4 +9886,4 @@ DEPENDPATH += $$PWD/../../Library/VulkanSDK/1.3.239.0/Lib
 
 INCLUDEPATH += $$PWD/../../Library/glm-0.9.9.8/glm
 
-#«—±€ Ω««Ë
+#ÌïúÍ∏Ä Ïã§Ìóò
