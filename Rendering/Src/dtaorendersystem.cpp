@@ -408,9 +408,9 @@ void DtaoRenderSystem::createToyCADObjects(const std::string& file_path){
                 cur_data.rotation_degree};
         new_object.visibility = true;
         new_object.transform.translation = glm::vec3{
-            -this->trans_info.trans_x*this->trans_info.scale,
-            -this->trans_info.trans_y*this->trans_info.scale,
-            -this->trans_info.trans_z*this->trans_info.scale};
+            (-this->trans_info.trans_x+cur_data.minx)*this->trans_info.scale,
+            (-this->trans_info.trans_y+cur_data.miny)*this->trans_info.scale,
+            (-this->trans_info.trans_z+cur_data.minz)*this->trans_info.scale};
         new_object.transform.scale = glm::vec3{
                 this->trans_info.scale,
                 this->trans_info.scale,

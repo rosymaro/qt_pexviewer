@@ -51,29 +51,82 @@ void ToyCADModel::makeRectVertices(TOYCAD_DATA& toycad_data){
     int num_of_vertex = 8;
     ToyCADVertex vertex[num_of_vertex];
 
-    double half_x_length = (toycad_data.maxx - toycad_data.minx)*0.5;
-    double half_y_length = (toycad_data.maxy - toycad_data.miny)*0.5;
+    double length_x = (toycad_data.maxx - toycad_data.minx);
+    double length_y = (toycad_data.maxy - toycad_data.miny);
+    double length_z = (toycad_data.maxz - toycad_data.minz);
+    double half_length_x = length_x*0.5;
+    double half_length_y = length_y*0.5;
     double height = toycad_data.maxz - toycad_data.minz;
     double delta_x = height*tan(RANDIAN_FACTOR*toycad_data.slopex);
     double delta_y = height*tan(RANDIAN_FACTOR*toycad_data.slopey);
-    if( delta_x < -half_x_length) delta_x = -half_x_length;
-    if( delta_y < -half_y_length) delta_y = -half_y_length;
+    if( delta_x < -half_length_x) delta_x = -half_length_x;
+    if( delta_y < -half_length_y) delta_y = -half_length_y;
 
-    vertex[0].position = {toycad_data.minx, toycad_data.maxy, toycad_data.maxz};
-    vertex[1].position = {toycad_data.maxx, toycad_data.maxy, toycad_data.maxz};
-    vertex[2].position = {toycad_data.maxx, toycad_data.miny, toycad_data.maxz};
-    vertex[3].position = {toycad_data.minx, toycad_data.miny, toycad_data.maxz};
+    double min_x = 0;
+    double max_x = length_x;
+    double min_y = 0;
+    double max_y = length_y;
+    double min_z = 0;
+    double max_z = length_z;
 
-    vertex[4].position = {toycad_data.minx - delta_x, toycad_data.maxy + delta_y, toycad_data.minz};
-    vertex[5].position = {toycad_data.maxx + delta_x, toycad_data.maxy + delta_y, toycad_data.minz};
-    vertex[6].position = {toycad_data.maxx + delta_x, toycad_data.miny - delta_y, toycad_data.minz};
-    vertex[7].position = {toycad_data.minx - delta_x, toycad_data.miny - delta_y, toycad_data.minz};
+    vertex[0].position = {min_x, max_y, max_z};
+    vertex[1].position = {max_x, max_y, max_z};
+    vertex[2].position = {max_x, min_y, max_z};
+    vertex[3].position = {min_x, min_y, max_z};
+
+    vertex[4].position = {min_x - delta_x, max_y + delta_y, min_z};
+    vertex[5].position = {max_x + delta_x, max_y + delta_y, min_z};
+    vertex[6].position = {max_x + delta_x, min_y - delta_y, min_z};
+    vertex[7].position = {min_x - delta_x, min_y - delta_y, min_z};
 
     for(int i = 0; i < num_of_vertex; ++i)
         this->vertices.push_back(vertex[i]);
 }
 
-void ToyCADModel::makeCircleVertices(TOYCAD_DATA& toycad_data){(void)toycad_data;}
+void ToyCADModel::makeCircleVertices(TOYCAD_DATA& toycad_data){
+    int num_of_vertex = this->num_points_for_circle;
+    ToyCADVertex vertex;
+
+    double length_x = (toycad_data.maxx - toycad_data.minx);
+    double length_y = (toycad_data.maxy - toycad_data.miny);
+    double length_z = (toycad_data.maxz - toycad_data.minz);
+    if( length_x < length_y ) length_y = length_x;
+    else length_x = length_y;
+
+    double radius_top = length_x*0.5;
+    double height = toycad_data.maxz - toycad_data.minz;
+    double delta = height*tan(RANDIAN_FACTOR*toycad_data.slopex);
+
+    if( delta < -radius_top) delta = -radius_top;
+    double radius_bottom = radius_top + delta;
+
+    double cen_x = length_x*0.5;
+    double cen_y = length_y*0.5;
+    double angle = RANDIAN_FACTOR*360.0/(double)num_of_vertex;
+
+    ToyCADVertex vertex_top_center;
+    vertex_top_center.position = {cen_x, cen_y, length_z};
+    this->vertices.push_back(vertex_top_center);
+    for(int i = 0; i < num_of_vertex; ++i){
+        vertex.position = {
+            cen_x+radius_top*cos(angle*i),
+            cen_y+radius_top*sin(angle*i),
+            length_z};
+        this->vertices.push_back(vertex);
+    }
+
+    ToyCADVertex vertex_bottom_center;
+    vertex_bottom_center.position = {cen_x, cen_y, 0};
+    this->vertices.push_back(vertex_bottom_center);
+    for(int i = 0; i < num_of_vertex; ++i){
+        vertex.position = {
+            cen_x+radius_bottom*cos(angle*i),
+            cen_y+radius_bottom*sin(angle*i),
+            0};
+        this->vertices.push_back(vertex);
+    }
+}
+
 void ToyCADModel::makeFanVertices(TOYCAD_DATA& toycad_data){(void)toycad_data;}
 void ToyCADModel::makeHexagonVertices(TOYCAD_DATA& toycad_data){(void)toycad_data;}
 void ToyCADModel::makeOctagonVertices(TOYCAD_DATA& toycad_data){(void)toycad_data;}
@@ -132,7 +185,47 @@ void ToyCADModel::makeRectIndices(){
 
 }
 
-void ToyCADModel::makeCircleIndices(){}
+void ToyCADModel::makeCircleIndices(){
+    unsigned int num_of_vertex = this->num_points_for_circle;
+    //face
+    std::vector<uint32_t>& face = this->indices_face;
+    //top circle
+    uint32_t cen_idx = 0;
+    for(unsigned int i = 1; i < num_of_vertex; ++i){
+        face.push_back(cen_idx); face.push_back(i); face.push_back(i+1);
+    }
+    face.push_back(cen_idx); face.push_back(num_of_vertex); face.push_back(1);
+
+    //bottom circle
+    cen_idx = this->num_points_for_circle+1;
+    for(unsigned int i = 1; i < num_of_vertex; ++i){
+        face.push_back(cen_idx); face.push_back(cen_idx+i); face.push_back(cen_idx+i+1);
+    }
+    face.push_back(cen_idx); face.push_back(cen_idx+num_of_vertex); face.push_back(cen_idx+1);
+
+    //side
+    for(unsigned int i = 1; i < num_of_vertex; ++i){
+        face.push_back(i); face.push_back(i+1); face.push_back(i+1+num_of_vertex);
+        face.push_back(i+1+num_of_vertex); face.push_back(i+2+num_of_vertex); face.push_back(i+1);
+    }
+    face.push_back(num_of_vertex); face.push_back(1); face.push_back(num_of_vertex*2+1);
+    face.push_back(num_of_vertex*2+1); face.push_back(num_of_vertex+2); face.push_back(1);
+
+    //edge
+    std::vector<uint32_t>& edge = this->indices_edge;
+    //top
+    for(unsigned int i = 1; i < num_of_vertex; ++i){
+        edge.push_back(i); edge.push_back(i+1);
+    }
+    edge.push_back(num_of_vertex); edge.push_back(1);
+
+    //bottom
+    for(unsigned int i = 1; i < num_of_vertex; ++i){
+        edge.push_back(num_of_vertex+1+i); edge.push_back(num_of_vertex+1+i+1);
+    }
+    edge.push_back(num_of_vertex*2+1); edge.push_back(num_of_vertex+1+1);
+}
+
 void ToyCADModel::makeFanIndices(){}
 void ToyCADModel::makeHexagonIndices(){}
 void ToyCADModel::makeOctagonIndices(){}
