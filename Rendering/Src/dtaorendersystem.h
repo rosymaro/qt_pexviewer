@@ -17,9 +17,21 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "PEXResistorModel.h"
 
+#include "ToyCAD/Src/toycad_object.h"
+
 #include <iostream>
 #include <vector>
 
+
+enum DTAO_RENDER_MODE{
+    DTAO_RENDER_MODE_EMPTY = 0,
+    DTAO_RENDER_MODE_LAYOUT,
+    DTAO_RENDER_MODE_PEX_ALL,
+    DTAO_RENDER_MODE_PEX_RES,
+    DTAO_RENDER_MODE_PEX_CAP,
+    DTAO_RENDER_MODE_TOYCAD,
+    DTAO_RENDER_MODE_DEFAULT
+};
 
 class LayoutModel;
 
@@ -103,6 +115,15 @@ private:
     void deleteSimpleRenderSystem();
     void beginRenderPass(VkCommandBuffer command_buffer);
     float aspect;
+
+private:
+    std::vector<ToyCADObject> toycad_objects{};
+
+public:
+    std::vector<ToyCADObject>& getToyCADObjects(){return this->toycad_objects;}
+    void createToyCADObjects(const std::string& file_path);
+    int render_mode{DTAO_RENDER_MODE_EMPTY};
+
 
 };
 

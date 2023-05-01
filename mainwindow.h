@@ -78,6 +78,8 @@ private slots:
 
     void on_actionDialog_on_off_triggered();
 
+    void on_actionToyCAD_triggered();
+
 private:
     void sendPositionDataToDocker();
     LveWindow *m_window;

@@ -26,7 +26,7 @@
      <x>0</x>
      <y>0</y>
      <width>1024</width>
-     <height>20</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -59,6 +59,7 @@
      <string>devopt</string>
     </property>
     <addaction name="actionDialog_on_off"/>
+    <addaction name="actionToyCAD"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
@@ -251,6 +252,11 @@
   <action name="actionDialog_on_off">
    <property name="text">
     <string>Dialog on/off</string>
+   </property>
+  </action>
+  <action name="actionToyCAD">
+   <property name="text">
+    <string>ToyCAD</string>
    </property>
   </action>
  </widget>

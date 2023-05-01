@@ -8,6 +8,8 @@
 #include "PEXResistorModel.h"
 //#include "defineParam.h"
 
+#include "ToyCAD/Src/toycad_object.h"
+
 
 
 class KeyboardMovementController {
@@ -81,8 +83,12 @@ public:
     CameraMoveKeyMappings camera_move_key;
     MousePosition mouse_position;
 
-    void moveCamera(float dt, LveCamera& camera, float render_scale,std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow);
-    void moveCameraMouse(LveCamera& camera, float render_scale,std::vector<LveGameObject>& gameObjects,LveWindow* lvewindow);
+    void moveCamera(float dt, LveCamera& camera, float render_scale,
+                    std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow,
+                    std::vector<ToyCADObject>* toycad_objects = nullptr);
+    void moveCameraMouse(LveCamera& camera, float render_scale,
+                         std::vector<LveGameObject>& gameObjects,LveWindow* lvewindow,
+                         std::vector<ToyCADObject>* toycad_objects = nullptr);
     void setPerspective(LveCamera& camera, float aspect);
     void moveKeyPressed(Qt::Key key);
     void moveKeyReleased(Qt::Key key);

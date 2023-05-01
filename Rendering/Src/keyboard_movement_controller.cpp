@@ -124,7 +124,9 @@ void KeyboardMovementController::moveButtonReleased(Qt::MouseButtons buttons) {
 }
 
 void KeyboardMovementController::moveCamera(
-    float dt, LveCamera& camera, float render_scale, std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow) {
+        float dt, LveCamera& camera, float render_scale,
+        std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow,
+        std::vector<ToyCADObject>* toycad_objects) {
     float scale = 0.0f;
     float rotate_lr = 0.0f;
     float rotate_ud = 0.0f;
@@ -238,12 +240,23 @@ void KeyboardMovementController::moveCamera(
                 gameobject.transform.translation += moveDir/(float)this->monitor.zoom/(float)lvewindow->swapChainImageSize().height()*obj_scale;
             }
         }
+
+        if( toycad_objects != nullptr){
+            vector<ToyCADObject>::iterator it = toycad_objects->begin();
+            for(;it != toycad_objects->end(); ++it){
+                    it->transform.translation +=
+                            (moveDir*obj_scale)
+                            /((float)this->monitor.zoom*(float)lvewindow->swapChainImageSize().height());
+            }
+        }
     }
 
 }
 
-void KeyboardMovementController::moveCameraMouse(LveCamera& camera, float render_scale, std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow) {
-
+void KeyboardMovementController::moveCameraMouse(
+        LveCamera& camera, float render_scale,
+        std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow,
+        std::vector<ToyCADObject>* toycad_objects) {
     if (camera_moving_flag.mouseRight)
     {
 
@@ -292,6 +305,17 @@ void KeyboardMovementController::moveCameraMouse(LveCamera& camera, float render
                     //camera.viewMatrix = glm::translate(camera.getView(), moveSpeed * dt * moveDir);
                 }
             }
+
+            if( toycad_objects != nullptr){
+                vector<ToyCADObject>::iterator it = toycad_objects->begin();
+                for(;it != toycad_objects->end(); ++it){
+                        it->transform.translation +=
+                                (moveDir*obj_scale)
+                                /((float)this->monitor.zoom*(float)lvewindow->swapChainImageSize().height());
+
+                }
+            }//if( toycad_objects != nullptr)
+
         }
 
         xpos_prev = mouse_position.currentPosition.x();

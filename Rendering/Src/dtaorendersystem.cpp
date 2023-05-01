@@ -13,6 +13,9 @@
 #include "PEXResistorModel.h"
 #include "PEXCapacitorModel.h"
 
+#include "ToyCAD/Src/toycadmodel.h"
+#include "ToyCAD/Src/toycaddata.h"
+
 
 DtaoRenderSystem::DtaoRenderSystem(LveWindow *w)
     : lveWindow(w)
@@ -102,31 +105,50 @@ void DtaoRenderSystem::emitMonitor(){
         cameraController.monitor.z = -gameObjects[0].transform.translation.z/ trans_info.scale;
         cameraController.monitor.zoom = camera.scale_d.x*this->trans_info.scale*camera.std_scale/(2*tan(glm::radians(25.f)));
     }
-    QString funcName = "camera_position";
-    emit lveWindow->signalInfoText(funcName,cameraController.monitor);
+    if(!toycad_objects.empty()){
+        cameraController.monitor.zoom = camera.scale_d.x*this->trans_info.scale*camera.std_scale/(2*tan(glm::radians(25.f)));
+    }
+
+    if(this->render_mode != DTAO_RENDER_MODE_TOYCAD){
+        QString funcName = "camera_position";
+        emit lveWindow->signalInfoText(funcName,cameraController.monitor);
+    }
 }
 
 void DtaoRenderSystem::startNextFrame(){
-    this->cameraController.moveCamera(
-                aspect, this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
-    this->cameraController.moveCameraMouse(
-                this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
 
-    this->cameraController.onDemo(aspect, this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
+    this->cameraController.moveCamera(
+                aspect, this->camera, this->getRenderScale(),
+                this->gameObjects, lveWindow,
+                &this->toycad_objects);
+    this->cameraController.moveCameraMouse(
+                this->camera, this->getRenderScale(),
+                this->gameObjects, lveWindow,
+                &this->toycad_objects);
+
+    this->cameraController.onDemo(
+                aspect, this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
+
 
     this->emitMonitor();
+
 
     VkCommandBuffer command_buffer = this->lveWindow->currentCommandBuffer();
     beginRenderPass(command_buffer);
 
-    this->simpleRenderSystem->renderGameObjects(
-                command_buffer, this->gameObjects, this->camera);
+    if(this->render_mode == DTAO_RENDER_MODE_TOYCAD){
+        this->simpleRenderSystem->renderToyCADObjects(
+                    command_buffer, this->toycad_objects, this->camera);
+    }
+    else{
+        this->simpleRenderSystem->renderGameObjects(
+                    command_buffer, this->gameObjects, this->camera);
+    }
 
     m_devFuncs->vkCmdEndRenderPass(command_buffer);
 
     lveWindow->frameReady();
     lveWindow->requestUpdate(); // render continuously, throttled by the presentation rate
-
 }
 
 void DtaoRenderSystem::initResources() {
@@ -141,6 +163,8 @@ void DtaoRenderSystem::initResources() {
     m_devFuncs = this->lveWindow->vulkanInstance()->deviceFunctions(dev);
 
     qDebug() << "\tDevice = " << this->lveDevice->device();
+
+    //this->createToyCADObjects("ToyCAD/Data/toy_cad_test_data.csv");
 
 }
 
@@ -274,6 +298,7 @@ void DtaoRenderSystem::createT2DLayoutObject(T2D & t2d){
     this->gameObjects.push_back(std::move(new_object));
     this->render_object_created = true;
     this->layout_model = model;
+    this->render_mode = DTAO_RENDER_MODE_LAYOUT;
 }
 
 /*
@@ -326,6 +351,7 @@ void DtaoRenderSystem::createNewPEXResObject( const QString & file_path){
     //this->dtao_objects.push_back(std::move(new_object));
     this->gameObjects.push_back(std::move(new_object));
     this->res_model = model;
+    this->render_mode = DTAO_RENDER_MODE_PEX_ALL;
 }
 
 void DtaoRenderSystem::createNewPEXCapObject( const QString & file_path,T2D  t2d){
@@ -347,7 +373,60 @@ void DtaoRenderSystem::createNewPEXCapObject( const QString & file_path,T2D  t2d
 
     //this->dtao_objects.push_back(std::move(new_object));
     this->gameObjects.push_back(std::move(new_object));
+    this->render_mode = DTAO_RENDER_MODE_PEX_ALL;
 }
+
+
+void DtaoRenderSystem::createToyCADObjects(const std::string& file_path){
+
+    if(!this->toycad_objects.empty()) this->toycad_objects.clear();
+
+    ToyCADData toycad_data_loader;
+    toycad_data_loader.loadToyCADData(file_path);
+    std::vector<TOYCAD_DATA>* toycad_data = toycad_data_loader.getCADData();
+    TOYCAD_BBOX& toycad_data_bbox = toycad_data_loader.getDataBBox();
+
+    this->trans_info.trans_x = static_cast<float>(toycad_data_bbox.min_x);
+    this->trans_info.trans_y = static_cast<float>(toycad_data_bbox.min_y);
+    this->trans_info.trans_z = static_cast<float>(toycad_data_bbox.min_z);
+    this->trans_info.scale =  static_cast<float>(toycad_data_loader.getScale());
+
+    for(auto & cur_data : *toycad_data){
+        std::shared_ptr<ToyCADModel> model
+                = std::make_unique<ToyCADModel>(*this->lveDevice, cur_data);
+
+        auto new_object = ToyCADObject::createToyCADObject();
+        new_object.model = model;
+        new_object.color = glm::vec3{
+                cur_data.color_r/255.0f,
+                cur_data.color_g/255.0f,
+                cur_data.color_b/255.0f};
+        new_object.opacity = cur_data.color_a/255.0f;
+        new_object.transform.rotation = glm::vec3{
+                cur_data.rotation_degree,
+                cur_data.rotation_degree,
+                cur_data.rotation_degree};
+        new_object.visibility = true;
+        new_object.transform.translation = glm::vec3{
+            -this->trans_info.trans_x*this->trans_info.scale,
+            -this->trans_info.trans_y*this->trans_info.scale,
+            -this->trans_info.trans_z*this->trans_info.scale};
+        new_object.transform.scale = glm::vec3{
+                this->trans_info.scale,
+                this->trans_info.scale,
+                this->trans_info.scale};
+        //new_object.scale = 1.0f;
+
+        this->toycad_objects.push_back(std::move(new_object));
+    }//for(auto & cur_data : toycad_datas){
+
+    this->render_object_created = true;
+    this->render_mode = DTAO_RENDER_MODE_TOYCAD;
+
+    qDebug() << "Objcect Count : " << this->toycad_objects.size();
+}
+
+
 /*
 void DtaoRenderSystem::createNewAxisObject(const std::string & file_path){
     (void)(file_path);

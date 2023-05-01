@@ -524,7 +524,6 @@ void PEXCapacitorModel::makeRenderingData(const QString& file_path) {
     makeCubeVertices();
     makeVertices();
     makeIndices();
-    makeIndicesFace();
 
     for (auto& cur_item : this->layer_to_cap_node_map) cur_item.second.clear();
     this->layer_to_cap_node_map.clear();
@@ -791,7 +790,7 @@ void PEXCapacitorModel::makeCubeVertices() {
 }
   
 void PEXCapacitorModel::makeVertices() {
-    VertexCapacitor temp_vertex;
+    Vertex temp_vertex;
     float cap_color_r{}, cap_color_g{}, cap_color_b{};
 
     std::vector<pattern_cap>::iterator cur_pattern_cap = this->pattern_caps.begin();
@@ -815,8 +814,8 @@ void PEXCapacitorModel::makeVertices() {
 
             for (int i = 0; i < 8; ++i) {
                 temp_vertex.position = { cur_cube.vertex[i].x, cur_cube.vertex[i].y, cur_cube.vertex[i].z };
-                temp_vertex.color = {capacitor_color,0.2};
-                vertices_capacitor.push_back(temp_vertex);
+                temp_vertex.color = capacitor_color;
+                vertices.push_back(temp_vertex);
             }
         }
         cur_pattern_cap++;
@@ -866,35 +865,6 @@ void PEXCapacitorModel::makeIndices() {
         indices.push_back(start_idx + 2); indices.push_back(start_idx + 1);
     }
 }
-
-void PEXCapacitorModel::makeIndicesFace() {
-    size_t cube_count = this->cube_vertices.size();
-
-    std::vector<uint32_t>& indices = this->indices_face;
-    uint32_t start_idx = 0;
-    for (int i = 0; i < cube_count; ++i) {
-        start_idx = 8 * i;
-        indices.push_back(start_idx + 0); indices.push_back(start_idx + 1); indices.push_back(start_idx + 2);
-        indices.push_back(start_idx + 2); indices.push_back(start_idx + 3); indices.push_back(start_idx + 0);//top
-
-        indices.push_back(start_idx + 3); indices.push_back(start_idx + 2); indices.push_back(start_idx + 6);
-        indices.push_back(start_idx + 6); indices.push_back(start_idx + 7); indices.push_back(start_idx + 3);//right
-
-        indices.push_back(start_idx + 0); indices.push_back(start_idx + 3); indices.push_back(start_idx + 7);
-        indices.push_back(start_idx + 7); indices.push_back(start_idx + 4); indices.push_back(start_idx + 0);//front
-
-        indices.push_back(start_idx + 4); indices.push_back(start_idx + 7); indices.push_back(start_idx + 6);
-        indices.push_back(start_idx + 6); indices.push_back(start_idx + 5); indices.push_back(start_idx + 4);//bottom
-
-        indices.push_back(start_idx + 0); indices.push_back(start_idx + 4); indices.push_back(start_idx + 5);
-        indices.push_back(start_idx + 5); indices.push_back(start_idx + 1); indices.push_back(start_idx + 0);//left
-
-        indices.push_back(start_idx + 1); indices.push_back(start_idx + 5); indices.push_back(start_idx + 6);
-        indices.push_back(start_idx + 6); indices.push_back(start_idx + 2); indices.push_back(start_idx + 1);//back
-    }
-
-  }
-
 
 double PEXCapacitorModel::percentileOfCapacitor(const pattern_cap& in_cap) {
     std::vector<pattern_cap>::const_iterator it;
@@ -1158,7 +1128,7 @@ void PEXResistorDataManager::loadData(const QString file_path) {
         description = line[PEXINFO_INDEX::PEXINFO_INDEX_DESCRIPTION];
         PEXResDirection resistor_direction = PEXResistor::checkDirectionFromDescription(description);
         if (value > 0.005) {
-            updateMinMaxRes(value, resistor_direction); //ÏûÑÏùòÏùò ÏΩîÎìú, 0Î≥¥Îã§ ÏûëÏùÄ Ï†ÄÌï≠ÏùÄ Î¨¥Ïãú
+            updateMinMaxRes(value, resistor_direction); //¿”¿«¿« ƒ⁄µÂ, 0∫∏¥Ÿ ¿€¿∫ ¿˙«◊¿∫ π´Ω√
             this->resistors_ref.push_back(PEXResistor(item_name, node1, node2, value, resistor_direction));
         }
     }
@@ -1186,6 +1156,7 @@ void PEXResistorDataManager::groupResistorOfNode() {
             this->resistors_of_node.emplace_back(std::vector<PEXResistor>{resistor});
         }
     }
+
 
 
     int i = 0;
@@ -1219,11 +1190,18 @@ void PEXResistorDataManager::groupResistorOfNode() {
         }
         i++;
     }
+    qDebug() << "resistors_of_node size confirm &&&&&&&&&&&&&&&&&&&&&&&" << resistors_of_node.size();
+
+    for (auto& loop : resistors_of_node[0]){
+        qDebug() << "loop test XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+    }
+
+
     for (const auto& nodes : this->resistors_of_node) {
 
             qDebug() << "------------";
         for (const auto& node : nodes) {
-            qDebug() << QString::fromStdString(node.node1.name);
+            qDebug() << QString::fromStdString(node.name);
                 //<< ", " << node.node1.name << ", " << node.node1.layer_number << ", " << node.node2.name << ", " << node.node2.layer_number << ", ";
         }
     }
@@ -1658,27 +1636,24 @@ double PEXResistorModel::percentileOfResistance(const PEXResistor& in_res) {
 #include "PEXCapacitorModel.h"
 
 #include "ToyCAD/Src/toycadmodel.h"
+#include "ToyCAD/Src/toycaddata.h"
 
 
 DtaoRenderSystem::DtaoRenderSystem(LveWindow *w)
     : lveWindow(w)
 {
     this->trans_info = {};
-    initCameraView();
-    qDebug() << "\n$$$$$ DtaoRenderSystem()";    
+    this->camera.setViewTarget(
+                glm::vec3(0.0f,0.0f,1.0f),
+                glm::vec3(0.0f, 0.0f, 0.0f),
+                glm::vec3(0.0f, 1.0f, 0.0f));
+    qDebug() << "\n$$$$$ DtaoRenderSystem()";
 }
 
 DtaoRenderSystem::~DtaoRenderSystem()
 {
     deleteSimpleRenderSystem();
     deleteLveDevice();
-}
-
-void DtaoRenderSystem::initCameraView(){
-    this->camera.setViewTarget(
-                glm::vec3(0.0f,0.0f,1.0f),
-                glm::vec3(0.0f, 0.0f, 0.0f),
-                glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 void DtaoRenderSystem::beginRenderPass(VkCommandBuffer command_buffer){
@@ -1717,52 +1692,32 @@ void DtaoRenderSystem::beginRenderPass(VkCommandBuffer command_buffer){
     m_devFuncs->vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 }
 
-void DtaoRenderSystem::goNavi(POS_MONITORING value){
-    this->naviInfo = value;
-    isNavi = true;
-}
-
-void DtaoRenderSystem::translateLayerPosition(){
-    if(!isNavi) return ;
+void DtaoRenderSystem::translateLayerPosition(POS_MONITORING value){
     for (auto& gameobject : this->gameObjects) {
         if (gameobject.model->getModelType() != MODEL_TYPE::MODEL_TYPE_AXIS) {
-            gameobject.transform.translation = {-naviInfo.x*trans_info.scale, -naviInfo.y*trans_info.scale, 0};
+            gameobject.transform.translation = {-value.x*trans_info.scale, -value.y*trans_info.scale, 0};
 
         }
     }
-    camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(naviInfo.zoom/cameraController.monitor.zoom,
-                                                               naviInfo.zoom/cameraController.monitor.zoom,
-                                                               naviInfo.zoom/cameraController.monitor.zoom));
-
+    camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(value.zoom/cameraController.monitor.zoom,
+                                                               value.zoom/cameraController.monitor.zoom,
+                                                               value.zoom/cameraController.monitor.zoom));
     glm::vec3 right {camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]};
-    camera.viewMatrix = glm::rotate(camera.getView(), (float)glm::radians(naviInfo.tilt-cameraController.monitor.tilt), right);
-
-
-    camera.viewMatrix = glm::rotate(camera.getView(), (float)glm::radians(naviInfo.rotation-cameraController.monitor.rotation), glm::vec3(0.0f, 0.0f, 1.0f));
-
-    isNavi = false;
+    camera.viewMatrix = glm::rotate(camera.getView(), (float)glm::radians(value.tilt-cameraController.monitor.tilt), right);
+    camera.viewMatrix = glm::rotate(camera.getView(), (float)glm::radians(value.rotation-cameraController.monitor.rotation), glm::vec3(0.0f, 0.0f, 1.0f));
 }
 
 void DtaoRenderSystem::emitMonitor(){
 
 
     glm::vec3 forward {camera.viewMatrix[0][2], camera.viewMatrix[1][2], camera.viewMatrix[2][2]};
-    glm::vec3 up {camera.viewMatrix[0][1], camera.viewMatrix[1][1], camera.viewMatrix[2][1]};
     double tilt = asin(forward.z/(sqrt(forward.x*forward.x +forward.y*forward.y+forward.z*forward.z)))*(180/3.141592653589793238463);
-    double rotation;
-    //camera.decomposeView(camera.getView());
-    //camera.rotation_d = glm::conjugate(camera.rotation_d);
+    camera.decomposeView(camera.getView());
+    camera.rotation_d = glm::conjugate(camera.rotation_d);
     // yaw / z
-    //double siny_cosp = 2 * (camera.rotation_d.w * camera.rotation_d.z + camera.rotation_d.x * camera.rotation_d.y);
-    //double cosy_cosp = 1 - 2 * (camera.rotation_d.y * camera.rotation_d.y + camera.rotation_d.z * camera.rotation_d.z);
-    if(tilt > 89.5 || tilt < -89.5){
-        //rotation = (double)atan2(siny_cosp, cosy_cosp)*(180/3.141592653589793238463);
-        rotation = (double)atan2(up.x, up.y)*(180/3.141592653589793238463);
-    } else {
-        rotation = (double)atan2(-forward.x, -forward.y)*(180/3.141592653589793238463);
-    }
-
-
+    double siny_cosp = 2 * (camera.rotation_d.w * camera.rotation_d.z + camera.rotation_d.x * camera.rotation_d.y);
+    double cosy_cosp = 1 - 2 * (camera.rotation_d.y * camera.rotation_d.y + camera.rotation_d.z * camera.rotation_d.z);
+    double rotation = (double)atan2(siny_cosp, cosy_cosp)*(180/3.141592653589793238463);
     cameraController.monitor.tilt = tilt;
     cameraController.monitor.rotation = rotation;
 
@@ -1772,36 +1727,50 @@ void DtaoRenderSystem::emitMonitor(){
         cameraController.monitor.z = -gameObjects[0].transform.translation.z/ trans_info.scale;
         cameraController.monitor.zoom = camera.scale_d.x*this->trans_info.scale*camera.std_scale/(2*tan(glm::radians(25.f)));
     }
-    QString funcName = "camera_position";
-    emit lveWindow->signalInfoText(funcName,cameraController.monitor);
+    if(!toycad_objects.empty()){
+        cameraController.monitor.zoom = camera.scale_d.x*this->trans_info.scale*camera.std_scale/(2*tan(glm::radians(25.f)));
+    }
+
+    if(this->render_mode != DTAO_RENDER_MODE_TOYCAD){
+        QString funcName = "camera_position";
+        emit lveWindow->signalInfoText(funcName,cameraController.monitor);
+    }
 }
 
 void DtaoRenderSystem::startNextFrame(){
-    this->cameraController.moveCamera(
-                aspect, this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
-    this->cameraController.moveCameraMouse(
-                this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
 
-    this->cameraController.onDemo(aspect, this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
+    this->cameraController.moveCamera(
+                aspect, this->camera, this->getRenderScale(),
+                this->gameObjects, lveWindow,
+                &this->toycad_objects);
+    this->cameraController.moveCameraMouse(
+                this->camera, this->getRenderScale(),
+                this->gameObjects, lveWindow,
+                &this->toycad_objects);
+
+    this->cameraController.onDemo(
+                aspect, this->camera, this->getRenderScale(), this->gameObjects, lveWindow);
+
 
     this->emitMonitor();
-
-    this->translateLayerPosition();
-
-
 
 
     VkCommandBuffer command_buffer = this->lveWindow->currentCommandBuffer();
     beginRenderPass(command_buffer);
 
-    this->simpleRenderSystem->renderGameObjects(
-                command_buffer, this->gameObjects, this->camera);
+    if(this->render_mode == DTAO_RENDER_MODE_TOYCAD){
+        this->simpleRenderSystem->renderToyCADObjects(
+                    command_buffer, this->toycad_objects, this->camera);
+    }
+    else{
+        this->simpleRenderSystem->renderGameObjects(
+                    command_buffer, this->gameObjects, this->camera);
+    }
 
     m_devFuncs->vkCmdEndRenderPass(command_buffer);
 
     lveWindow->frameReady();
     lveWindow->requestUpdate(); // render continuously, throttled by the presentation rate
-
 }
 
 void DtaoRenderSystem::initResources() {
@@ -1817,10 +1786,8 @@ void DtaoRenderSystem::initResources() {
 
     qDebug() << "\tDevice = " << this->lveDevice->device();
 
+    //this->createToyCADObjects("ToyCAD/Data/toy_cad_test_data.csv");
 
-    ToyCADModel* cad_model =
-            new ToyCADModel(*this->lveDevice, MODEL_TYPE_TOY_CAD);
-    (void)cad_model;
 }
 
 void DtaoRenderSystem::releaseResources() {
@@ -1953,6 +1920,7 @@ void DtaoRenderSystem::createT2DLayoutObject(T2D & t2d){
     this->gameObjects.push_back(std::move(new_object));
     this->render_object_created = true;
     this->layout_model = model;
+    this->render_mode = DTAO_RENDER_MODE_LAYOUT;
 }
 
 /*
@@ -2005,6 +1973,7 @@ void DtaoRenderSystem::createNewPEXResObject( const QString & file_path){
     //this->dtao_objects.push_back(std::move(new_object));
     this->gameObjects.push_back(std::move(new_object));
     this->res_model = model;
+    this->render_mode = DTAO_RENDER_MODE_PEX_ALL;
 }
 
 void DtaoRenderSystem::createNewPEXCapObject( const QString & file_path,T2D  t2d){
@@ -2026,7 +1995,60 @@ void DtaoRenderSystem::createNewPEXCapObject( const QString & file_path,T2D  t2d
 
     //this->dtao_objects.push_back(std::move(new_object));
     this->gameObjects.push_back(std::move(new_object));
+    this->render_mode = DTAO_RENDER_MODE_PEX_ALL;
 }
+
+
+void DtaoRenderSystem::createToyCADObjects(const std::string& file_path){
+
+    if(!this->toycad_objects.empty()) this->toycad_objects.clear();
+
+    ToyCADData toycad_data_loader;
+    toycad_data_loader.loadToyCADData(file_path);
+    std::vector<TOYCAD_DATA>* toycad_data = toycad_data_loader.getCADData();
+    TOYCAD_BBOX& toycad_data_bbox = toycad_data_loader.getDataBBox();
+
+    this->trans_info.trans_x = static_cast<float>(toycad_data_bbox.min_x);
+    this->trans_info.trans_y = static_cast<float>(toycad_data_bbox.min_y);
+    this->trans_info.trans_z = static_cast<float>(toycad_data_bbox.min_z);
+    this->trans_info.scale =  static_cast<float>(toycad_data_loader.getScale());
+
+    for(auto & cur_data : *toycad_data){
+        std::shared_ptr<ToyCADModel> model
+                = std::make_unique<ToyCADModel>(*this->lveDevice, cur_data);
+
+        auto new_object = ToyCADObject::createToyCADObject();
+        new_object.model = model;
+        new_object.color = glm::vec3{
+                cur_data.color_r/255.0f,
+                cur_data.color_g/255.0f,
+                cur_data.color_b/255.0f};
+        new_object.opacity = cur_data.color_a/255.0f;
+        new_object.transform.rotation = glm::vec3{
+                cur_data.rotation_degree,
+                cur_data.rotation_degree,
+                cur_data.rotation_degree};
+        new_object.visibility = true;
+        new_object.transform.translation = glm::vec3{
+            -this->trans_info.trans_x*this->trans_info.scale,
+            -this->trans_info.trans_y*this->trans_info.scale,
+            -this->trans_info.trans_z*this->trans_info.scale};
+        new_object.transform.scale = glm::vec3{
+                this->trans_info.scale,
+                this->trans_info.scale,
+                this->trans_info.scale};
+        //new_object.scale = 1.0f;
+
+        this->toycad_objects.push_back(std::move(new_object));
+    }//for(auto & cur_data : toycad_datas){
+
+    this->render_object_created = true;
+    this->render_mode = DTAO_RENDER_MODE_TOYCAD;
+
+    qDebug() << "Objcect Count : " << this->toycad_objects.size();
+}
+
+
 /*
 void DtaoRenderSystem::createNewAxisObject(const std::string & file_path){
     (void)(file_path);
@@ -2239,7 +2261,9 @@ void KeyboardMovementController::moveButtonReleased(Qt::MouseButtons buttons) {
 }
 
 void KeyboardMovementController::moveCamera(
-    float dt, LveCamera& camera, float render_scale, std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow) {
+        float dt, LveCamera& camera, float render_scale,
+        std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow,
+        std::vector<ToyCADObject>* toycad_objects) {
     float scale = 0.0f;
     float rotate_lr = 0.0f;
     float rotate_ud = 0.0f;
@@ -2265,45 +2289,11 @@ void KeyboardMovementController::moveCamera(
     if (camera_moving_flag.toggleDemensionXY) rotate_toggle_xy = -0.1f;
 
 
-    right= glm::normalize(glm::vec3{camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]});
-    forward= glm::normalize(glm::vec3{camera.viewMatrix[0][2], camera.viewMatrix[1][2], camera.viewMatrix[2][2]});
-    up= glm::normalize(glm::vec3{camera.viewMatrix[0][1], camera.viewMatrix[1][1], camera.viewMatrix[2][1]});
+    glm::vec3 right= glm::normalize(glm::vec3{camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]});
+    glm::vec3 up= glm::normalize(glm::vec3{camera.viewMatrix[0][1], camera.viewMatrix[1][1], camera.viewMatrix[2][1]});
+    glm::vec3 forward= glm::normalize(glm::vec3{camera.viewMatrix[0][2], camera.viewMatrix[1][2], camera.viewMatrix[2][2]});
 
     glm::vec3 v{ glm::normalize(glm::cross(right,glm::vec3{0,0,1})) };
-
-
-    if (glm::dot(rotate_lr, rotate_lr) > std::numeric_limits<float>::epsilon()) {
-        camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_lr), glm::vec3(0.0f, 0.0f, 1.0f));
-    }
-
-    if (glm::dot(rotate_ud, rotate_ud) > std::numeric_limits<float>::epsilon()) {
-        if(glm::rotate(camera.getView(), glm::radians(rotate_ud*0.5f),right)[2][1] >= 0){
-            camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_ud), right);
-        }
-    }
-
-    if (glm::dot(scale, scale) > std::numeric_limits<float>::epsilon()) {
-        camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(scale, scale, scale));
-    }
-
-    glm::vec3 moveDir{ 0.f };
-    camera.decomposeView(camera.getView());
-
-    if (camera_moving_flag.moveRight) moveDir += right;
-    if (camera_moving_flag.moveLeft)  moveDir -= right;
-    if (camera_moving_flag.moveUp)  moveDir -= v;
-    if (camera_moving_flag.moveDown)  moveDir += v;
-
-
-
-    if (glm::dot(moveDir, moveDir) > std::numeric_limits<float>::epsilon()) {
-        for (auto& gameobject : gameObjects) {
-            if (gameobject.model->getModelType() != MODEL_TYPE::MODEL_TYPE_AXIS) {
-                gameobject.transform.translation += moveDir/(float)this->monitor.zoom/(float)lvewindow->swapChainImageSize().height()*obj_scale;
-            }
-        }
-    }
-
 
     if (glm::dot(rotate_toggle, rotate_toggle) > std::numeric_limits<float>::epsilon()) {
 
@@ -2359,12 +2349,51 @@ void KeyboardMovementController::moveCamera(
 
     }
 
+    if (glm::dot(rotate_lr, rotate_lr) > std::numeric_limits<float>::epsilon()) {
+        camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_lr), glm::vec3(0.0f, 0.0f, 1.0f));
+    }
 
+    if (glm::dot(rotate_ud, rotate_ud) > std::numeric_limits<float>::epsilon()) {
+        camera.viewMatrix = glm::rotate(camera.getView(), glm::radians(rotate_ud), right);
+    }
+
+    if (glm::dot(scale, scale) > std::numeric_limits<float>::epsilon()) {
+        camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(scale, scale, scale));
+    }
+
+    glm::vec3 moveDir{ 0.f };
+    camera.decomposeView(camera.getView());
+
+    if (camera_moving_flag.moveRight) moveDir += right;
+    if (camera_moving_flag.moveLeft)  moveDir -= right;
+    if (camera_moving_flag.moveUp)  moveDir -= v;
+    if (camera_moving_flag.moveDown)  moveDir += v;
+
+
+
+    if (glm::dot(moveDir, moveDir) > std::numeric_limits<float>::epsilon()) {
+        for (auto& gameobject : gameObjects) {
+            if (gameobject.model->getModelType() != MODEL_TYPE::MODEL_TYPE_AXIS) {
+                gameobject.transform.translation += moveDir/(float)this->monitor.zoom/(float)lvewindow->swapChainImageSize().height()*obj_scale;
+            }
+        }
+
+        if( toycad_objects != nullptr){
+            vector<ToyCADObject>::iterator it = toycad_objects->begin();
+            for(;it != toycad_objects->end(); ++it){
+                    it->transform.translation +=
+                            (moveDir*obj_scale)
+                            /((float)this->monitor.zoom*(float)lvewindow->swapChainImageSize().height());
+            }
+        }
+    }
 
 }
 
-void KeyboardMovementController::moveCameraMouse(LveCamera& camera, float render_scale, std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow) {
-
+void KeyboardMovementController::moveCameraMouse(
+        LveCamera& camera, float render_scale,
+        std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow,
+        std::vector<ToyCADObject>* toycad_objects) {
     if (camera_moving_flag.mouseRight)
     {
 
@@ -2375,10 +2404,9 @@ void KeyboardMovementController::moveCameraMouse(LveCamera& camera, float render
         rotate_ud = mouse_position.currentPosition.y() - ypos_prev;
 
         //glm::vec3 direction{ camera.viewMatrix[0][2], camera.viewMatrix[1][2], 0 };
-
-        right={camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]};
-
-
+        glm::vec3 right{ camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0] };
+        glm::vec3 up{ camera.viewMatrix[0][1], camera.viewMatrix[1][1], camera.viewMatrix[2][1] };
+        glm::vec3 forward{ camera.viewMatrix[0][2], camera.viewMatrix[1][2], camera.viewMatrix[2][2] };
 
 
         if (glm::dot(rotate_ud, rotate_ud) > std::numeric_limits<float>::epsilon()) {
@@ -2401,8 +2429,8 @@ void KeyboardMovementController::moveCameraMouse(LveCamera& camera, float render
         float movement_lr = mouse_position.currentPosition.x() - xpos_prev;
         float movement_ud = mouse_position.currentPosition.y() - ypos_prev;
 
-        right = glm::normalize(glm::vec3{camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]});
-        forward={ glm::normalize(glm::cross(right,glm::vec3{0,0,1})) };
+        glm::vec3 right = glm::normalize(glm::vec3{camera.viewMatrix[0][0], camera.viewMatrix[1][0], camera.viewMatrix[2][0]});
+        glm::vec3 forward{ glm::normalize(glm::cross(right,glm::vec3{0,0,1})) };
 
         moveDir += right * (movement_lr);
         moveDir += forward * (movement_ud);
@@ -2414,6 +2442,17 @@ void KeyboardMovementController::moveCameraMouse(LveCamera& camera, float render
                     //camera.viewMatrix = glm::translate(camera.getView(), moveSpeed * dt * moveDir);
                 }
             }
+
+            if( toycad_objects != nullptr){
+                vector<ToyCADObject>::iterator it = toycad_objects->begin();
+                for(;it != toycad_objects->end(); ++it){
+                        it->transform.translation +=
+                                (moveDir*obj_scale)
+                                /((float)this->monitor.zoom*(float)lvewindow->swapChainImageSize().height());
+
+                }
+            }//if( toycad_objects != nullptr)
+
         }
 
         xpos_prev = mouse_position.currentPosition.x();
@@ -2421,13 +2460,7 @@ void KeyboardMovementController::moveCameraMouse(LveCamera& camera, float render
     }
 
     if (mouse_position.scroll.y() != 0) {
-        float scale_mouse;// = 1.0f + 0.1f * (mouse_position.scroll.y() / 120);
-        if(mouse_position.scroll.y()>0){
-            scale_mouse = 1.0f + 0.1f;
-        } else {
-            scale_mouse = 1.0f - 0.1f;
-        }
-
+        float scale_mouse = 1.0f + 0.1f * (mouse_position.scroll.y() / 120);
         camera.viewMatrix = glm::scale(camera.getView(), glm::vec3(scale_mouse, scale_mouse, scale_mouse));
         mouse_position.scroll.setY(0);
     }
@@ -2509,20 +2542,23 @@ void KeyboardMovementController::PEXSetting(std::shared_ptr<PEXResistorModel>& _
     }
 }
 
+//void KeyboardMovementController::translateLayerPosition(std::vector<LveGameObject>& gameObjects){
+//
+//}
 
 void KeyboardMovementController::triggerDemo() {
     camera_moving_flag.demoTrigger = true;
 };
 
-void KeyboardMovementController::onDemo(float dt, LveCamera &camera, float render_scale, std::vector<LveGameObject> &gameObjects, LveWindow *lvewindow){
-    if (camera_moving_flag.demoTrigger){
+void KeyboardMovementController::onDemo(float dt, LveCamera& camera, float render_scale, std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow) {
+    if (camera_moving_flag.demoTrigger) {
+        float scale = 0.0f;
         float rotate_lr = 0.0f;
         float rotate_ud = 0.0f;
         float rotate_toggle = 0.0f;
         float rotate_toggle_xy = 0.0f;
         float obj_scale = 2.0f / render_scale;
         demoTime = demoTime + 1;
-
 
         //if (camera_moving_flag.moveForward) scale = 1.0f + 0.01f * obj_scale;
         //else if (camera_moving_flag.moveBackward) scale = 1.0f - 0.01f * obj_scale;
@@ -3183,8 +3219,7 @@ void LveModel::createBuffers() {
         createIndexBuffers(this->indices_edge, this->indexBufferForEdge, this->indexBufferMemoryForEdge);
     }
     else if (this->model_type == MODEL_TYPE::MODEL_TYPE_PEX_CAPACITOR) {
-        createVertexBuffersCapacitor(vertices_capacitor, vertexBuffer, vertexBufferMemory);
-        createIndexBuffers(this->indices_face, this->indexBufferForFace, this->indexBufferMemoryForFace);
+        createVertexBuffers(vertices, vertexBuffer, vertexBufferMemory);
         createIndexBuffers(this->indices_edge, this->indexBufferForEdge, this->indexBufferMemoryForEdge);
     }
 }
@@ -3218,9 +3253,6 @@ void LveModel::destroyBuffers() {
     else if (this->model_type == MODEL_TYPE::MODEL_TYPE_PEX_CAPACITOR) {
         vkDestroyBuffer(lveDevice.device(), vertexBuffer, nullptr);
         vkFreeMemory(lveDevice.device(), vertexBufferMemory, nullptr);
-        vkDestroyBuffer(lveDevice.device(), indexBufferForFace, nullptr);
-        vkFreeMemory(lveDevice.device(), indexBufferMemoryForFace, nullptr);
-
         vkDestroyBuffer(lveDevice.device(), indexBufferForEdge, nullptr);
         vkFreeMemory(lveDevice.device(), indexBufferMemoryForEdge, nullptr);
     }
@@ -3238,9 +3270,9 @@ void LveModel::destroyBuffers() {
 
 }
 void LveModel::createVertexBuffers(
-    const std::vector<Vertex>& vertices,
-    VkBuffer& buffer,
-    VkDeviceMemory& memory) {
+        const std::vector<Vertex>& vertices,
+        VkBuffer& buffer,
+        VkDeviceMemory& memory) {
     vertexCount = static_cast<uint32_t>(vertices.size());
     assert(vertexCount >= 3 && "Vertex count must be at least 3");
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertexCount;
@@ -3248,11 +3280,11 @@ void LveModel::createVertexBuffers(
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     lveDevice.createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        stagingBuffer,
-        stagingBufferMemory);
+                bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                stagingBuffer,
+                stagingBufferMemory);
 
     void* data;
     vkMapMemory(lveDevice.device(), stagingBufferMemory, 0, bufferSize, 0, &data);
@@ -3260,11 +3292,11 @@ void LveModel::createVertexBuffers(
     vkUnmapMemory(lveDevice.device(), stagingBufferMemory);
 
     lveDevice.createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        buffer,
-        memory);
+                bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                buffer,
+                memory);
 
     lveDevice.copyBuffer(stagingBuffer, buffer, bufferSize);
 
@@ -3273,9 +3305,9 @@ void LveModel::createVertexBuffers(
 }
 
 void LveModel::createVertexBuffersResistor(
-    const std::vector<VertexResistor>& vertices,
-    VkBuffer& buffer,
-    VkDeviceMemory& memory) {
+        const std::vector<VertexResistor>& vertices,
+        VkBuffer& buffer,
+        VkDeviceMemory& memory) {
     vertexCount = static_cast<uint32_t>(vertices.size());
     assert(vertexCount >= 3 && "Vertex count must be at least 3");
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertexCount;
@@ -3283,11 +3315,11 @@ void LveModel::createVertexBuffersResistor(
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     lveDevice.createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        stagingBuffer,
-        stagingBufferMemory);
+                bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                stagingBuffer,
+                stagingBufferMemory);
 
     void* data;
     vkMapMemory(lveDevice.device(), stagingBufferMemory, 0, bufferSize, 0, &data);
@@ -3295,71 +3327,34 @@ void LveModel::createVertexBuffersResistor(
     vkUnmapMemory(lveDevice.device(), stagingBufferMemory);
 
     lveDevice.createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        buffer,
-        memory);
+                bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                buffer,
+                memory);
 
     lveDevice.copyBuffer(stagingBuffer, buffer, bufferSize);
 
     vkDestroyBuffer(lveDevice.device(), stagingBuffer, nullptr);
     vkFreeMemory(lveDevice.device(), stagingBufferMemory, nullptr);
 }
-
-void LveModel::createVertexBuffersCapacitor(
-    const std::vector<VertexCapacitor>& vertices,
-    VkBuffer& buffer,
-    VkDeviceMemory& memory) {
-    vertexCount = static_cast<uint32_t>(vertices.size());
-    assert(vertexCount >= 3 && "Vertex count must be at least 3");
-    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertexCount;
-
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    lveDevice.createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        stagingBuffer,
-        stagingBufferMemory);
-
-    void* data;
-    vkMapMemory(lveDevice.device(), stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, vertices.data(), (size_t)bufferSize);
-    vkUnmapMemory(lveDevice.device(), stagingBufferMemory);
-
-    lveDevice.createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        buffer,
-        memory);
-
-    lveDevice.copyBuffer(stagingBuffer, buffer, bufferSize);
-
-    vkDestroyBuffer(lveDevice.device(), stagingBuffer, nullptr);
-    vkFreeMemory(lveDevice.device(), stagingBufferMemory, nullptr);
-}
-
-
 
 
 void LveModel::createIndexBuffers(
-    const std::vector<uint32_t>& indices,
-    VkBuffer& buffer,
-    VkDeviceMemory& memory) {
-    assert(!indices.empty() && "Index size can't be zero");
+        const std::vector<uint32_t>& indices,
+        VkBuffer& buffer,
+        VkDeviceMemory& memory) {
+    assert( !indices.empty() && "Index size can't be zero");
     VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     lveDevice.createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        stagingBuffer,
-        stagingBufferMemory);
+                bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                stagingBuffer,
+                stagingBufferMemory);
 
     void* data;
     vkMapMemory(lveDevice.device(), stagingBufferMemory, 0, bufferSize, 0, &data);
@@ -3367,11 +3362,11 @@ void LveModel::createIndexBuffers(
     vkUnmapMemory(lveDevice.device(), stagingBufferMemory);
 
     lveDevice.createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        buffer,
-        memory);
+                bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                buffer,
+                memory);
 
     lveDevice.copyBuffer(stagingBuffer, buffer, bufferSize);
 
@@ -3388,7 +3383,7 @@ void LveModel::drawForEdge(VkCommandBuffer commandBuffer) {
 }
 
 void LveModel::bindVertexBuffer(VkCommandBuffer commandBuffer) {
-    VkBuffer buffers[] = { vertexBuffer };
+    VkBuffer buffers[] = {vertexBuffer};
     VkDeviceSize offsets[] = { 0 };
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
 }
@@ -3461,30 +3456,6 @@ std::vector<VkVertexInputAttributeDescription> LveModel::VertexResistor::getAttr
     return attributeDescriptions;
 }
 
-std::vector<VkVertexInputBindingDescription> LveModel::VertexCapacitor::getBindingDescriptions() {
-    std::vector<VkVertexInputBindingDescription> bindingDescriptions(1);
-    bindingDescriptions[0].binding = 0;
-    bindingDescriptions[0].stride = sizeof(VertexCapacitor);
-    bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    return bindingDescriptions;
-}
-
-std::vector<VkVertexInputAttributeDescription> LveModel::VertexCapacitor::getAttributeDescriptions() {
-    std::vector<VkVertexInputAttributeDescription> attributeDescriptions(2);
-    attributeDescriptions[0].binding = 0;
-    attributeDescriptions[0].location = 0;
-    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[0].offset = offsetof(VertexCapacitor, position);
-
-    attributeDescriptions[1].binding = 0;
-    attributeDescriptions[1].location = 1;
-    attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[1].offset = offsetof(VertexCapacitor, color);
-    return attributeDescriptions;
-}
-
-
-
 
 void LveModel::makeAxisData(const float axis_length) {
     this->vertices.clear();
@@ -3526,39 +3497,39 @@ std::map<string, LveModel::LayerProperty> LveModel::getLayer() {
     return layerList;
 }
 
-void LveModel::changeLayerColor(string layernumber, glm::vec3 rgb) {
-    if (layerList.count(layernumber) != 0) {
+void LveModel::changeLayerColor(string layernumber, glm::vec3 rgb){
+    if(layerList.count(layernumber) != 0 ){
         layerList[layernumber].color = rgb;
     }
 
 }
 
-void LveModel::changeLayerOpacity(string layernumber, float opacity) {
-    if (layerList.count(layernumber) != 0) {
+void LveModel::changeLayerOpacity(string layernumber, float opacity){
+    if(layerList.count(layernumber) != 0 ){
         layerList[layernumber].opacity = opacity;
     }
 
 }
 
-void LveModel::changeLayerVisiblity(string layernumber, bool visiblity) {
+void LveModel::changeLayerVisiblity(string layernumber, bool visiblity){
     //qDebug() << QString::fromStdString(layernumber) ;
 
-    if (layerList.count(layernumber) != 0) {
+    if(layerList.count(layernumber) != 0 ){
         layerList[layernumber].visiblity = visiblity;
     }
 
 }
 
-void LveModel::demoVisiblityOff() {
-    for (auto const& [key, val] : layerList) {
+void LveModel::demoVisiblityOff(){
+    for(auto const& [key, val] : layerList){
         layerList[key].visiblity = false;
     }
     layerList["4"].visiblity = true;
 
 }
 
-void LveModel::demoVisiblityOn(std::vector<string> layernumbers) {
-    for (auto layer : layernumbers) {
+void LveModel::demoVisiblityOn(std::vector<string> layernumbers){
+    for(auto layer : layernumbers){
         layerList[layer].visiblity = true;
     }
 }
@@ -3927,9 +3898,11 @@ SimpleRenderSystem::SimpleRenderSystem(LveDevice& device, VkRenderPass renderPas
     createPipelineForPEXResistorEdge(renderPass);
     createPipelineLayout(this->pipelineLayoutForPEXCapacitor);
     createPipelineForPEXCapacitor(renderPass);
-    createPipelineLayout(this->pipelineLayoutForPEXCapacitorEdge);
-    createPipelineForPEXCapacitorEdge(renderPass);
 
+    createPipelineLayout(this->pipelineLayoutForToyCADFace);
+    createPipelineForToyCADFace(renderPass);
+    createPipelineLayout(this->pipelineLayoutForToyCADEdge);
+    createPipelineForToyCADEdge(renderPass);
 }
 
 SimpleRenderSystem::~SimpleRenderSystem() {
@@ -3938,6 +3911,9 @@ SimpleRenderSystem::~SimpleRenderSystem() {
     vkDestroyPipelineLayout(lveDevice.device(), pipelineLayoutForPEXResistor, nullptr);
     vkDestroyPipelineLayout(lveDevice.device(), pipelineLayoutForPEXResistorEdge, nullptr);
     vkDestroyPipelineLayout(lveDevice.device(), pipelineLayoutForPEXCapacitor, nullptr);
+
+    vkDestroyPipelineLayout(lveDevice.device(), pipelineLayoutForToyCADFace, nullptr);
+    vkDestroyPipelineLayout(lveDevice.device(), pipelineLayoutForToyCADEdge, nullptr);
 }
 
 
@@ -4030,40 +4006,39 @@ void SimpleRenderSystem::createPipelineForPEXResistorEdge(VkRenderPass renderPas
         pipelineConfigResistorEdge, LveModel::VertexResistor::getBindingDescriptions(), LveModel::VertexResistor::getAttributeDescriptions());
 }
 
+void SimpleRenderSystem::createPipelineForPEXCapacitorLine(VkRenderPass renderPass) {
+    assert(pipelineLayoutForPEXResistor != nullptr && "Cannot create pipeline before pipeline layout");
+    PipelineConfigInfo pipelineConfigCapacitorLine{};
+    LvePipeline::defaultPipelineConfigInfo(pipelineConfigCapacitorLine);
+    pipelineConfigCapacitorLine.renderPass = renderPass;
+    pipelineConfigCapacitorLine.pipelineLayout = pipelineLayoutForPEXCapacitorLine;
+    pipelineConfigCapacitorLine.colorBlendAttachment.blendEnable = VK_TRUE;
+
+    pipelineConfigCapacitorLine.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    pipelineConfigCapacitorLine.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+
+    this->lvePipelineForPEXCapacitorLine = std::make_unique<LvePipeline>(
+        lveDevice,
+        "Rendering/shaders/simple_shader.vert_pex.spv",
+        "Rendering/shaders/simple_shader.frag_pex.spv",
+        pipelineConfigCapacitorLine, LveModel::Vertex::getBindingDescriptions(), LveModel::Vertex::getAttributeDescriptions());
+}
+
 void SimpleRenderSystem::createPipelineForPEXCapacitor(VkRenderPass renderPass) {
     assert(pipelineLayoutForPEXCapacitor != nullptr && "Cannot create pipeline before pipeline layout");
     PipelineConfigInfo pipelineConfigCapacitor{};
     LvePipeline::defaultPipelineConfigInfo(pipelineConfigCapacitor);
     pipelineConfigCapacitor.renderPass = renderPass;
     pipelineConfigCapacitor.pipelineLayout = pipelineLayoutForPEXCapacitor;
-    pipelineConfigCapacitor.colorBlendAttachment.blendEnable = VK_TRUE;
 
-    pipelineConfigCapacitor.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-    pipelineConfigCapacitor.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    pipelineConfigCapacitor.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 
     this->lvePipelineForPEXCapacitor = std::make_unique<LvePipeline>(
         lveDevice,
         "Rendering/shaders/simple_shader.vert_pex.spv",
         "Rendering/shaders/simple_shader.frag_pex.spv",
-        pipelineConfigCapacitor, LveModel::VertexCapacitor::getBindingDescriptions(), LveModel::VertexCapacitor::getAttributeDescriptions());
+        pipelineConfigCapacitor, LveModel::Vertex::getBindingDescriptions(), LveModel::Vertex::getAttributeDescriptions());
 }
-
-void SimpleRenderSystem::createPipelineForPEXCapacitorEdge(VkRenderPass renderPass) {
-    assert(pipelineLayoutForPEXCapacitorEdge != nullptr && "Cannot create pipeline before pipeline layout");
-    PipelineConfigInfo pipelineConfigCapacitorEdge{};
-    LvePipeline::defaultPipelineConfigInfo(pipelineConfigCapacitorEdge);
-    pipelineConfigCapacitorEdge.renderPass = renderPass;
-    pipelineConfigCapacitorEdge.pipelineLayout = pipelineLayoutForPEXCapacitorEdge;
-
-    pipelineConfigCapacitorEdge.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-
-    this->lvePipelineForPEXCapacitorEdge = std::make_unique<LvePipeline>(
-        lveDevice,
-        "Rendering/shaders/simple_shader.vert_pex.spv",
-        "Rendering/shaders/simple_shader.frag_pex.spv",
-        pipelineConfigCapacitorEdge, LveModel::VertexCapacitor::getBindingDescriptions(), LveModel::VertexCapacitor::getAttributeDescriptions());
-}
-
 
 void SimpleRenderSystem::renderGameObjects(
     VkCommandBuffer commandBuffer,
@@ -4143,22 +4118,90 @@ void SimpleRenderSystem::renderGameObjects(
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                 sizeof(SimplePushConstantData), &push);
             obj.model->bindVertexBuffer(commandBuffer);
-            obj.model->bindIndexBufferForFace(commandBuffer);
-            obj.model->drawForFace(commandBuffer);
             obj.model->bindIndexBufferForEdge(commandBuffer);
-            lvePipelineForPEXCapacitorEdge->bind(commandBuffer);
-            vkCmdPushConstants(
-                commandBuffer, pipelineLayoutForPEXCapacitorEdge,
-                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                sizeof(SimplePushConstantData), &push);
-
             obj.model->drawForEdge(commandBuffer);
             //*/
         }
     }
 }
 
+void SimpleRenderSystem::createPipelineForToyCADFace(VkRenderPass renderPass) {
+    assert(pipelineLayoutForToyCADFace != nullptr && "Cannot create pipeline before pipeline layout");
 
+    PipelineConfigInfo pipelineConfig{};
+    LvePipeline::defaultPipelineConfigInfo(pipelineConfig);
+    pipelineConfig.renderPass = renderPass;
+    pipelineConfig.pipelineLayout = pipelineLayoutForToyCADFace;
+
+    pipelineConfig.colorBlendAttachment.blendEnable = VK_TRUE;
+    pipelineConfig.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    pipelineConfig.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+
+    this->lvePipelineForToyCADFace = std::make_unique<LvePipeline>(
+                lveDevice,
+                "ToyCAD/shaders/toycad.vert.spv",
+                "ToyCAD/shaders/toycad.frag.spv",
+                pipelineConfig,
+                ToyCADModel::ToyCADVertex::getBindingDescriptions(),
+                ToyCADModel::ToyCADVertex::getAttributeDescriptions());
+}
+
+void SimpleRenderSystem::createPipelineForToyCADEdge(VkRenderPass renderPass) {
+    assert(pipelineLayoutForToyCADEdge != nullptr && "Cannot create pipeline before pipeline layout");
+
+    PipelineConfigInfo pipelineConfig{};
+    LvePipeline::defaultPipelineConfigInfo(pipelineConfig);
+    pipelineConfig.renderPass = renderPass;
+    pipelineConfig.pipelineLayout = pipelineLayoutForToyCADEdge;
+
+    pipelineConfig.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+
+    this->lvePipelineForToyCADEdge = std::make_unique<LvePipeline>(
+                lveDevice,
+                "ToyCAD/shaders/toycad.vert.spv",
+                "ToyCAD/shaders/toycad.frag.spv",
+                pipelineConfig,
+                ToyCADModel::ToyCADVertex::getBindingDescriptions(),
+                ToyCADModel::ToyCADVertex::getAttributeDescriptions());
+}
+
+void SimpleRenderSystem::renderToyCADObjects(
+    VkCommandBuffer commandBuffer,
+    std::vector<ToyCADObject>& objects,
+    const LveCamera& camera) {
+
+    auto proj = camera.getProjection();
+    proj[1][1] *= -1;
+    auto projectionView = proj * camera.getView();
+
+    SimplePushConstantData push{};
+    for (auto& obj : objects) {
+        if(obj.getVisibility()){
+            push.transform = projectionView * obj.transform.mat4();
+            push.alpha = obj.opacity;
+            push.color = obj.color;
+
+            lvePipelineForToyCADFace->bind(commandBuffer);
+            vkCmdPushConstants(
+                commandBuffer, pipelineLayoutForToyCADFace,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                sizeof(SimplePushConstantData), &push);
+            obj.model->bindVertexBuffer(commandBuffer);
+            obj.model->bindIndexBufferForFace(commandBuffer);
+            obj.model->drawForFace(commandBuffer);
+
+            push.color = glm::vec3{obj.color.r*0.8, obj.color.g*0.8, obj.color.b*0.8,};
+
+            lvePipelineForToyCADEdge->bind(commandBuffer);
+            vkCmdPushConstants(
+                commandBuffer, pipelineLayoutForToyCADEdge,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                sizeof(SimplePushConstantData), &push);
+            obj.model->bindIndexBufferForEdge(commandBuffer);
+            obj.model->drawForEdge(commandBuffer);
+        }//if(obj.getVisibility())
+    }//for (auto& obj : objects)
+}//void SimpleRenderSystem::renderToyCADObjects
 !@hash[]!@file[]./T2D.cpp!@hash[]!@code[]#include "T2D.h"
 
 using namespace std;
@@ -4260,62 +4303,55 @@ vector<string> T2D::string_split(string input, char delimiter) {
 
     return answer;
 }
-!@hash[]!@file[]./ToyCAD/Src/toycadmodel.cpp!@hash[]!@code[]#include "toycadmodel.h"
+!@hash[]!@file[]./ToyCAD/Src/toycaddata.cpp!@hash[]!@code[]#include "toycaddata.h"
 
 #include <iostream>
-#include <vector>
+#include <fstream>
 #include <sstream>
-#include <string>
+#include <vector>
 
+#include <QDebug>
 #include <QFile>
 
 using namespace std;
 
-ToyCADModel::ToyCADModel(LveDevice& device, MODEL_TYPE model_type)
-    : LveModel(device, model_type){
-    QString test_input("ToyCAD/Data/toy_cad_test_data.csv");
-    num_points_for_circle = 20;
-    this->makeRenderingData(test_input);
-    //this->createBuffers();
+ToyCADData::ToyCADData()
+{
+    this->scale = 0.0;
 }
 
-ToyCADModel::~ToyCADModel(){
-
+ToyCADData::~ToyCADData()
+{
+    this->cad_data.clear();
 }
 
-void ToyCADModel::makeRenderingData(const QString& file_path){
-       this->loadData(file_path.toStdString());
-
-}
-
-
-
-void ToyCADModel::makeVertices(){
-
-}
-
-void ToyCADModel::makeIndices(){
-
-}
-
-void ToyCADModel::makeCubeVertices(){}
-void ToyCADModel::makeCylinderVertices(){}
-void ToyCADModel::makeIndicesForFace(){}
-
-void ToyCADModel::loadData(const string& file_path){
+void ToyCADData::loadToyCADData(const std::string& file_path){
     if (!QFile::exists(file_path.c_str())) {
-        cerr << "File is not exist @ ToyCADModel - " << file_path << endl;
+        cerr << "File is not exist @ ToyCADData - " << file_path << endl;
         return;
     }
 
     ifstream readfile(file_path);
+
     string line;
     vector<string> tokens;
     string token;
+    TOYCAD_DATA cur_data;
 
-    toycad_data cur_data;
+    getline(readfile, line); //bbox line
+    stringstream ss(line);
+    while( getline(ss, token, ',')){
+        tokens.push_back(token);
+    }
+    this->data_bbox.min_x = stof(tokens[TOYCAD_BBOX_IDX_MINX]);
+    this->data_bbox.min_y = stof(tokens[TOYCAD_BBOX_IDX_MINY]);
+    this->data_bbox.min_z = stof(tokens[TOYCAD_BBOX_IDX_MINZ]);
+    this->data_bbox.max_x = stof(tokens[TOYCAD_BBOX_IDX_MAXX]);
+    this->data_bbox.max_y = stof(tokens[TOYCAD_BBOX_IDX_MAXY]);
+    this->data_bbox.max_z = stof(tokens[TOYCAD_BBOX_IDX_MAXZ]);
+    this->calculateScale();
 
-    getline(readfile, line); //head line
+    getline(readfile, line);//column header line
     while(getline(readfile, line)){
         tokens.clear();
         stringstream ss(line);
@@ -4323,41 +4359,340 @@ void ToyCADModel::loadData(const string& file_path){
             tokens.push_back(token);
         }
 
-        cur_data.type = tokens[TOYCADINFO_IDX_TYPE];
-        cur_data.layer = tokens[TOYCADINFO_IDX_LAYER];
-        cur_data.minx = stof(tokens[TOYCADINFO_IDX_XMIN]);
-        cur_data.miny = stof(tokens[TOYCADINFO_IDX_YMIN]);
-        cur_data.maxx = stof(tokens[TOYCADINFO_IDX_XMAX]);
-        cur_data.maxy = stof(tokens[TOYCADINFO_IDX_YMAX]);
-        cur_data.minz = stof(tokens[TOYCADINFO_IDX_ZMIN]);
-        cur_data.maxz = stof(tokens[TOYCADINFO_IDX_ZMAX]);
-        cur_data.slopex = stof(tokens[TOYCADINFO_IDX_XSLOPE]);
-        cur_data.slopey = stof(tokens[TOYCADINFO_IDX_YSLOPE]);
+        cur_data.type = tokens[TOYCAD_DATA_IDX_TYPE];
+        cur_data.layer = tokens[TOYCAD_DATA_IDX_LAYER];
+        cur_data.minx = stof(tokens[TOYCAD_DATA_IDX_MINX]);
+        cur_data.miny = stof(tokens[TOYCAD_DATA_IDX_MINY]);
+        cur_data.maxx = stof(tokens[TOYCAD_DATA_IDX_MAXX]);
+        cur_data.maxy = stof(tokens[TOYCAD_DATA_IDX_MAXY]);
+        cur_data.minz = stof(tokens[TOYCAD_DATA_IDX_MINZ]);
+        cur_data.maxz = stof(tokens[TOYCAD_DATA_IDX_MAXZ]);
+        cur_data.color_r = stoi(tokens[TOYCAD_DATA_IDX_COLOR_R]);
+        cur_data.color_g = stoi(tokens[TOYCAD_DATA_IDX_COLOR_G]);
+        cur_data.color_b = stoi(tokens[TOYCAD_DATA_IDX_COLOR_B]);
+        cur_data.color_a = stoi(tokens[TOYCAD_DATA_IDX_COLOR_A]);
+        cur_data.slopex = stof(tokens[TOYCAD_DATA_IDX_SLOPEX]);
+        cur_data.slopey = stof(tokens[TOYCAD_DATA_IDX_SLOPEY]);
+        cur_data.rotation_degree = stof(tokens[TOYCAD_DATA_IDX_ROTATE]);
 
-        this->cad_datas.push_back(cur_data);
+        this->cad_data.push_back(cur_data);
 
-        //qDebug() << "Cur Line : "<< line.c_str();
-        //for(auto cur_token : tokens){qDebug() << cur_token.c_str();}
-    }
-
-
+    }//while(getline(readfile, line)){
     printAllData();
 }
 
-void ToyCADModel::printAllData(){
-    qDebug() << "ToyCADModel :: printAllData()";
-    for(auto cur : this->cad_datas){
-        qDebug() << cur.type.c_str();
-        qDebug() << cur.layer.c_str();
-        qDebug() << cur.minx;
-        qDebug() << cur.miny;
-        qDebug() << cur.maxx;
-        qDebug() << cur.maxy;
-        qDebug() << cur.minz;
-        qDebug() << cur.maxz;
-        qDebug() << cur.slopex;
-        qDebug() << cur.slopey;;
+void ToyCADData::calculateScale(){
+    double diff_x = this->data_bbox.max_x - this->data_bbox.min_x;
+    double diff_y = this->data_bbox.max_y - this->data_bbox.min_y;
+    double diff_z = this->data_bbox.max_z - this->data_bbox.min_z;
+
+    double diff_max = diff_x > diff_y ? diff_x : diff_y;
+    diff_max = diff_max > diff_z ? diff_max : diff_z;
+
+    this->scale = 1.0f / diff_max;
+}
+
+void ToyCADData::printAllData(){
+    qDebug() << "ToyCADData :: printAllData()";
+    for(auto cur : this->cad_data){
+        qDebug() << cur.type.c_str() << ", "
+                 << cur.layer.c_str() << ", "
+                 << cur.minx << ", "
+                 << cur.miny << ", "
+                 << cur.maxx << ", "
+                 << cur.maxy << ", "
+                 << cur.minz << ", "
+                 << cur.maxz << ", "
+                 << cur.color_r << ", "
+                 << cur.color_g << ", "
+                 << cur.color_b << ", "
+                 << cur.slopex << ", "
+                 << cur.slopey << ", "
+                 << cur.rotation_degree;
     }
+}
+!@hash[]!@file[]./ToyCAD/Src/toycadmodel.cpp!@hash[]!@code[]#include <vulkan/vulkan.h>
+
+#include "toycadmodel.h"
+
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <sstream>
+#include <string>
+#include <cassert>
+#include <cmath>
+
+#include <QFile>
+
+using namespace std;
+
+const double PI = 3.141591;
+const double RANDIAN_FACTOR = PI / 180.0;
+
+ToyCADModel::ToyCADModel(LveDevice& device, TOYCAD_DATA& toycad_data)
+    : lveDevice{device}{
+    this->model_type = MODEL_TYPE_TOY_CAD;
+    num_points_for_circle = 20;
+    this->makeRenderingData(toycad_data);
+    this->createBuffers();
+}
+ToyCADModel::~ToyCADModel(){
+    this->destroyBuffers();
+    this->vertices.clear();
+    this->indices_face.clear();
+    this->indices_edge.clear();
+}
+
+void ToyCADModel::makeRenderingData(TOYCAD_DATA& toycad_data){
+       //this->loadData();
+    this->toycad_datatype = getCurDataType(toycad_data.type);
+    this->makeVertices(toycad_data);
+    this->makeIndices();
+}
+
+void ToyCADModel::makeVertices(TOYCAD_DATA& toycad_data){
+    if(this->toycad_datatype == TOYCAD_TYPE_RECT) makeRectVertices(toycad_data);
+    else if(this->toycad_datatype == TOYCAD_TYPE_CIRCLE) makeCircleVertices(toycad_data);
+    else if(this->toycad_datatype == TOYCAD_TYPE_FAN) makeFanVertices(toycad_data);
+    else if(this->toycad_datatype == TOYCAD_TYPE_HEXAGON) makeHexagonVertices(toycad_data);
+    else if(this->toycad_datatype == TOYCAD_TYPE_OCTAGON) makeOctagonVertices(toycad_data);
+    else{}
+}
+
+void ToyCADModel::makeRectVertices(TOYCAD_DATA& toycad_data){
+    int num_of_vertex = 8;
+    ToyCADVertex vertex[num_of_vertex];
+
+    double half_x_length = (toycad_data.maxx - toycad_data.minx)*0.5;
+    double half_y_length = (toycad_data.maxy - toycad_data.miny)*0.5;
+    double height = toycad_data.maxz - toycad_data.minz;
+    double delta_x = height*tan(RANDIAN_FACTOR*toycad_data.slopex);
+    double delta_y = height*tan(RANDIAN_FACTOR*toycad_data.slopey);
+    if( delta_x < -half_x_length) delta_x = -half_x_length;
+    if( delta_y < -half_y_length) delta_y = -half_y_length;
+
+    vertex[0].position = {toycad_data.minx, toycad_data.maxy, toycad_data.maxz};
+    vertex[1].position = {toycad_data.maxx, toycad_data.maxy, toycad_data.maxz};
+    vertex[2].position = {toycad_data.maxx, toycad_data.miny, toycad_data.maxz};
+    vertex[3].position = {toycad_data.minx, toycad_data.miny, toycad_data.maxz};
+
+    vertex[4].position = {toycad_data.minx - delta_x, toycad_data.maxy + delta_y, toycad_data.minz};
+    vertex[5].position = {toycad_data.maxx + delta_x, toycad_data.maxy + delta_y, toycad_data.minz};
+    vertex[6].position = {toycad_data.maxx + delta_x, toycad_data.miny - delta_y, toycad_data.minz};
+    vertex[7].position = {toycad_data.minx - delta_x, toycad_data.miny - delta_y, toycad_data.minz};
+
+    for(int i = 0; i < num_of_vertex; ++i)
+        this->vertices.push_back(vertex[i]);
+}
+
+void ToyCADModel::makeCircleVertices(TOYCAD_DATA& toycad_data){(void)toycad_data;}
+void ToyCADModel::makeFanVertices(TOYCAD_DATA& toycad_data){(void)toycad_data;}
+void ToyCADModel::makeHexagonVertices(TOYCAD_DATA& toycad_data){(void)toycad_data;}
+void ToyCADModel::makeOctagonVertices(TOYCAD_DATA& toycad_data){(void)toycad_data;}
+
+
+void ToyCADModel::makeIndices(){
+    if(this->toycad_datatype == TOYCAD_TYPE_RECT) makeRectIndices();
+    else if(this->toycad_datatype == TOYCAD_TYPE_CIRCLE) makeCircleIndices();
+    else if(this->toycad_datatype == TOYCAD_TYPE_FAN) makeFanIndices();
+    else if(this->toycad_datatype == TOYCAD_TYPE_HEXAGON) makeHexagonIndices();
+    else if(this->toycad_datatype == TOYCAD_TYPE_OCTAGON) makeOctagonIndices();
+    else{
+    }
+}
+
+
+void ToyCADModel::makeRectIndices(){
+    //face
+    std::vector<uint32_t>& face = this->indices_face;
+
+    face.push_back(0); face.push_back(1); face.push_back(2);
+    face.push_back(2); face.push_back(3); face.push_back(0);//top
+
+    face.push_back(3); face.push_back(2); face.push_back(6);
+    face.push_back(6); face.push_back(7); face.push_back(3);//front
+
+    face.push_back(0); face.push_back(3); face.push_back(7);
+    face.push_back(7); face.push_back(4); face.push_back(0);//left
+
+    face.push_back(1); face.push_back(5); face.push_back(6);
+    face.push_back(6); face.push_back(2); face.push_back(1);//right
+
+    face.push_back(0); face.push_back(4); face.push_back(5);
+    face.push_back(5); face.push_back(1); face.push_back(0);//back
+
+    face.push_back(4); face.push_back(7); face.push_back(6);
+    face.push_back(6); face.push_back(5); face.push_back(4);//bottom
+
+    //edge
+    std::vector<uint32_t>& edge = this->indices_edge;
+    edge.push_back(0); edge.push_back(1);
+    edge.push_back(1); edge.push_back(2);
+    edge.push_back(2); edge.push_back(3);
+    edge.push_back(3); edge.push_back(0);//top
+
+    edge.push_back(4); edge.push_back(5);
+    edge.push_back(5); edge.push_back(6);
+    edge.push_back(6); edge.push_back(7);
+    edge.push_back(7); edge.push_back(4);//bottom
+
+    edge.push_back(0); edge.push_back(4);
+    edge.push_back(1); edge.push_back(5);
+    edge.push_back(2); edge.push_back(6);
+    edge.push_back(3); edge.push_back(7);//side
+
+
+}
+
+void ToyCADModel::makeCircleIndices(){}
+void ToyCADModel::makeFanIndices(){}
+void ToyCADModel::makeHexagonIndices(){}
+void ToyCADModel::makeOctagonIndices(){}
+
+
+int ToyCADModel::getCurDataType(std::string& str_type){
+    TOYCAD_TYPE_LIST type;
+    if(str_type == "rect") type = TOYCAD_TYPE_RECT;
+    else if(str_type == "circle") type = TOYCAD_TYPE_CIRCLE;
+    else if(str_type == "fan") type = TOYCAD_TYPE_FAN;
+    else if(str_type == "hexagon") type = TOYCAD_TYPE_HEXAGON;
+    else if(str_type == "octagon") type = TOYCAD_TYPE_OCTAGON;
+    else type = TOYCAD_TYPE_DEFAULT;
+
+    return type;
+}
+
+void ToyCADModel::createBuffers(){
+    createVertexBuffer(this->vertices, this->vertexBuffer, this->vertexBufferMemory);
+    createIndexBuffer(this->indices_face, this->indexBufferForFace, this->indexBufferMemoryForFace);
+    createIndexBuffer(this->indices_edge, this->indexBufferForEdge, this->indexBufferMemoryForEdge);
+}
+
+void ToyCADModel::destroyBuffers(){
+    vkDestroyBuffer(lveDevice.device(), vertexBuffer, nullptr);
+    vkFreeMemory(lveDevice.device(), vertexBufferMemory, nullptr);
+    vkDestroyBuffer(lveDevice.device(), indexBufferForFace, nullptr);
+    vkFreeMemory(lveDevice.device(), indexBufferMemoryForFace, nullptr);
+    vkDestroyBuffer(lveDevice.device(), indexBufferForEdge, nullptr);
+    vkFreeMemory(lveDevice.device(), indexBufferMemoryForEdge, nullptr);
+}
+
+void ToyCADModel::createVertexBuffer(
+        const std::vector<ToyCADVertex>& vertices,
+        VkBuffer& buffer,
+        VkDeviceMemory& memory){
+    uint32_t vertexCount = static_cast<uint32_t>(vertices.size());
+    assert(vertexCount >= 3 && "Vertex count must be at least 3");
+
+    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertexCount;
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    lveDevice.createBuffer(
+                bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                stagingBuffer,
+                stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(lveDevice.device(), stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, vertices.data(), (size_t)bufferSize);
+    vkUnmapMemory(lveDevice.device(), stagingBufferMemory);
+
+    lveDevice.createBuffer(
+                bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                buffer,
+                memory);
+
+    lveDevice.copyBuffer(stagingBuffer, buffer, bufferSize);
+
+    vkDestroyBuffer(lveDevice.device(), stagingBuffer, nullptr);
+    vkFreeMemory(lveDevice.device(), stagingBufferMemory, nullptr);
+
+}
+void ToyCADModel::createIndexBuffer(
+        const std::vector<uint32_t>& indices,
+        VkBuffer & buffer,
+        VkDeviceMemory & memory){
+    assert( !indices.empty() && "Index size can't be zero");
+
+    VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    lveDevice.createBuffer(
+                bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                stagingBuffer,
+                stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(lveDevice.device(), stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, indices.data(), (size_t)bufferSize);
+    vkUnmapMemory(lveDevice.device(), stagingBufferMemory);
+
+    lveDevice.createBuffer(
+                bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                buffer,
+                memory);
+
+    lveDevice.copyBuffer(stagingBuffer, buffer, bufferSize);
+
+    vkDestroyBuffer(lveDevice.device(), stagingBuffer, nullptr);
+    vkFreeMemory(lveDevice.device(), stagingBufferMemory, nullptr);
+}
+
+void ToyCADModel::bindVertexBuffer(VkCommandBuffer commandBuffer){
+    VkBuffer buffers[] = {vertexBuffer};
+    VkDeviceSize offsets[] = { 0 };
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
+}
+
+void ToyCADModel::bindIndexBufferForFace(VkCommandBuffer commandBuffer){
+    vkCmdBindIndexBuffer(commandBuffer, this->indexBufferForFace, 0, VK_INDEX_TYPE_UINT32);
+}
+
+void ToyCADModel::bindIndexBufferForEdge(VkCommandBuffer commandBuffer){
+    vkCmdBindIndexBuffer(commandBuffer, this->indexBufferForEdge, 0, VK_INDEX_TYPE_UINT32);
+}
+
+void ToyCADModel::drawForFace(VkCommandBuffer commandBuffer){
+    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(this->indices_face.size()), 1, 0, 0, 0);
+}
+
+void ToyCADModel::drawForEdge(VkCommandBuffer commandBuffer){
+    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(this->indices_edge.size()), 1, 0, 0, 0);
+}
+
+std::vector<VkVertexInputBindingDescription> ToyCADModel::ToyCADVertex::getBindingDescriptions() {
+    std::vector<VkVertexInputBindingDescription> bindingDescriptions(1);
+    bindingDescriptions[0].binding = 0;
+    bindingDescriptions[0].stride = sizeof(ToyCADVertex);
+    bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    return bindingDescriptions;
+}
+
+std::vector<VkVertexInputAttributeDescription> ToyCADModel::ToyCADVertex::getAttributeDescriptions() {
+    std::vector<VkVertexInputAttributeDescription> attributeDescriptions(2);
+    attributeDescriptions[0].binding = 0;
+    attributeDescriptions[0].location = 0;
+    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescriptions[0].offset = offsetof(ToyCADVertex, position);
+
+    attributeDescriptions[1].binding = 0;
+    attributeDescriptions[1].location = 1;
+    attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescriptions[1].offset = offsetof(ToyCADVertex, color);
+    return attributeDescriptions;
+}
+
+void ToyCADModel::test(){
+    qDebug() << "test ToyCAD model";
 }
 !@hash[]!@file[]./all_data.cpp!@hash[]!@code[]#include "all_data.h"
 #include <QString>
@@ -4415,7 +4750,6 @@ void all_data::receiveSelectFileName(QString file_name)
 #include "ui_dev_dialog.h"
 #include <QDebug>
 
-
 DevDialog::DevDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::DevDialog)
@@ -4457,12 +4791,6 @@ void DevDialog::on_checkBox_pos_stateChanged(int arg1)
             *is_pos_checked = false;
         }
     }
-}
-
-void DevDialog::on_pushButton_initCamera_clicked()
-{
-    DtaoRenderSystem* renderer = getRenderer();
-    renderer->initCameraView();
 }
 !@hash[]!@file[]./filedb.cpp!@hash[]!@code[]#include "filedb.h"
 #include <QFile>
@@ -4513,7 +4841,8 @@ void FileDb::openFile(QString fileNameInfo,QVector<QList<float>> &vecList,
     return;
 
 }
-!@hash[]!@file[]./formhier.cpp!@hash[]!@code[]#include "formhier.h"
+!@hash[]!@file[]./formhier.cpp!@hash[]!@code[]//#include "/Rendering/Src/LayoutPEXData.h"
+#include "formhier.h"
 #include "ui_formhier.h"
 #include "mainwindow.h"
 
@@ -4553,6 +4882,11 @@ void FormHier::createHierarchyTree(T2D *t2d){
 
         m_buf_tree_item[m_level - 1]->addChild(m_child_tree);
     }
+
+//    PEXResistorDataManager::getResistorsOfNode();
+//    for (auto& loop : resistors_of_node[0]){
+//        qDebug() << "loop test XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+//    }
 }
 
 void FormHier::on_hierarchy_tree_itemDoubleClicked(QTreeWidgetItem *item, int column)
@@ -4664,7 +4998,7 @@ FormInfo::FormInfo(QWidget *parent) :
 {
     ui->setupUi(this);    
 
-    //Ïà´Ïûê Ï†úÏïΩ ÏÑ§Ï†ï
+    //º˝¿⁄ ¡¶æ‡ º≥¡§
     QDoubleValidator *validator_pos = new QDoubleValidator(-9999.0,9999.0,4,this);
     QIntValidator *validator_tilt = new QIntValidator(-90,90,this);
     QIntValidator *validator_rot = new QIntValidator(0,359,this);
@@ -4677,7 +5011,7 @@ FormInfo::FormInfo(QWidget *parent) :
     ui->zoom        ->setValidator(validator_zoom);
 
     this->setEnabled(false);
-    //edit Í∞í Ï¥àÍ∏∞Ìôî
+    //edit ∞™ √ ±‚»≠
     setTextPosTotal(&TEMP_POS);
 }
 
@@ -4723,7 +5057,7 @@ void FormInfo::receiveFile(T2D &t2d)
 void FormInfo::receivePointPos(POS_MONITORING &pos)
 {
     this->POS = &pos;
-    TEMP_POS = pos;         //TEMP_POS Ïó≠Ìï† : enter Î•º ÎàÑÎ•¥Í∏∞ Ï†ÑÍπåÏßÄ Í∞íÏùÑ Í∞ñÍ≥† ÏûàÎäî Ï†ÄÏû•ÏÜå
+    TEMP_POS = pos;         //TEMP_POS ø™«“ : enter ∏¶ ¥©∏£±‚ ¿¸±Ó¡ˆ ∞™¿ª ∞Æ∞Ì ¿÷¥¬ ¿˙¿Âº“
 }
 
 void FormInfo::changePos()
@@ -4735,7 +5069,7 @@ void FormInfo::changePos()
     }
 }
 
-void FormInfo::addItemToPosList(POS_SET *position_item)    //POS_STACK Ïóê position ÎÑ£Í∏∞
+void FormInfo::addItemToPosList(POS_SET *position_item)    //POS_STACK ø° position ≥÷±‚
 {
     POS_STACK.push_back(*position_item);
     item_data_i = POS_STACK.size() - 1 ;
@@ -4807,7 +5141,7 @@ void FormInfo::convertTextToValue(double *point, const QString &arg1)
     inputValueToTemp(point, double_arg);
 }
 
-void FormInfo::inputPos()       //ÏßÅÏ†ë ÏûÖÎ†•Ìïú Í∞íÏùÑ POS Íµ¨Ï°∞Ï≤¥Ïóê ÎÑ£Ïùå
+void FormInfo::inputPos()       //¡˜¡¢ ¿‘∑¬«— ∞™¿ª POS ±∏¡∂√ºø° ≥÷¿Ω
 {
     if(isFileOpen)
     {
@@ -4819,20 +5153,20 @@ void FormInfo::inputPos()       //ÏßÅÏ†ë ÏûÖÎ†•Ìïú Í∞íÏùÑ POS Íµ¨Ï°∞Ï≤¥Ïóê ÎÑ£Ïù
     }
 }
 
-//ÏûÖÎ†•Ïù¥ Îì§Ïñ¥ÏôîÏùÑ Îïå
+//¿‘∑¬¿Ã µÈæÓø‘¿ª ∂ß
 void FormInfo::on_pos_x_textEdited(const QString &arg1)         {convertTextToValue(&TEMP_POS.x,arg1);}
 void FormInfo::on_pos_y_textEdited(const QString &arg1)         {convertTextToValue(&TEMP_POS.y,arg1);}
 void FormInfo::on_pos_z_textEdited(const QString &arg1)         {convertTextToValue(&TEMP_POS.z,arg1);}
 void FormInfo::on_ang_tilt_textEdited(const QString &arg1)      {convertTextToValue(&TEMP_POS.tilt,arg1);}
 void FormInfo::on_ang_rotation_textEdited(const QString &arg1)  {convertTextToValue(&TEMP_POS.rotation,arg1);}
 void FormInfo::on_zoom_textEdited(const QString &arg1)
-{   //zoom ÏùÄ 100% Ïùº Í≤ΩÏö∞ 1 Í∞íÏùÑ ÎÑ£Ïñ¥Ïïº ÌïòÍ∏∞ ÎïåÎ¨∏Ïóê Îî∞Î°ú Ï≤òÎ¶¨
+{   //zoom ¿∫ 100% ¿œ ∞ÊøÏ 1 ∞™¿ª ≥÷æÓæﬂ «œ±‚ ∂ßπÆø° µ˚∑Œ √≥∏Æ
     double double_arg = arg1.toDouble();
     double_arg = double_arg/100;
     inputValueToTemp(&TEMP_POS.zoom,double_arg);
 }
 
-//enter Í∞Ä ÎàåÎ¶¨Í±∞ÎÇò focus Î•º ÏûÉÏùÑ Îïå TEMP_POS Ïóê ÏûàÎäî Í∞íÏùÑ Ï∂úÎ†•Ìï®
+//enter ∞° ¥≠∏Æ∞≈≥™ focus ∏¶ ¿“¿ª ∂ß TEMP_POS ø° ¿÷¥¬ ∞™¿ª √‚∑¬«‘
 void FormInfo::on_pos_x_editingFinished()       {setTextTrim(ui->pos_x, &TEMP_POS.x, 1, "");}
 void FormInfo::on_pos_y_editingFinished()       {setTextTrim(ui->pos_y, &TEMP_POS.y, 1, "");}
 void FormInfo::on_pos_z_editingFinished()       {setTextTrim(ui->pos_z, &TEMP_POS.z, 1, "");}
@@ -4840,7 +5174,7 @@ void FormInfo::on_ang_tilt_editingFinished()    {setTextTrim(ui->ang_tilt, &TEMP
 void FormInfo::on_ang_rotation_editingFinished(){setTextTrim(ui->ang_rotation, &TEMP_POS.rotation, 1, "");}
 void FormInfo::on_zoom_editingFinished()        {setTextTrim(ui->zoom, &TEMP_POS.zoom, 100, "%");}
 
-//enter Î•º ÎàåÎ†ÄÏùÑ Îïå TEMP_POS Ïóê ÏûàÎäî Í∞íÏùÑ POS Ïóê ÎÑ£Í≥† List Î•º ÎßåÎì¨
+//enter ∏¶ ¥≠∑∂¿ª ∂ß TEMP_POS ø° ¿÷¥¬ ∞™¿ª POS ø° ≥÷∞Ì List ∏¶ ∏∏µÎ
 void FormInfo::on_pos_x_returnPressed()         {inputPos();}
 void FormInfo::on_pos_y_returnPressed()         {inputPos();}
 void FormInfo::on_pos_z_returnPressed()         {inputPos();}
@@ -4851,11 +5185,8 @@ void FormInfo::on_zoom_returnPressed()          {inputPos();}
 
 void FormInfo::on_listWidget_currentRowChanged(int currentRow)
 {
-    if(isDeleting == false)
-    {
-        current_item = currentRow;
-        sendStatusBarMsg(makePosText());
-    }
+    current_item = currentRow;
+    sendStatusBarMsg(makePosText());
 }
 
 void FormInfo::on_pushButton_go_clicked()
@@ -4871,33 +5202,23 @@ void FormInfo::on_pushButton_go_clicked()
 
 void FormInfo::on_pushButton_del_clicked()
 {
-    isDeleting = true;
     if(current_item != -1)
     {
-//        qDebug() << "    all item";
-//        for (int i = 0; i < ui->listWidget->count(); i++)
-//        {
-//            qDebug() << "a : " << i << "item name : "<< ui->listWidget->item(i)->text() << "number" << ui->listWidget->item(i)->data(Qt::UserRole).toInt() ;
-//        }
-        make_status_bar_msg = false;        //ÏÇ≠Ï†ú Í≥ºÏ†ïÏóêÏÑú msg Î≥¥ÎÇ¥ÏßÄ ÏïäÎèÑÎ°ù Î∞©ÏßÄ : segment fault error Î∞úÏÉù
-
+        make_status_bar_msg = false;        //ªË¡¶ ∞˙¡§ø°º≠ msg ∫∏≥ª¡ˆ æ µµ∑œ πÊ¡ˆ : segment fault error πﬂª˝
         for (auto item : selected_item)
         {
-            int i = ui->listWidget->row(item);
-            ui->listWidget->takeItem(i);
+            ui->listWidget->takeItem(ui->listWidget->row(item));
         }
-
-        make_status_bar_msg = true;         //msg Î≥¥ÎÇ¥Îäî Í≤É ÏõêÎ≥µ
-        isDeleting = false;
-        QString msg = "Deleted Items";
-        sendStatusBarMsg(msg);                 //msg Ï∂úÎ†•
+        make_status_bar_msg = true;         //msg ∫∏≥ª¥¬ ∞Õ ø¯∫π
+        current_item = -1;                  //msg ø° "" ≥÷¿Ω
+        sendStatusBarMsg(makePosText());                 //msg √‚∑¬
     }
 }
 
 void FormInfo::on_listWidget_itemChanged(QListWidgetItem *item)
 {
-    if(isDeleting == false)
-    {
+    if(current_item != -1)
+    {        
         POS_STACK[item->data(Qt::UserRole).toInt()].name = item->text().toStdString();
         sendStatusBarMsg(makePosText());
     }
@@ -4906,15 +5227,11 @@ void FormInfo::on_listWidget_itemChanged(QListWidgetItem *item)
 
 void FormInfo::on_listWidget_itemSelectionChanged()
 {
-    if(isDeleting == false)
+    selected_item = ui->listWidget->selectedItems();
+    int sel_item = selected_item.size();
+    if(sel_item > 1)
     {
-        selected_item = ui->listWidget->selectedItems();
-        int sel_item = selected_item.size();
-
-        if(sel_item > 1)
-        {
-            sendStatusBarMsg("selected " + QString::number(sel_item) + " items");
-        }
+        sendStatusBarMsg("selected " + QString::number(sel_item) + " items");
     }
 }
 !@hash[]!@file[]./formlayer.cpp!@hash[]!@code[]#include "formlayer.h"
@@ -4948,12 +5265,12 @@ void FormLayer::ReceiveLayerInformation(T2D &t2d)
 
 void FormLayer::MakeLayerInformationTalbe()
 {
-    // QTableWidget ÌÅ¨Í∏∞ ÏÑ§Ï†ï
+    // QTableWidget ??? ????
     ui->tableWidget->setColumnCount(table_default_column);
     ui->tableWidget->setRowCount(t2d_layer_information->LayoutData10by10.size());
     ui->tableWidget->setColumnWidth(5,80);
 
-    // Table Ï±ÑÏö∞Í∏∞
+    // Table a????
     for (int i=1; i < t2d_layer_information->LayoutData10by10.size() ; i++)
     {
         MakeTableWidgetItemForText(i);
@@ -4963,7 +5280,7 @@ void FormLayer::MakeLayerInformationTalbe()
     }
     MakeHeaderCheckBoxAndSlider();
 
-    // Table Edit Í∏àÏßÄ, Îã§Ï§ë ÏÑ†ÌÉù Í∏àÏßÄ
+    // Table Edit ????, ???? ???? ????
     ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
 }
@@ -5022,7 +5339,7 @@ void FormLayer::on_colorbutton_clicked()
 
 void FormLayer::on_opacityslider_valueChanged(int Opacity)
 {
-    // ui->tableWidget->currentRow() Î°ú Ï∞æÏúºÎ†§Í≥† ÌïòÎ©¥, current row Í∞Ä -1 Î°ú ÎÇòÏò¥
+    // ui->tableWidget->currentRow() ?? a?????? ???, current row ?? -1 ?? ????
     int sliderrow = -1;
     int sliderrow_for_t2d = -1;
     QString LayerColorname;
@@ -5093,7 +5410,7 @@ void FormLayer::MakeLayerInformationTableHeader(){
     ui->tableWidget->setColumnWidth(4,40);
     ui->tableWidget->setColumnWidth(5,60);
 
-    /// TableWidget Title Format ÏÑ§Ï†ï
+    /// TableWidget Title Format ????
     QBrush brush(QColor(255, 255, 255, 255));
     brush.setStyle(Qt::SolidPattern);
     QFont font;
@@ -5101,7 +5418,7 @@ void FormLayer::MakeLayerInformationTableHeader(){
     font.setBold(true);
     font.setWeight(55);
 
-    /// TableWidget Title ÏûÖÎ†• Î∞è Î∞òÏòÅ
+    /// TableWidget Title ??? ?? ???
     for (int i=1; i<6; i++){
         QTableWidgetItem *TableHeaderItem = new QTableWidgetItem;
         TableHeaderItem->setText(TalbeHeader[i]);
@@ -5184,7 +5501,7 @@ void FormLayer::MakeColorButton(int table_row){
     LayerColorText = "background-color: rgba(" + LayerColorRed;
     LayerColorText = LayerColorText + "," + LayerColorGreen + "," + LayerColorBlue + "," + LayerColorAlpha + ")";
 
-    // color pushbutton Ï±ÑÏö∞Í∏∞
+    // color pushbutton a????
     QPushButton *colorbutton = new QPushButton();
     colorbutton->setStyleSheet(LayerColorText);
     ui->tableWidget->setCellWidget(table_row,1,colorbutton);
@@ -5192,7 +5509,7 @@ void FormLayer::MakeColorButton(int table_row){
 }
 
 void FormLayer::MakeHeaderCheckBoxAndSlider(){
-    //tableWidget title Ïóê checkbox
+    //tableWidget title ?? checkbox
     QCheckBox *checkBoxItem = new QCheckBox();
     checkBoxItem->setCheckState(Qt::Unchecked);
     QWidget *checkboxWidget = new QWidget();
@@ -5204,7 +5521,7 @@ void FormLayer::MakeHeaderCheckBoxAndSlider(){
     ui->tableWidget->setCellWidget(0,0,checkboxWidget);
     QObject::connect(checkBoxItem, SIGNAL(stateChanged(int)), this, SLOT(on_checkboxInTable_stateChanged()));
 
-    //tableWidget title Ïóê slider
+    //tableWidget title ?? slider
     QSpacerItem *HeaderVerticalSpacer = new QSpacerItem(0,20,QSizePolicy::Fixed, QSizePolicy::Fixed);
     QSlider *HeaderOpacitySlider = new QSlider();
     HeaderOpacitySlider->setOrientation(Qt::Horizontal);
@@ -5359,7 +5676,7 @@ void SuperItem::slotMove(POS_MONITORING *pos)
     double delta_y = (pos->y - convertPosY()) * (*m_scale);
     double rot = 360 - pos->rotation;
 
-    if (abs(delta_x) >__DBL_EPSILON__ || abs(delta_y) > __DBL_EPSILON__) // 0Î≥¥Îã§ ÌÅ¨Î©¥
+    if (abs(delta_x) >__DBL_EPSILON__ || abs(delta_y) > __DBL_EPSILON__) // 0∫∏¥Ÿ ≈©∏È
     {        
         moveBy(delta_x, -1 * delta_y);             
     }
@@ -5371,7 +5688,7 @@ void SuperItem::slotMove(POS_MONITORING *pos)
     // trans.scale = 1 um / height / pos->zoom = 1 um / height / (1 um / now_height) = now_height / height
 
     trans.scale((*m_zoom_init)/pos->zoom, ((*m_zoom_init)/pos->zoom) * (pos->tilt / 90));
-      //zoom Ï¥àÍ∏∞Í∞Ä 25%Î©¥ ..
+      //zoom √ ±‚∞° 25%∏È ..
     setTransform(trans);
 }
 
@@ -5389,13 +5706,13 @@ void SuperItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
     painter->drawLine(-60,-60,60,-60);
 }
 
-QRectF SuperItem::boundingRect() const{ // ÎÇòÏ§ëÏóê Ïù¥Ìï¥Î•º ÏúÑÌïú ÎèÑÏõÄ ÏöîÏ≤≠ ÌïÑÏöî
+QRectF SuperItem::boundingRect() const{ // ≥™¡ﬂø° ¿Ã«ÿ∏¶ ¿ß«— µµøÚ ø‰√ª « ø‰
     return QRectF(-61,-61,122,122);
 }
 
 double SuperItem::convertPosX()
 {
-    return (this->x() - (*m_from_window_to_box_x))/(*m_scale)+(*m_min_x); // ÏõêÏ†êÏù¥ (0,0) Ïù¥ ÏïÑÎãê Í≤ΩÏö∞ skew(m_min_x) Ï∂îÍ∞Ä
+    return (this->x() - (*m_from_window_to_box_x))/(*m_scale)+(*m_min_x); // ø¯¡°¿Ã (0,0) ¿Ã æ∆¥“ ∞ÊøÏ skew(m_min_x) √ﬂ∞°
 }
 
 double SuperItem::convertPosY()
@@ -5428,7 +5745,7 @@ void FormMap::receiveFile(T2D &t2d)
     double width = t2d.LayoutMinMax.maxx - t2d.LayoutMinMax.minx;
     double height = t2d.LayoutMinMax.maxy - t2d.LayoutMinMax.miny;
     m_zoom_init = 1 / height;
-    m_scale = m_gray_box_size/qMax(width,height);    //Í∞ÄÏû• Í∏¥ Í≥≥ÏùÑ 120ÏúºÎ°ú ÎßûÏ∂§
+    m_scale = m_gray_box_size/qMax(width,height);    //∞°¿Â ±‰ ∞˜¿ª 120¿∏∑Œ ∏¬√„
     double box_x_zero_point = -1 * m_scale * width /2;
     double box_y_zero_point = -1 * m_scale * height /2;
     m_box_width = m_scale * width;
@@ -5440,9 +5757,9 @@ void FormMap::receiveFile(T2D &t2d)
 
     rectItem->setRect(box_x_zero_point,box_y_zero_point,m_box_width,m_box_height);
     rectItem->setBrush(QBrush(QColor(Qt::gray)));
-    rectItem->setPos(m_window_width/2,-m_window_height/2); //Ï¢åÏ∏° ÏúÑ (0,0) ÏóêÏÑú Î∂ÄÌÑ∞ Ï§ëÏïôÏúºÎ°ú Ïù¥Îèô
-    scene->setSceneRect(m_from_window_to_box_x,(m_from_window_to_box_y - m_box_height),m_box_width,m_box_height); //Y Ï¢åÌëúÎäî ÏúÑÏóêÏÑú ÏñºÎßåÌÅº ÎÇ¥Î†§Ïò§ÎäîÍ∞Ä ÎùºÏÑú
-    scene->addItem(rectItem);           //ÏÇ¨Í∞ÅÌòï
+    rectItem->setPos(m_window_width/2,-m_window_height/2); //¡¬√¯ ¿ß (0,0) ø°º≠ ∫Œ≈Õ ¡ﬂæ”¿∏∑Œ ¿Ãµø
+    scene->setSceneRect(m_from_window_to_box_x,(m_from_window_to_box_y - m_box_height),m_box_width,m_box_height); //Y ¡¬«•¥¬ ¿ßø°º≠ æÛ∏∏≈≠ ≥ª∑¡ø¿¥¬∞° ∂Ûº≠
+    scene->addItem(rectItem);           //ªÁ∞¢«¸
     scene->addItem(super);    
 
     QObject::connect(this,&FormMap::signalMove,super,&SuperItem::slotMove);
@@ -5535,7 +5852,7 @@ void FormTop::drawing()
     //cout << "c:" << m_begin_col << " " << m_end_col << endl;
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment ÏôÄ ÎπÑÍµêÌïòÏó¨ for skip
+        //layer_enviroment ?? ??????? for skip
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
         /*m_begin_row = 0;
         m_begin_col = 0;
@@ -5566,7 +5883,7 @@ void FormTop::filterDrawing()
     areaFilterRect();
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment ÏôÄ ÎπÑÍµêÌïòÏó¨ for skip
+        //layer_enviroment ?? ??????? for skip
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
         for(int row = m_begin_row ; row < m_end_row ; row++)
         {
@@ -5590,7 +5907,7 @@ void FormTop::filterDrawing()
 
 void FormTop::drawingClear()
 {
-    // Í∏∞Ï°¥Ïóê ÏûàÎäî vector Î•º ÎÇ®Í≤®ÎÜîÏïº Ìï® : delete Î•º ÏúÑÌï¥
+    // ?????? ??? vector ?? ??????? ?? : delete ?? ????
     for(auto cur_item : rectItemList)
     {
         delete cur_item;
@@ -5707,7 +6024,7 @@ int FormTop::extPos(double *pos, double *min, double *max)
     int max_col_row = (*max-*min)/m_block_size;
 
 
-    //block ÏúºÎ°ú ÏûêÎ•∏ Í≤ΩÍ≥ÑÎ©¥ Í∑ºÏ≤òÏóê ÏûàÏùÑ Í≤ΩÏö∞ external ÏùÑ Ï∂îÍ∞Ä
+    //block ???? ??? ?????? ??o?? ???? ???? external ?? ???
     if ((*pos - *min)<area && pos_col_row > 0) // 30.0413 - 3*10 = 0.0413 < 0.05
     {
         return pos_col_row - 1;
@@ -5729,7 +6046,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
 
     if(m_filter_right == true){
         if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx >= pos->x){return;}
-        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < pos->x && rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx >= pos->x) //area Î≥¥Îã§ ÎÑòÏñ¥Í∞ÄÎ©¥ ÏûêÎ¶Ñ
+        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].minx < pos->x && rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx >= pos->x) //area ???? ????? ???
         {
             maxx = pos->x;
         }
@@ -5743,7 +6060,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
     }
     if(m_filter_left == true){
         if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx <= pos->x){return;}
-        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > pos->x && rendering_full->LayoutData10by10[layer].xy[row][col][n].minx <= pos->x) //area Î≥¥Îã§ ÎÑòÏñ¥Í∞ÄÎ©¥ ÏûêÎ¶Ñ
+        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxx > pos->x && rendering_full->LayoutData10by10[layer].xy[row][col][n].minx <= pos->x) //area ???? ????? ???
         {
             minx = pos->x;
         }
@@ -5757,7 +6074,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
     }
     if(m_filter_top == true){
         if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny >= pos->y){return;}
-        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < pos->y && rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy >= pos->y) //area Î≥¥Îã§ ÎÑòÏñ¥Í∞ÄÎ©¥ ÏûêÎ¶Ñ
+        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].miny < pos->y && rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy >= pos->y) //area ???? ????? ???
         {
             maxy = pos->y;
         }
@@ -5771,7 +6088,7 @@ void FormTop::filterRenderingData(int layer, int row, int col, int n)
     }
     if(m_filter_bottom == true){
         if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy <= pos->y){return;}
-        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > pos->y && rendering_full->LayoutData10by10[layer].xy[row][col][n].miny <= pos->y) //area Î≥¥Îã§ ÎÑòÏñ¥Í∞ÄÎ©¥ ÏûêÎ¶Ñ
+        if(rendering_full->LayoutData10by10[layer].xy[row][col][n].maxy > pos->y && rendering_full->LayoutData10by10[layer].xy[row][col][n].miny <= pos->y) //area ???? ????? ???
         {
             miny = pos->y;
         }
@@ -5810,7 +6127,7 @@ void FormTop::areaFilterRect()
         }
     }
 
-    /*int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //ÏãùÏù¥ ÌïÑÏöîÌïúÎåÄ   23.3841 / 10 = 2.33841 -> int 2
+    /*int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //???? ??????   23.3841 / 10 = 2.33841 -> int 2
     int ext_col = extPos(&pos->x, &rendering_full->LayoutMinMax.minx, &rendering_full->LayoutMinMax.maxx);
     m_begin_col = qMin(pos_col,ext_col);
     m_end_col = qMax(pos_col,ext_col)+1;
@@ -5823,7 +6140,7 @@ void FormTop::areaFilterRect()
     //layer
     for(int layer = 0 ; layer < (int)rendering_full->LayoutData10by10.size() ; layer++)
     {
-        //layer_enviroment ÏôÄ ÎπÑÍµêÌïòÏó¨ for skip
+        //layer_enviroment ?? ??????? for skip
 
         if( rendering_full->LayoutData10by10[layer].checking == 0){continue;}
 
@@ -5842,7 +6159,7 @@ void FormTop::areaFilterRect()
 }
 
 void FormTop::getRowCol(){
-    int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //ÏãùÏù¥ ÌïÑÏöîÌïúÎåÄ   23.3841 / 10 = 2.33841 -> int 2
+    int pos_col = (pos->x - rendering_full->LayoutMinMax.minx)/m_block_size; //???? ??????   23.3841 / 10 = 2.33841 -> int 2
     if(pos_col - 1 >= 0){
         m_begin_col = pos_col - 1;
     }else{
@@ -5872,11 +6189,11 @@ void FormTop::getRowCol(){
 void FormTop::wheelEvent(QWheelEvent *event){
     int delta = event->delta();
 
-    // Ïä§ÌÅ¨Î°§ Í∞íÏóê Îî∞Îùº Ïä§ÏºÄÏùº Í∞íÏùÑ Î≥ÄÍ≤Ω
+    // ????? ???? ???? ?????? ???? ????
     if (delta > 0) {
-        this->pos->zoom *= 1.01; // 10% ÌôïÎåÄ
+        this->pos->zoom *= 1.01; // 10% ???
     } else if (delta < 0) {
-        this->pos->zoom /= 1.01; // 10% Ï∂ïÏÜå
+        this->pos->zoom /= 1.01; // 10% ????
     }
     //pos->zoom = m_scale;
     //cout << m_scale << endl;
@@ -6118,7 +6435,7 @@ void GitMerge::makeCodeFiles()
                 }
                 break;
             }
-            if (j == codeList.size()-1) // Ï∞æÏïÑÎ¥§ÎäîÎç∞ Í∏∞Ï°¥ ÌååÏùºÏù¥ ÏóÜÎã§.
+            if (j == codeList.size()-1) // √£æ∆∫√¥¬µ• ±‚¡∏ ∆ƒ¿œ¿Ã æ¯¥Ÿ.
             {
                 QFile file(fileListDivide[0]);
                 if(!file.open(QFile::WriteOnly | QFile::Text))
@@ -6293,9 +6610,8 @@ MainWindow::MainWindow(LveWindow* w)
     QObject::connect(dockInfo, SIGNAL(visibilityChanged(bool)), this, SLOT(on_docker_Info_stateChanged(bool)));
     QObject::connect(dockHier, SIGNAL(visibilityChanged(bool)), this, SLOT(on_docker_Hier_stateChanged(bool)));
     QObject::connect(dockLayer, SIGNAL(visibilityChanged(bool)), this, SLOT(on_docker_Layer_stateChanged(bool)));
-    // ÌèâÍ∞ÄÏö©
+    // ∆Ú∞°øÎ
     dev_dialog = new DevDialog(this);
-    dev_dialog->setRenderWindow(this->m_window);
     devDialog();
 }
 
@@ -6321,8 +6637,8 @@ void MainWindow::slotInfoText(QString funcName, POS_MONITORING value)
     if (value.x != pos_past.x ||
         value.y != pos_past.y ||
         value.z != pos_past.z ||
-        (value.tilt != pos_past.tilt)  ||
-        (value.rotation != pos_past.rotation)  ||
+        (value.tilt - pos_past.tilt) > 0.01 ||
+        (value.rotation - pos_past.rotation) > 0.01 ||
         value.zoom != pos_past.zoom)
     {
         pos.x = value.x;
@@ -6362,7 +6678,7 @@ void MainWindow::slotInfoText(QString funcName, POS_MONITORING value)
 void MainWindow::on_actionOpen_file_triggered()
 {
 
-    QString file_name = QFileDialog::getOpenFileName(this, "ÌååÏùº ÏÑ†ÌÉù", ".", "Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "∆ƒ¿œ º±≈√", ".", "Files(*.*)");
     //qDebug() << file_name;
 
     emit sendSelectFileName(file_name);
@@ -6372,7 +6688,7 @@ void MainWindow::on_actionOpen_file_triggered()
 void MainWindow::on_actionOpen_PEX_triggered()
 {
     if (this->t2d.LayoutData10by10.empty() == false) {
-        QString file_name = QFileDialog::getOpenFileName(this, "ÌååÏùº ÏÑ†ÌÉù", ".", "Files(*.*)");
+        QString file_name = QFileDialog::getOpenFileName(this, "∆ƒ¿œ º±≈√", ".", "Files(*.*)");
 
         DtaoRenderSystem* renderer = this->m_window->getRenderer();
 
@@ -6382,7 +6698,7 @@ void MainWindow::on_actionOpen_PEX_triggered()
         //test
     }
     else {
-        qDebug() << "Layout Load ÌõÑ PEXÎ•º Î∂àÎü¨Ïò¨ Ïàò ÏûàÏäµÎãàÎã§";
+        qDebug() << "Layout Load »ƒ PEX∏¶ ∫“∑Øø√ ºˆ ¿÷Ω¿¥œ¥Ÿ";
     }
 }
 
@@ -6404,7 +6720,7 @@ void MainWindow::inputPosInformation()
 
 void MainWindow::on_actionOpen_Layout_triggered()
 {
-    QString file_name = QFileDialog::getOpenFileName(this, "ÌååÏùº ÏÑ†ÌÉù", ".", "Files(*.*)");
+    QString file_name = QFileDialog::getOpenFileName(this, "∆ƒ¿œ º±≈√", ".", "Files(*.*)");
     DtaoRenderSystem* renderer = this->m_window->getRenderer();
 
     //renderer->createNewObject(MODEL_TYPE::MODEL_TYPE_LAYOUT, file_name.toStdString());
@@ -6456,7 +6772,7 @@ void MainWindow::on_actionOpen_DB_triggered() {
         //                                t2d.HierarchyInstance[i].box.maxy);
         //        }
 
-        formHier->createHierarchyTree(&t2d);
+        //formHier->createHierarchyTree(&t2d);
 
         pos.x = t2d.LayoutMinMax.minx;
         pos.y = t2d.LayoutMinMax.miny;
@@ -6488,12 +6804,12 @@ void MainWindow::on_actionOpen_DB_triggered() {
 
 }
 
-void MainWindow::slotDirectlyInputPos() //point info ÏóêÏÑú ÏßÅÏ†ë ÏûÖÎ†•Ìïú Í≤ΩÏö∞
+void MainWindow::slotDirectlyInputPos() //point info ø°º≠ ¡˜¡¢ ¿‘∑¬«— ∞ÊøÏ
 {
     sendPositionDataToDocker();
     DtaoRenderSystem * renderer = this->m_window->getRenderer();
-    renderer->goNavi(pos);
-    //ÏöîÏ≤≠ÏÇ¨Ìï≠ 230324 vulkan ÏóêÏÑúÎèÑ ÏàòÏ†ïÏùÑ Ïó¨Í∏∞ÏÑú Ïã§Ìñâ
+    renderer->translateLayerPosition(pos);
+    //ø‰√ªªÁ«◊ 230324 vulkan ø°º≠µµ ºˆ¡§¿ª ø©±‚º≠ Ω««‡
 }
 
 void MainWindow::slotStatusBarMsg(QString msg)
@@ -6682,6 +6998,13 @@ void MainWindow::on_actionDialog_on_off_triggered()
     dev_dialog->show();
     dev_dialog->raise();
     dev_dialog->activateWindow();
+}
+
+void MainWindow::on_actionToyCAD_triggered()
+{
+    DtaoRenderSystem* renderer = this->m_window->getRenderer();
+    renderer->createToyCADObjects("ToyCAD/Data/test.csv");
+
 }
 !@hash[]!@file[]./pexdialog.cpp!@hash[]!@code[]#include "pexdialog.h"
 #include "ui_pexdialog.h"
@@ -7104,7 +7427,6 @@ public:
     virtual void loadData(const QString& file_path = "");
     virtual void makeVertices();
     virtual void makeIndices();
-    virtual void makeIndicesFace();
 
     void makeCubeVertices();
 
@@ -7207,9 +7529,21 @@ private:
 #include "glm/gtc/matrix_transform.hpp"
 #include "PEXResistorModel.h"
 
+#include "ToyCAD/Src/toycad_object.h"
+
 #include <iostream>
 #include <vector>
 
+
+enum DTAO_RENDER_MODE{
+    DTAO_RENDER_MODE_EMPTY = 0,
+    DTAO_RENDER_MODE_LAYOUT,
+    DTAO_RENDER_MODE_PEX_ALL,
+    DTAO_RENDER_MODE_PEX_RES,
+    DTAO_RENDER_MODE_PEX_CAP,
+    DTAO_RENDER_MODE_TOYCAD,
+    DTAO_RENDER_MODE_DEFAULT
+};
 
 class LayoutModel;
 
@@ -7227,8 +7561,7 @@ public:
     void initSwapChainResources() override;
     void releaseSwapChainResources() override;
     void releaseResources() override;
-    void goNavi(POS_MONITORING value);
-    void translateLayerPosition();
+    void translateLayerPosition(POS_MONITORING value);
     void emitMonitor();
 
     void startNextFrame() override;
@@ -7236,10 +7569,7 @@ public:
     float getRenderScale() {return this->trans_info.scale;}
     LayoutModel* getLayoutModel();
     bool isRenderModelLoaded(){return this->render_object_created;}
-    bool isNavi=false;
-    POS_MONITORING naviInfo;
     std::vector<LveGameObject> &getGameObjects(){return this->gameObjects;}
-
 
 public:
     LveCamera camera{};
@@ -7283,8 +7613,6 @@ public:
     void createNewPEXCapObject(const QString & file_path, T2D t2d);
     void createNewPEXResObject(const QString & file_path);
 
-    void initCameraView();
-
 
 private:
     void createNewLayoutObject(const std::string & file_path);
@@ -7300,6 +7628,15 @@ private:
     void beginRenderPass(VkCommandBuffer command_buffer);
     float aspect;
 
+private:
+    std::vector<ToyCADObject> toycad_objects{};
+
+public:
+    std::vector<ToyCADObject>& getToyCADObjects(){return this->toycad_objects;}
+    void createToyCADObjects(const std::string& file_path);
+    int render_mode{DTAO_RENDER_MODE_EMPTY};
+
+
 };
 
 #endif // DTAORENDERSYSTEM_H
@@ -7312,6 +7649,8 @@ private:
 #include "lve_camera.hpp"
 #include "PEXResistorModel.h"
 //#include "defineParam.h"
+
+#include "ToyCAD/Src/toycad_object.h"
 
 
 
@@ -7386,8 +7725,12 @@ public:
     CameraMoveKeyMappings camera_move_key;
     MousePosition mouse_position;
 
-    void moveCamera(float dt, LveCamera& camera, float render_scale,std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow);
-    void moveCameraMouse(LveCamera& camera, float render_scale,std::vector<LveGameObject>& gameObjects,LveWindow* lvewindow);
+    void moveCamera(float dt, LveCamera& camera, float render_scale,
+                    std::vector<LveGameObject>& gameObjects, LveWindow* lvewindow,
+                    std::vector<ToyCADObject>* toycad_objects = nullptr);
+    void moveCameraMouse(LveCamera& camera, float render_scale,
+                         std::vector<LveGameObject>& gameObjects,LveWindow* lvewindow,
+                         std::vector<ToyCADObject>* toycad_objects = nullptr);
     void setPerspective(LveCamera& camera, float aspect);
     void moveKeyPressed(Qt::Key key);
     void moveKeyReleased(Qt::Key key);
@@ -7404,9 +7747,7 @@ public:
     CameraMovingContinousFlags camera_moving_flag;
     POS_MONITORING monitor;
 
-    glm::vec3 right;
-    glm::vec3 forward;
-    glm::vec3 up;
+    glm::vec3 translationOnPressed;
 
 
     float moveSpeed{ 0.05f };
@@ -7706,8 +8047,6 @@ typedef enum MODEL_TYPE {
 } MODEL_TYPE;
 
 
-
-
 class LveModel {
 public:
     struct Vertex {
@@ -7727,16 +8066,6 @@ public:
         static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
         static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
     };
-
-    struct VertexCapacitor {
-        glm::vec3 position{};
-        glm::vec4 color{};
-        glm::vec3 normal{};
-
-        static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
-        static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
-    };
-
 
 
     struct LayerProperty {
@@ -7770,8 +8099,6 @@ public:
     void destroyBuffers();
     void createVertexBuffers(const std::vector<Vertex>& vertices, VkBuffer& buffer, VkDeviceMemory& memory);
     void createVertexBuffersResistor(const std::vector<VertexResistor>& vertices, VkBuffer& buffer, VkDeviceMemory& memory);
-    void createVertexBuffersCapacitor(const std::vector<VertexCapacitor>& vertices, VkBuffer& buffer, VkDeviceMemory& memory);
-
     void createIndexBuffers(const std::vector<uint32_t>& indices, VkBuffer & buffer, VkDeviceMemory & memory);
     LveDevice& lveDevice;
     VkBuffer vertexBuffer{};
@@ -7798,7 +8125,6 @@ public:
     std::vector<cube_vertex> cube_vertices{};
 
     std::vector<Vertex> vertices{};
-    std::vector<VertexCapacitor> vertices_capacitor{};
     std::vector<VertexResistor> vertices_resistor{};
     std::vector<uint32_t> indices_face{};
     std::vector<uint32_t> indices_edge{};
@@ -7970,6 +8296,8 @@ signals:
 #include "lve_game_object.hpp"
 #include "lve_pipeline.hpp"
 
+#include "ToyCAD/Src/toycad_object.h"
+
 // std
 #include <memory>
 #include <vector>
@@ -7991,6 +8319,11 @@ public:
             std::vector<LveGameObject>& gameObjects,
             const LveCamera& camera);
 
+    void renderToyCADObjects(
+            VkCommandBuffer commandBuffer,
+            std::vector<ToyCADObject>& objects,
+            const LveCamera& camera);
+
 private:
     void createPipelineLayout(VkPipelineLayout & pipeline_layout);
     void createPipelineForFace(VkRenderPass renderPass);
@@ -7999,7 +8332,9 @@ private:
     void createPipelineForPEXResistorEdge(VkRenderPass renderPass);
     void createPipelineForPEXCapacitorLine(VkRenderPass renderPass);
     void createPipelineForPEXCapacitor(VkRenderPass renderPass);
-    void createPipelineForPEXCapacitorEdge(VkRenderPass renderPass);
+
+    void createPipelineForToyCADFace(VkRenderPass renderPass);
+    void createPipelineForToyCADEdge(VkRenderPass renderPass);
 
     LveDevice& lveDevice;
 
@@ -8021,10 +8356,72 @@ private:
     std::unique_ptr<LvePipeline> lvePipelineForPEXCapacitor;
     VkPipelineLayout pipelineLayoutForPEXCapacitor;
 
-    std::unique_ptr<LvePipeline> lvePipelineForPEXCapacitorEdge;
-    VkPipelineLayout pipelineLayoutForPEXCapacitorEdge;
+    std::unique_ptr<LvePipeline> lvePipelineForToyCADFace;
+    VkPipelineLayout pipelineLayoutForToyCADFace;
+    std::unique_ptr<LvePipeline> lvePipelineForToyCADEdge;
+    VkPipelineLayout pipelineLayoutForToyCADEdge;
+
 
 };
+
+!@hash[]!@file[]./Rendering/Src/utils.h!@hash[]!@code[]#pragma once
+#ifndef UTILS
+#define UTILS
+#endif
+
+// libs
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+
+#include <string>
+#include <iostream>
+#include <cstdio>
+
+namespace UTILS {
+    inline bool check_file_exsist(const std::string& file_path) {
+        FILE* fp = nullptr;
+        if (fopen_s(&fp, file_path.c_str(), "r")) {
+            fclose(fp);
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    glm::vec3 getPercentileColour(double v, double vmin, double vmax)
+    {
+        glm::vec3 c = { 1.0,1.0,0.0 }; // white
+        double dv;
+
+        if (v < vmin)
+            v = vmin;
+        if (v > vmax)
+            v = vmax;
+        dv = vmax - vmin;
+
+        if (v < (vmin + 0.05 * dv)) {
+            c.r = 1;
+            c.g = 0;
+        }
+        else if (v < (vmin + 0.5 * dv)) {
+            c.r = 0.5 + 5 * (vmin + 0.5 * dv - v) / dv / 4;
+            c.g = 0.5 + 5 * (v - vmin - 0.5 * dv) / dv / 4;
+        }
+        else if (v < (vmin + 0.95 * dv)) {
+            c.r = 0.5 + 5 * (vmin + 0.5 * dv - v) / dv / 4;
+            c.g = 0.5 + 5 * (v - vmin - 0.5 * dv) / dv / 4;
+        }
+        else {
+            c.r = 0;
+            c.g = 1;
+        }
+
+
+        return(c);
+    }
+}
 
 !@hash[]!@file[]./T2D.h!@hash[]!@code[]#ifndef T2D_H
 #define T2D_H
@@ -8068,86 +8465,259 @@ class T2D{
 };
 
 #endif // T2D_H
-!@hash[]!@file[]./ToyCAD/Src/toycadmodel.h!@hash[]!@code[]#ifndef TOYCADMODEL_H
-#define TOYCADMODEL_H
+!@hash[]!@file[]./ToyCAD/Src/toycad_object.h!@hash[]!@code[]#ifndef TOYCAD_OBJECT_H
+#define TOYCAD_OBJECT_H
 
-#include "Rendering/Src/lve_model.hpp"
+#include "toycadmodel.h"
+
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/glm.hpp>
+
+
+struct ToyCADTransformComponent {
+    glm::vec3 translation{};
+    glm::vec3 scale{ 1.f, 1.f, 1.f };
+    glm::vec3 rotation{};
+
+
+    glm::mat4 mat4() {
+        glm::mat4 glm_mat4 = glm::mat4{ 1 };
+        //glm_mat4 = glm::rotate(glm_mat4,  rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+        //glm_mat4 = glm::rotate(glm_mat4, rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+
+        glm_mat4 = glm::translate(glm_mat4, translation);
+        glm_mat4 = glm::rotate(glm_mat4,
+                               glm::radians(rotation.z),
+                               glm::vec3(0.0f, 0.0f, 1.0f));
+        glm_mat4 = glm::scale(glm_mat4, scale);
+
+
+        return glm_mat4;
+    }
+};
+
+class ToyCADObject {
+public:
+    static ToyCADObject createToyCADObject() {
+        static unsigned int currentId = 0;
+        return ToyCADObject{ currentId++ };
+    }
+
+    ToyCADObject(unsigned int objId) : id{ objId } {}
+
+    ToyCADObject(const ToyCADObject&) = delete;
+    ToyCADObject& operator=(const ToyCADObject&) = delete;
+    ToyCADObject(ToyCADObject&&) = default;
+    ToyCADObject& operator=(ToyCADObject&&) = default;
+
+public:
+    std::shared_ptr<ToyCADModel> model{};
+    glm::vec3 color{};
+    float opacity{1.0f};
+    bool visibility{true};
+
+    ToyCADTransformComponent transform{};
+
+private:
+    unsigned int id;
+
+public:
+    unsigned int getId() { return this->id; }
+    bool getVisibility(){return this->visibility;}
+    void setVisibility(bool visibility){this->visibility = visibility;}
+};
+
+
+
+
+#endif // TOYCAD_OBJECT_H
+!@hash[]!@file[]./ToyCAD/Src/toycaddata.h!@hash[]!@code[]#ifndef TOYCADDATA_H
+#define TOYCADDATA_H
 
 #include <iostream>
 #include <vector>
 
 
-enum TOYCADINFO_INDEX {
-    TOYCADINFO_IDX_TYPE = 0,
-    TOYCADINFO_IDX_LAYER,
-    TOYCADINFO_IDX_XMIN,
-    TOYCADINFO_IDX_YMIN,
-    TOYCADINFO_IDX_XMAX,
-    TOYCADINFO_IDX_YMAX,
-    TOYCADINFO_IDX_ZMIN,
-    TOYCADINFO_IDX_ZMAX,
-    TOYCADINFO_IDX_XSLOPE,
-    TOYCADINFO_IDX_YSLOPE,
-    TOYCADINFO_IDX_DEFAULT,
+enum TOYCAD_DATA_INDEX {
+    TOYCAD_DATA_IDX_TYPE = 0,
+    TOYCAD_DATA_IDX_LAYER,
+    TOYCAD_DATA_IDX_MINX,
+    TOYCAD_DATA_IDX_MINY,
+    TOYCAD_DATA_IDX_MAXX,
+    TOYCAD_DATA_IDX_MAXY,
+    TOYCAD_DATA_IDX_MINZ,
+    TOYCAD_DATA_IDX_MAXZ,
+    TOYCAD_DATA_IDX_COLOR_R,
+    TOYCAD_DATA_IDX_COLOR_G,
+    TOYCAD_DATA_IDX_COLOR_B,
+    TOYCAD_DATA_IDX_COLOR_A,
+    TOYCAD_DATA_IDX_SLOPEX,
+    TOYCAD_DATA_IDX_SLOPEY,
+    TOYCAD_DATA_IDX_ROTATE,
+    TOYCAD_DATA_IDX_DEFAULT
+};
+
+enum TOYCAD_BBOX_INDEX {
+    TOYCAD_BBOX_IDX_MINX = 0,
+    TOYCAD_BBOX_IDX_MAXX,
+    TOYCAD_BBOX_IDX_MINY,
+    TOYCAD_BBOX_IDX_MAXY,
+    TOYCAD_BBOX_IDX_MINZ,
+    TOYCAD_BBOX_IDX_MAXZ,
+    TOYCAD_BBOX_IDX_DEFAULT
 };
 
 enum TOYCAD_TYPE_LIST {
     TOYCAD_TYPE_RECT = 0,
-    TOYCAD_TYPE_CIRCLE = 1,
+    TOYCAD_TYPE_CIRCLE,
+    TOYCAD_TYPE_FAN,
+    TOYCAD_TYPE_HEXAGON,
+    TOYCAD_TYPE_OCTAGON,
     TOYCAD_TYPE_DEFAULT = 99
 };
 
-struct toycad_data {
-    string type;
-    string layer;
+struct TOYCAD_DATA {
+    std::string type;
+    std::string layer;
     double minx;
     double miny;
     double maxx;
     double maxy;
     double minz;
     double maxz;
+    double color_r;
+    double color_g;
+    double color_b;
+    double color_a;
     double slopex;
     double slopey;
+    double rotation_degree;
 };
 
-struct toycad_coord3d {
-    double x;
-    double y;
-    double z;
+struct TOYCAD_BBOX{
+    double min_x;
+    double max_x;
+    double min_y;
+    double max_y;
+    double min_z;
+    double max_z;
 };
 
-class ToyCADModel : public LveModel
+
+class ToyCADData
 {
 public:
-    ToyCADModel(LveDevice& device, MODEL_TYPE model_type);
+    ToyCADData();
+    ~ToyCADData();
+
+public:
+    std::vector<TOYCAD_DATA>* getCADData(){ return &this->cad_data;}
+    void loadToyCADData(const std::string& file_path);
+    TOYCAD_BBOX& getDataBBox(){ return this->data_bbox;}
+    double getScale(){return this->scale;}
+
+private:
+    std::vector<TOYCAD_DATA> cad_data;
+    TOYCAD_BBOX data_bbox;
+    double scale;
+
+private:
+    void calculateScale();
+    void printAllData();
+};
+
+#endif // TOYCADDATA_H
+!@hash[]!@file[]./ToyCAD/Src/toycadmodel.h!@hash[]!@code[]#ifndef TOYCADMODEL_H
+#define TOYCADMODEL_H
+
+
+
+#include <iostream>
+#include <vector>
+#include <string>
+
+#include "Rendering/Src/lve_device.hpp"
+#include "Rendering/Src/lve_model.hpp"
+#include "toycaddata.h"
+
+
+class ToyCADModel
+{
+public:
+    struct ToyCADVertex {
+        glm::vec3 position{};
+        glm::vec3 color{};
+
+        static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
+        static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
+    };
+
+public:
+    ToyCADModel(LveDevice& device, TOYCAD_DATA& toycad_data);
     ~ToyCADModel();
 
     ToyCADModel() = delete;
     ToyCADModel(const ToyCADModel&) = delete;
     ToyCADModel& operator=(const ToyCADModel&) = delete;
 
+
+    void bindVertexBuffer(VkCommandBuffer commandBuffer);
+    void bindIndexBufferForFace(VkCommandBuffer commandBuffer);
+    void bindIndexBufferForEdge(VkCommandBuffer commandBuffer);
+    void drawForFace(VkCommandBuffer commandBuffer);
+    void drawForEdge(VkCommandBuffer commandBuffer);
+
+    void createBuffers();
+    void destroyBuffers();
+    void createVertexBuffer(const std::vector<ToyCADVertex>& vertices, VkBuffer& buffer, VkDeviceMemory& memory);
+    void createIndexBuffer(const std::vector<uint32_t>& indices, VkBuffer & buffer, VkDeviceMemory & memory);
+
 public:
-    virtual void makeRenderingData(const QString& file_path = "");
-    virtual void loadData(const string& file_path = "");
-    virtual void makeVertices();
-    virtual void makeIndices();
+    void makeRenderingData(TOYCAD_DATA& toycad_data);
+    void setNumPointsForCircle(unsigned int num_){this->num_points_for_circle=num_;}
+    MODEL_TYPE getModelType() { return this->model_type; }
 
 private:
-    void makeCubeVertices();
-    void makeCylinderVertices();
-    void makeIndicesForFace();
+    void makeVertices(TOYCAD_DATA& toycad_data);
+    void makeIndices();
+
+    void makeRectVertices(TOYCAD_DATA& toycad_data);
+    void makeCircleVertices(TOYCAD_DATA& toycad_data);
+    void makeFanVertices(TOYCAD_DATA& toycad_data);
+    void makeHexagonVertices(TOYCAD_DATA& toycad_data);
+    void makeOctagonVertices(TOYCAD_DATA& toycad_data);
+
+    void makeRectIndices();
+    void makeCircleIndices();
+    void makeFanIndices();
+    void makeHexagonIndices();
+    void makeOctagonIndices();
+
     //void makeIndicesForEdge();
+    int getCurDataType(std::string& str_type);
 
 public:
-    void setNumPointsForCircle(unsigned int num_){this->num_points_for_circle=num_;}
+    LveDevice& lveDevice;
+    VkBuffer vertexBuffer{};
+    VkDeviceMemory vertexBufferMemory{};
+    VkBuffer indexBufferForFace{};
+    VkDeviceMemory indexBufferMemoryForFace{};
+    VkBuffer indexBufferForEdge{};
+    VkDeviceMemory indexBufferMemoryForEdge{};
+
+    std::vector<ToyCADVertex> vertices{};
+    std::vector<uint32_t> indices_face{};
+    std::vector<uint32_t> indices_edge{};
+
+
+
 private:
     unsigned int num_points_for_circle;
-    std::vector<toycad_data> cad_datas;
-
-
+    int toycad_datatype;
+    MODEL_TYPE model_type{};
 
 public:
-    void printAllData();
+    void test();
 };
 
 #endif // TOYCADMODEL_H
@@ -8250,10 +8820,6 @@ struct MIN_MAX_XYZ{
 #include <QDialog>
 #include <defineParam.h>
 
-
-#include "Rendering/Src/lve_window.hpp"
-#include "Rendering/Src/dtaorendersystem.h"
-
 namespace Ui {
 class DevDialog;
 }
@@ -8272,22 +8838,11 @@ public:
 private slots:
     void on_checkBox_pos_stateChanged(int arg1);
 
-    void on_pushButton_initCamera_clicked();
-
 private:
     Ui::DevDialog *ui;
     bool *is_pos_checked;
     bool init_check = false;
     POS_MONITORING *pos;
-
-    LveWindow* m_window = nullptr;
-
-public:
-    void setRenderWindow(LveWindow* window_){ this->m_window = window_;}
-
-private:
-    DtaoRenderSystem* getRenderer(){ return this->m_window->getRenderer();}
-
 };
 
 #endif // DEV_DIALOG_H
@@ -8398,7 +8953,6 @@ private:
     bool isFileOpen = false;
     bool isEndedEdit = true;
     bool make_status_bar_msg = true;
-    bool isDeleting = false;
     int current_item = -1;
     int pos_number = 0;
     int item_data_i = 0;
@@ -8552,7 +9106,7 @@ private:
     double *m_min_y;
     double m_zero_point_x;
     double m_zero_point_y;
-    double temp_x;      // ÎßàÏö∞Ïä§Î°ú box ÏõÄÏßÅÏùº Îïå Ï¢åÌëú ÏïåÏïÑÎ≥¥Í∏∞ ÏúÑÌï®
+    double temp_x;      // ∏∂øÏΩ∫∑Œ box øÚ¡˜¿œ ∂ß ¡¬«• æÀæ∆∫∏±‚ ¿ß«‘
     double temp_y;
 };
 
@@ -8597,7 +9151,7 @@ private:
     float pointZ = 0;
     float infoTilt = 90;
     float infoRot = 0;
-    float infoZoom = 1; //Zoom Ï¥àÍ∏∞Í∞íÏóê ÎåÄÌïú GDS size Î•º Í∞ñÍ≥†ÏôÄ ÏàòÏ†ï ÌïÑÏöî
+    float infoZoom = 1; //Zoom √ ±‚∞™ø° ¥Î«— GDS size ∏¶ ∞Æ∞ÌøÕ ºˆ¡§ « ø‰
 
     float initRot = 0;
     float initTilt = 90;
@@ -8714,8 +9268,8 @@ private:
     bool write_code_files = false;
     QString split1;
     QString split2;
-    QString merged_code_files;    //Í∞ÅÏ¢Ö cpp, h Îì±ÏóêÏÑú ÏùΩÏñ¥Ïò® ÎÇ¥Ïö©
-    QString based_on_reading_txt; //gitMerge.txt ÏóêÏÑú ÏùΩÏñ¥Ïò® ÎÇ¥Ïö©
+    QString merged_code_files;    //∞¢¡æ cpp, h µÓø°º≠ ¿–æÓø¬ ≥ªøÎ
+    QString based_on_reading_txt; //gitMerge.txt ø°º≠ ¿–æÓø¬ ≥ªøÎ
     QString txt_file = "./gitMerge.txt";
     QString pro_file = "./IInterface.pro";
     QString hash = "!@hash[]";
@@ -8804,6 +9358,8 @@ private slots:
 
     void on_actionDialog_on_off_triggered();
 
+    void on_actionToyCAD_triggered();
+
 private:
     void sendPositionDataToDocker();
     LveWindow *m_window;
@@ -8876,49 +9432,165 @@ private:
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QTabWidget" name="tabWidget">
-     <property name="currentIndex">
-      <number>1</number>
-     </property>
-     <widget class="QWidget" name="tab">
-      <attribute name="title">
-       <string>MainWindow</string>
-      </attribute>
-     </widget>
-     <widget class="QWidget" name="tab_2">
-      <attribute name="title">
-       <string>Docker</string>
-      </attribute>
-      <widget class="QCheckBox" name="checkBox_pos">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>20</y>
-         <width>113</width>
-         <height>18</height>
-        </rect>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="14" column="0">
+      <widget class="QLabel" name="label_11">
+       <property name="text">
+        <string>Vulkan PEX</string>
        </property>
+      </widget>
+     </item>
+     <item row="13" column="0">
+      <widget class="QCheckBox" name="checkBox_7">
+       <property name="text">
+        <string>CheckBox</string>
+       </property>
+      </widget>
+     </item>
+     <item row="9" column="0">
+      <widget class="QCheckBox" name="checkBox_5">
+       <property name="text">
+        <string>CheckBox</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="3">
+      <widget class="QLabel" name="label_10">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="8" column="0">
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>Docker Hierarchy</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>Docker top view</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Docker mini map</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="label_8">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QLabel" name="label_9">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QCheckBox" name="checkBox_pos">
        <property name="text">
         <string>Change Pos</string>
        </property>
       </widget>
-     </widget>
-     <widget class="QWidget" name="tab_5">
-      <attribute name="title">
-       <string>Data Process</string>
-      </attribute>
-     </widget>
-     <widget class="QWidget" name="tab_3">
-      <attribute name="title">
-       <string>3D Modeling</string>
-      </attribute>
-     </widget>
-     <widget class="QWidget" name="tab_4">
-      <attribute name="title">
-       <string>PEX</string>
-      </attribute>
-     </widget>
-    </widget>
+     </item>
+     <item row="12" column="0">
+      <widget class="QLabel" name="label_7">
+       <property name="text">
+        <string>Vulkan 3D modeling</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QCheckBox" name="checkBox_2">
+       <property name="text">
+        <string>CheckBox</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0">
+      <widget class="QCheckBox" name="checkBox_3">
+       <property name="text">
+        <string>CheckBox</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Main Window</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="0">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>Docker navigator</string>
+       </property>
+      </widget>
+     </item>
+     <item row="10" column="0">
+      <widget class="QLabel" name="label_6">
+       <property name="text">
+        <string>Docker Layer</string>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="0">
+      <widget class="QCheckBox" name="checkBox_4">
+       <property name="text">
+        <string>CheckBox</string>
+       </property>
+      </widget>
+     </item>
+     <item row="11" column="0">
+      <widget class="QCheckBox" name="checkBox_6">
+       <property name="text">
+        <string>CheckBox</string>
+       </property>
+      </widget>
+     </item>
+     <item row="15" column="0">
+      <widget class="QCheckBox" name="checkBox_8">
+       <property name="text">
+        <string>CheckBox</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QPushButton" name="pushButton">
+       <property name="text">
+        <string>PushButton</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLabel" name="label_12">
+       <property name="text">
+        <string>Pos coordinate : </string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2" colspan="2">
+      <widget class="QLabel" name="label_pos">
+       <property name="text">
+        <string>pos_label</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
   </layout>
  </widget>
@@ -8933,8 +9605,8 @@ private:
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>320</width>
-    <height>300</height>
+    <width>780</width>
+    <height>646</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -8946,33 +9618,97 @@ private:
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
+  <layout class="QGridLayout" name="gridLayout_2">
+   <item row="0" column="0">
     <layout class="QGridLayout" name="gridLayout">
      <item row="1" column="0">
-      <widget class="QTreeWidget" name="hierarchy_tree">
-       <property name="verticalScrollBarPolicy">
-        <enum>Qt::ScrollBarAsNeeded</enum>
+      <widget class="QTabWidget" name="tabWidget">
+       <property name="currentIndex">
+        <number>1</number>
        </property>
-       <property name="horizontalScrollBarPolicy">
-        <enum>Qt::ScrollBarAlwaysOff</enum>
-       </property>
-       <property name="expandsOnDoubleClick">
-        <bool>false</bool>
-       </property>
-       <attribute name="headerVisible">
-        <bool>false</bool>
-       </attribute>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLineEdit" name="hierarchy_searching">
-       <property name="text">
-        <string/>
-       </property>
-       <property name="placeholderText">
-        <string>Searching...</string>
-       </property>
+       <widget class="QWidget" name="tab_3">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <attribute name="title">
+         <string>Hierarchy</string>
+        </attribute>
+        <layout class="QGridLayout" name="gridLayout_3">
+         <item row="0" column="0">
+          <layout class="QVBoxLayout" name="verticalLayout">
+           <item>
+            <widget class="QLineEdit" name="hierarchy_searching">
+             <property name="enabled">
+              <bool>true</bool>
+             </property>
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>1</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+             </property>
+             <property name="placeholderText">
+              <string>Searching...</string>
+             </property>
+             <property name="clearButtonEnabled">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QTreeWidget" name="hierarchy_tree">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+               <horstretch>1</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="verticalScrollBarPolicy">
+              <enum>Qt::ScrollBarAsNeeded</enum>
+             </property>
+             <property name="horizontalScrollBarPolicy">
+              <enum>Qt::ScrollBarAlwaysOff</enum>
+             </property>
+             <property name="expandsOnDoubleClick">
+              <bool>false</bool>
+             </property>
+             <attribute name="headerVisible">
+              <bool>false</bool>
+             </attribute>
+             <column>
+              <property name="text">
+               <string notr="true">1</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="tab_4">
+        <attribute name="title">
+         <string>PEX</string>
+        </attribute>
+        <layout class="QGridLayout" name="gridLayout_4">
+         <item row="0" column="0">
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <item>
+            <widget class="QTreeWidget" name="pex_tree"/>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
       </widget>
      </item>
     </layout>
@@ -9512,7 +10248,7 @@ private:
      <x>0</x>
      <y>0</y>
      <width>1024</width>
-     <height>20</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -9545,6 +10281,7 @@ private:
      <string>devopt</string>
     </property>
     <addaction name="actionDialog_on_off"/>
+    <addaction name="actionToyCAD"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
@@ -9739,6 +10476,11 @@ private:
     <string>Dialog on/off</string>
    </property>
   </action>
+  <action name="actionToyCAD">
+   <property name="text">
+    <string>ToyCAD</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>
@@ -9787,6 +10529,7 @@ SOURCES += \
     Rendering/Src/lve_window.cpp \
     Rendering/Src/simple_render_system.cpp \
     T2D.cpp \
+    ToyCAD/Src/toycaddata.cpp \
     ToyCAD/Src/toycadmodel.cpp \
     all_data.cpp \
     dev_dialog.cpp \
@@ -9815,7 +10558,10 @@ HEADERS += \
     Rendering/Src/lve_pipeline.hpp \
     Rendering/Src/lve_window.hpp \
     Rendering/Src/simple_render_system.hpp \
+    Rendering/Src/utils.h \
     T2D.h \
+    ToyCAD/Src/toycad_object.h \
+    ToyCAD/Src/toycaddata.h \
     ToyCAD/Src/toycadmodel.h \
     all_data.h \
     defineParam.h \
@@ -9873,7 +10619,13 @@ DISTFILES += \
     Rendering/shaders/simple_shader_edge.vert \
     Rendering/shaders/simple_shader_pex.frag \
     Rendering/shaders/simple_shader_pex.vert \
-    ToyCAD/Data/toy_cad_test_data.csv
+    ToyCAD/Data/test.csv \
+    ToyCAD/Data/toy_cad_test_data.csv \
+    ToyCAD/shaders/compile.bat \
+    ToyCAD/shaders/toycad.frag \
+    ToyCAD/shaders/toycad.frag.spv \
+    ToyCAD/shaders/toycad.vert \
+    ToyCAD/shaders/toycad.vert.spv
 
 
 
@@ -9886,4 +10638,4 @@ DEPENDPATH += $$PWD/../../Library/VulkanSDK/1.3.239.0/Lib
 
 INCLUDEPATH += $$PWD/../../Library/glm-0.9.9.8/glm
 
-#ÌïúÍ∏Ä Ïã§Ìóò
+#«—±€ Ω««Ë

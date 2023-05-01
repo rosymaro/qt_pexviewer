@@ -263,7 +263,7 @@ void MainWindow::on_actionOpen_DB_triggered() {
         //                                t2d.HierarchyInstance[i].box.maxy);
         //        }
 
-        formHier->createHierarchyTree(&t2d);
+        //formHier->createHierarchyTree(&t2d);
 
         pos.x = t2d.LayoutMinMax.minx;
         pos.y = t2d.LayoutMinMax.miny;
@@ -489,4 +489,11 @@ void MainWindow::on_actionDialog_on_off_triggered()
     dev_dialog->show();
     dev_dialog->raise();
     dev_dialog->activateWindow();
+}
+
+void MainWindow::on_actionToyCAD_triggered()
+{
+    DtaoRenderSystem* renderer = this->m_window->getRenderer();
+    renderer->createToyCADObjects("ToyCAD/Data/test.csv");
+
 }

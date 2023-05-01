@@ -6,6 +6,8 @@
 #include "lve_game_object.hpp"
 #include "lve_pipeline.hpp"
 
+#include "ToyCAD/Src/toycad_object.h"
+
 // std
 #include <memory>
 #include <vector>
@@ -27,6 +29,11 @@ public:
             std::vector<LveGameObject>& gameObjects,
             const LveCamera& camera);
 
+    void renderToyCADObjects(
+            VkCommandBuffer commandBuffer,
+            std::vector<ToyCADObject>& objects,
+            const LveCamera& camera);
+
 private:
     void createPipelineLayout(VkPipelineLayout & pipeline_layout);
     void createPipelineForFace(VkRenderPass renderPass);
@@ -35,6 +42,9 @@ private:
     void createPipelineForPEXResistorEdge(VkRenderPass renderPass);
     void createPipelineForPEXCapacitorLine(VkRenderPass renderPass);
     void createPipelineForPEXCapacitor(VkRenderPass renderPass);
+
+    void createPipelineForToyCADFace(VkRenderPass renderPass);
+    void createPipelineForToyCADEdge(VkRenderPass renderPass);
 
     LveDevice& lveDevice;
 
@@ -55,5 +65,12 @@ private:
 
     std::unique_ptr<LvePipeline> lvePipelineForPEXCapacitor;
     VkPipelineLayout pipelineLayoutForPEXCapacitor;
+
+    std::unique_ptr<LvePipeline> lvePipelineForToyCADFace;
+    VkPipelineLayout pipelineLayoutForToyCADFace;
+    std::unique_ptr<LvePipeline> lvePipelineForToyCADEdge;
+    VkPipelineLayout pipelineLayoutForToyCADEdge;
+
+
 };
 

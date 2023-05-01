@@ -24,6 +24,8 @@ SOURCES += \
     Rendering/Src/lve_window.cpp \
     Rendering/Src/simple_render_system.cpp \
     T2D.cpp \
+    ToyCAD/Src/toycaddata.cpp \
+    ToyCAD/Src/toycadmodel.cpp \
     all_data.cpp \
     dev_dialog.cpp \
     filedb.cpp \
@@ -53,6 +55,9 @@ HEADERS += \
     Rendering/Src/simple_render_system.hpp \
     Rendering/Src/utils.h \
     T2D.h \
+    ToyCAD/Src/toycad_object.h \
+    ToyCAD/Src/toycaddata.h \
+    ToyCAD/Src/toycadmodel.h \
     all_data.h \
     defineParam.h \
     dev_dialog.h \
@@ -108,7 +113,14 @@ DISTFILES += \
     Rendering/shaders/simple_shader_edge.frag \
     Rendering/shaders/simple_shader_edge.vert \
     Rendering/shaders/simple_shader_pex.frag \
-    Rendering/shaders/simple_shader_pex.vert
+    Rendering/shaders/simple_shader_pex.vert \
+    ToyCAD/Data/test.csv \
+    ToyCAD/Data/toy_cad_test_data.csv \
+    ToyCAD/shaders/compile.bat \
+    ToyCAD/shaders/toycad.frag \
+    ToyCAD/shaders/toycad.frag.spv \
+    ToyCAD/shaders/toycad.vert \
+    ToyCAD/shaders/toycad.vert.spv
 
 
 
